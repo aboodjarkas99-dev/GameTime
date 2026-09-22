@@ -1,0 +1,16 @@
+{
+  "name": "GameTime Factory Work Board",
+  "short_name": "GameTime",
+  "start_url": "production.html",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
