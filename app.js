@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260923e';
+const BUILD='20260923f';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -43,7 +43,7 @@ function normalizeLegacy(raw){
       quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),batchNote:o.batchNote||'',prodNote:o.prodNote||'',
       priority:o.priority||'Normal',autoTarget:o.autoTarget||null,batchChecked:!!o.batchChecked,prodChecked:!!o.prodChecked,
       batchStatus:o.batchStatus||'ready',prodStatus:o.prodStatus||'ready',held:!!o.held,
-      actualQuart:o.actual?.quart??null,actualGallon:o.actual?.gallon??null,actualFive:o.actual?.five??null,
+      actualQuart:o.actual?.quart??null,actualGallon:o.actual?.gallon??null,actualFive:o.actual?.five??null,actualJerry:null,jerryEnabled:false,jerry:'0',
       batchOrder:Number(o.batchOrder)||999,prodOrder:Number(o.prodOrder)||999,holdLine:!!o.holdLine,version:1
     });
   }
@@ -51,25 +51,25 @@ function normalizeLegacy(raw){
 }
 function fromRow(r){return{
   id:Number(r.id),date:r.work_date||'',product:r.product||'',batch:r.batch||'',tank:Number(r.tank)||0,
-  quart:String(r.quart??'0'),gallon:String(r.gallon??'0'),five:String(r.five??'0'),batchNote:r.batch_note||'',prodNote:r.prod_note||'',
+  quart:String(r.quart??'0'),gallon:String(r.gallon??'0'),five:String(r.five??'0'),jerryEnabled:!!r.jerry_enabled,jerry:String(r.jerry??'0'),batchNote:r.batch_note||'',prodNote:r.prod_note||'',
   priority:r.priority||'Normal',autoTarget:r.auto_target||null,batchChecked:!!r.batch_checked,prodChecked:!!r.prod_checked,
   batchStatus:r.batch_status||'ready',prodStatus:r.prod_status||'ready',held:!!r.held,
-  actualQuart:r.actual_quart==null?null:Number(r.actual_quart),actualGallon:r.actual_gallon==null?null:Number(r.actual_gallon),actualFive:r.actual_five==null?null:Number(r.actual_five),
+  actualQuart:r.actual_quart==null?null:Number(r.actual_quart),actualGallon:r.actual_gallon==null?null:Number(r.actual_gallon),actualFive:r.actual_five==null?null:Number(r.actual_five),actualJerry:r.actual_jerry==null?null:Number(r.actual_jerry),
   batchOrder:Number(r.batch_order)||999,prodOrder:Number(r.prod_order)||999,holdLine:!!r.hold_line,version:Number(r.version)||1,
   updatedAt:r.updated_at||null,deletedAt:r.deleted_at||null
 }}
 function toRow(o){return{
   id:Number(o.id),work_date:o.holdLine?null:(o.date||null),product:o.product||'',batch:o.batch||'',tank:Number(o.tank)||0,
-  quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),batch_note:o.batchNote||'',prod_note:o.prodNote||'',
+  quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),jerry_enabled:!!o.jerryEnabled,jerry:String(o.jerry??'0'),batch_note:o.batchNote||'',prod_note:o.prodNote||'',
   priority:o.priority||'Normal',auto_target:o.autoTarget||null,batch_checked:!!o.batchChecked,prod_checked:!!o.prodChecked,
   batch_status:o.batchStatus||'ready',prod_status:o.prodStatus||'ready',held:!!o.held,
-  actual_quart:o.actualQuart==null?null:Number(o.actualQuart),actual_gallon:o.actualGallon==null?null:Number(o.actualGallon),actual_five:o.actualFive==null?null:Number(o.actualFive),
-  actual:{quart:o.actualQuart??null,gallon:o.actualGallon??null,five:o.actualFive??null},
+  actual_quart:o.actualQuart==null?null:Number(o.actualQuart),actual_gallon:o.actualGallon==null?null:Number(o.actualGallon),actual_five:o.actualFive==null?null:Number(o.actualFive),actual_jerry:o.actualJerry==null?null:Number(o.actualJerry),
+  actual:{quart:o.actualQuart??null,gallon:o.actualGallon??null,five:o.actualFive??null,jerry:o.actualJerry??null},
   batch_order:Number(o.batchOrder)||999,prod_order:Number(o.prodOrder)||999,hold_line:!!o.holdLine,
   updated_by:actor(),updated_from:isManager?'manager':view
 }}
 function mergeOrder(o){const i=orders.findIndex(x=>x.id===o.id);if(o.deletedAt){if(i>=0)orders.splice(i,1)}else if(i>=0)orders[i]=o;else orders.push(o);cache()}
-function orderSig(list){return JSON.stringify(list.map(o=>[o.id,o.version,o.batchStatus,o.prodStatus,o.batchChecked,o.prodChecked,o.held,o.actualQuart,o.actualGallon,o.actualFive,o.batchOrder,o.prodOrder,o.holdLine,o.date,o.deletedAt]))}
+function orderSig(list){return JSON.stringify(list.map(o=>[o.id,o.version,o.batchStatus,o.prodStatus,o.batchChecked,o.prodChecked,o.held,o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry,o.jerryEnabled,o.jerry,o.batchOrder,o.prodOrder,o.holdLine,o.date,o.deletedAt]))}
 
 async function fetchOrders(){
   const {data,error}=await db.from('work_orders').select('*').is('deleted_at',null);
@@ -155,11 +155,11 @@ function currentDay(){
   const q=$('search').value.trim().toLowerCase();
   return orders.filter(o=>!o.holdLine&&o.date===iso(selected)&&(!q||(o.product+' '+o.batch+' '+prodBatch(o.batch)).toLowerCase().includes(q)));
 }
-function actual(o,k){return k==='quart'?o.actualQuart:k==='gallon'?o.actualGallon:o.actualFive}
+function actual(o,k){return k==='quart'?o.actualQuart:k==='gallon'?o.actualGallon:k==='five'?o.actualFive:o.actualJerry}
 function pkgClass(o,k){const a=actual(o,k),p=num(o[k]);if(a==null)return'';return a>=p?'done':'partial'}
 function pkgCard(o,k,label){
   const a=actual(o,k),p=num(o[k]),mark=a==null?'':(a>=p?'✓':'◐');
-  return '<div class="pkg '+pkgClass(o,k)+'" data-qty="'+o.id+'" data-key="'+k+'"><span class="pkgmark">'+mark+'</span><b>'+esc(o[k])+'</b><span>'+label+'</span><small>'+(a==null?(k==='five'?'Tap when filled':boxes(o[k])+' BOXES • Tap when filled'):'ACTUAL '+a+' / '+p)+'</small></div>';
+  return '<div class="pkg '+pkgClass(o,k)+'" data-qty="'+o.id+'" data-key="'+k+'"><span class="pkgmark">'+mark+'</span><b>'+esc(o[k])+'</b><span>'+label+'</span><small>'+(a==null?((k==='five'||k==='jerry')?'Tap when filled':boxes(o[k])+' BOXES • Tap when filled'):'ACTUAL '+a+' / '+p)+'</small></div>';
 }
 function card(o,dept,i){
   const checked=dept==='batch'?o.batchChecked:o.prodChecked,st=dept==='batch'?o.batchStatus:o.prodStatus,bn=dept==='prod'?prodBatch(o.batch):o.batch,note=dept==='prod'?o.prodNote:o.batchNote;
@@ -170,7 +170,7 @@ function card(o,dept,i){
     '<div class="order">'+(dept==='prod'?'FILLING':'BATCH')+' PRIORITY #'+(i+1)+'</div>'+
     '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(bn?'<span class="batch">BATCH # '+esc(bn)+'</span>':'')+'</div>'+
     (o.held?'<div class="note"><b>ON HOLD</b></div>':'')+
-    (dept==='prod'?'<div class="qty">'+pkgCard(o,'quart','QUARTS')+pkgCard(o,'gallon','1 GALLON')+pkgCard(o,'five','5 GALLON')+'</div>'+(note?'<div class="note"><b>Production Note:</b> '+esc(note)+'</div>':''):'<div class="note">'+esc(note||'Prepare batch for production.')+'</div>')+
+    (dept==='prod'?'<div class="qty '+(o.jerryEnabled?'four':'')+'">'+pkgCard(o,'quart','QUARTS')+pkgCard(o,'gallon','1 GALLON')+pkgCard(o,'five','5 GALLON')+(o.jerryEnabled?pkgCard(o,'jerry','JERRY CAN 1.25G'):'')+'</div>'+(note?'<div class="note"><b>Production Note:</b> '+esc(note)+'</div>':''):'<div class="note">'+esc(note||'Prepare batch for production.')+'</div>')+
     '<label class="precheck '+(checked?'ok':'')+'" data-check="'+o.id+'" data-dept="'+dept+'"><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>PRE-CHECK</b><small>'+(dept==='prod'?'Labels • Pallets • Containers / Cans':'All raw materials are available and ready')+'</small></span></label>'+
     '<div class="status '+statusClass(st)+'">'+statusText(st)+'</div>'+
     '<div class="actions"><button class="start '+(checked?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'">▶ START WORK</button><button class="finish '+(checked?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'">✓ WORK DONE</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+(o.held?'RESUME WORK':'PUT ON HOLD')+'</button></div>'+
@@ -206,43 +206,48 @@ async function handleAction(btn){
     if(btn.dataset.action==='hold'){await patchOrder(id,{held:!o.held});return}
     const dept=btn.dataset.dept,checked=dept==='batch'?o.batchChecked:o.prodChecked;if(!checked){toast('Complete PRE-CHECK first');return}
     if(btn.dataset.action==='done'&&dept==='prod'){
-      const needed=['quart','gallon','five'].filter(k=>num(o[k])>0),ok=needed.every(k=>actual(o,k)!=null);if(!ok){toast('Enter actual filled quantity for each planned package first');return}
+      const needed=['quart','gallon','five'].filter(k=>num(o[k])>0);if(o.jerryEnabled&&num(o.jerry)>0)needed.push('jerry');const ok=needed.every(k=>actual(o,k)!=null);if(!ok){toast('Enter actual filled quantity for each planned package first');return}
     }
     await patchOrder(id,{[dept==='batch'?'batch_status':'prod_status']:btn.dataset.action==='start'?'progress':'done'});
   }catch(e){fail(e)}
 }
 function openQty(id,key){
   if(view!=='prod'&&!isManager)return;const o=orders.find(x=>x.id===id);if(!o)return;qtyState={id,key};
-  const label=key==='quart'?'Quarts':key==='gallon'?'1 Gallon':'5 Gallon',a=actual(o,key),p=num(o[key]);
+  const label=key==='quart'?'Quarts':key==='gallon'?'1 Gallon':key==='five'?'5 Gallon':'Jerry Can 1.25 Gallon',a=actual(o,key),p=num(o[key]);
   $('qtyTitle').textContent=label+' — Actual Filled';$('qtyPlanned').innerHTML='Planned amount: <b>'+p+'</b><br><small>You may enter any number 0 or higher.</small>';$('qtyInput').value=a==null?String(p):String(a);showModal('qtyModal');setTimeout(()=>$('qtyInput').select(),50)
 }
 async function saveQty(){
   if(!qtyState)return;const raw=$('qtyInput').value.trim(),v=Number(raw);if(raw===''||!Number.isFinite(v)||v<0){toast('Enter a valid number 0 or higher');return}
-  const field=qtyState.key==='quart'?'actual_quart':qtyState.key==='gallon'?'actual_gallon':'actual_five';
+  const field=qtyState.key==='quart'?'actual_quart':qtyState.key==='gallon'?'actual_gallon':qtyState.key==='five'?'actual_five':'actual_jerry';
   try{$('saveQtyBtn').disabled=true;await patchOrder(qtyState.id,{[field]:v});hideModal('qtyModal');toast('Actual quantity saved')}catch(e){fail(e)}finally{$('saveQtyBtn').disabled=false}
 }
 function openEditor(id=null,hold=false){
   if(!isManager)return;const o=id?orders.find(x=>x.id===id):null;editorMode=hold||o?.holdLine?'hold':'order';editingId=o?.id||null;editingVersion=o?.version||null;
   $('editorTitle').textContent=editorMode==='hold'?(o?'Edit Hold Line Item':'Add Hold Line Item'):(o?'Edit Work Order':'Add Work Order');
   $('editId').value=o?.id||'';$('editVersion').value=o?.version||'';$('product').value=o?.product||'';$('workDate').value=editorMode==='hold'?'':(o?.date||iso(selected));$('dateField').style.display=editorMode==='hold'?'none':'';
-  $('batchNumber').value=o?.batch||'';$('tank').value=o?.tank||'';$('priority').value=o?.priority||'Normal';$('quart').value=o?.quart??'0';$('gallon').value=o?.gallon??'0';$('five').value=o?.five??'0';$('batchNote').value=o?.batchNote||'';$('prodNote').value=o?.prodNote||'';setAuto(o?.autoTarget||null);showModal('editorModal')
+  $('batchNumber').value=o?.batch||'';$('tank').value=o?.tank||'';$('priority').value=o?.priority||'Normal';$('quart').value=o?.quart??'0';$('gallon').value=o?.gallon??'0';$('five').value=o?.five??'0';$('jerryEnabled').checked=!!o?.jerryEnabled;$('jerry').value=o?.jerry??'0';toggleJerryField(false);$('batchNote').value=o?.batchNote||'';$('prodNote').value=o?.prodNote||'';setAuto(o?.autoTarget||null);showModal('editorModal')
 }
 function setAuto(t){autoTarget=t;document.querySelectorAll('[data-auto]').forEach(b=>b.classList.toggle('on',b.dataset.auto===t));['quart','gallon','five'].forEach(k=>$(k).readOnly=k===t);recalc()}
+function toggleJerryField(reset=true){
+  const on=$('jerryEnabled').checked;$('jerryField').style.display=on?'':'none';
+  if(!on&&reset)$('jerry').value='0';
+  recalc();
+}
 function recalc(){
-  const total=num($('tank').value);
-  if(autoTarget){let used=0;for(const k of ['quart','gallon','five'])if(k!==autoTarget){const v=num($(k).value);used+=k==='five'?v*5:k==='gallon'?v:v*.25}const rem=Math.max(0,total-used);$(autoTarget).value=String(autoTarget==='five'?Math.floor(rem/5):autoTarget==='gallon'?Math.floor(rem):Math.floor(rem*4))}
-  const q=num($('quart').value),g=num($('gallon').value),f=num($('five').value),used=f*5+g+q*.25,left=total-used;$('qBoxes').textContent=Math.ceil(q/4)+' boxes';$('gBoxes').textContent=Math.ceil(g/4)+' boxes';$('calc').innerHTML='Total: <b>'+total+'</b> gal • Used: <b>'+used+'</b> gal • '+(Math.abs(left)<.001?'<b>Exact total ✓</b>':(left>0?'Unassigned: ':'Over: ')+'<b>'+Math.abs(left).toFixed(2)+'</b> gal')
+  const total=num($('tank').value),jOn=$('jerryEnabled').checked,j=num($('jerry').value);
+  if(autoTarget){let used=0;for(const k of ['quart','gallon','five'])if(k!==autoTarget){const v=num($(k).value);used+=k==='five'?v*5:k==='gallon'?v:v*.25}if(jOn)used+=j*1.25;const rem=Math.max(0,total-used);$(autoTarget).value=String(autoTarget==='five'?Math.floor(rem/5):autoTarget==='gallon'?Math.floor(rem):Math.floor(rem*4))}
+  const q=num($('quart').value),g=num($('gallon').value),f=num($('five').value),used=f*5+g+q*.25+(jOn?j*1.25:0),left=total-used;$('qBoxes').textContent=Math.ceil(q/4)+' boxes';$('gBoxes').textContent=Math.ceil(g/4)+' boxes';$('calc').innerHTML='Total: <b>'+total+'</b> gal • Used: <b>'+used+'</b> gal • '+(jOn?'Jerry Can: <b>'+j+'</b> × 1.25 gal • ':'')+(Math.abs(left)<.001?'<b>Exact total ✓</b>':(left>0?'Unassigned: ':'Over: ')+'<b>'+Math.abs(left).toFixed(2)+'</b> gal')
 }
 async function saveEditor(){
   if(saveBusy)return;const product=titleCase($('product').value.trim()),date=editorMode==='hold'?'':$('workDate').value;if(!product||(!date&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter Product Name and Date');return}
   saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent='Saving…';
   try{
-    const plan={work_date:editorMode==='hold'?null:date,hold_line:editorMode==='hold',product,batch:$('batchNumber').value.trim(),tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
+    const plan={work_date:editorMode==='hold'?null:date,hold_line:editorMode==='hold',product,batch:$('batchNumber').value.trim(),tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
     if(editingId){
       const res=await patchOrder(editingId,plan,editingVersion);
       if(res.conflict){await reconcile();hideModal('editorModal');toast('This order changed on another manager screen. Latest version loaded.');return}
     }else{
-      const sameDate=orders.filter(o=>!o.holdLine&&o.date===date),o={id:nextId(),date,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.prodOrder))+1};
+      const sameDate=orders.filter(o=>!o.holdLine&&o.date===date),o={id:nextId(),date,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
     hideModal('editorModal');if(editorMode!=='hold')selected=new Date(date+'T12:00:00');render();toast('Saved to cloud')
@@ -307,7 +312,7 @@ async function shareDept(dept){const base=location.href.split('?')[0].replace(/[
 
 function printSheet(mode){
   const day=orders.filter(o=>!o.holdLine&&o.date===iso(selected)),n=Math.max(day.length,1),scale=n<=4?1:n<=6?.88:n<=8?.75:n<=10?.64:.54;
-  const rows=dept=>day.slice().sort((a,b)=>dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder).map((o,i)=>'<div class="j"><div class="jt"><div><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3><span class="bb">BATCH # '+esc(dept==='prod'?prodBatch(o.batch):o.batch)+'</span></div><div class="tb"><b>'+esc(o.tank)+'</b><span>TANK GAL</span></div></div>'+(dept==='prod'?'<div class="pq"><div><b>'+esc(o.quart)+'</b><small>Q / '+boxes(o.quart)+' BX</small></div><div><b>'+esc(o.gallon)+'</b><small>1G / '+boxes(o.gallon)+' BX</small></div><div><b>'+esc(o.five)+'</b><small>5G</small></div></div><p>'+esc(o.prodNote||'')+'</p>':'<p>'+esc(o.batchNote||'Prepare batch for production.')+'</p>')+'<div class="ck">'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' '+(dept==='prod'?'Labels • Pallets • Containers':'Raw materials ready')+'</div><div class="st">STATUS <b>'+statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'')+'</b></div></div>').join('');
+  const rows=dept=>day.slice().sort((a,b)=>dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder).map((o,i)=>'<div class="j"><div class="jt"><div><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3><span class="bb">BATCH # '+esc(dept==='prod'?prodBatch(o.batch):o.batch)+'</span></div><div class="tb"><b>'+esc(o.tank)+'</b><span>TANK GAL</span></div></div>'+(dept==='prod'?'<div class="pq" style="grid-template-columns:repeat('+(o.jerryEnabled?4:3)+',1fr)"><div><b>'+esc(o.quart)+'</b><small>Q / '+boxes(o.quart)+' BX</small></div><div><b>'+esc(o.gallon)+'</b><small>1G / '+boxes(o.gallon)+' BX</small></div><div><b>'+esc(o.five)+'</b><small>5G</small></div>'+(o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>JERRY 1.25G</small></div>':'')+'</div><p>'+esc(o.prodNote||'')+'</p>':'<p>'+esc(o.batchNote||'Prepare batch for production.')+'</p>')+'<div class="ck">'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' '+(dept==='prod'?'Labels • Pallets • Containers':'Raw materials ready')+'</div><div class="st">STATUS <b>'+statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'')+'</b></div></div>').join('');
   const showBatch=mode!=='prod',showProd=mode!=='batch',cols=showBatch&&showProd?'1fr 1fr':'1fr';
   const h='<!doctype html><html><head><meta charset="utf-8"><style>@page{size:Letter;margin:.2in}*{box-sizing:border-box}body{font-family:Arial;margin:0;color:#111}.head{border:1.5px solid #111;border-radius:7px;background:#eee;padding:6px 8px;display:flex;justify-content:space-between}.head h1{font-size:14pt;margin:0}.head p{font-size:7pt;margin:2px 0}.cols{display:grid;grid-template-columns:'+cols+';gap:7px;margin-top:6px;zoom:'+scale+'}.sh{background:#e8e8e8;border:1px solid #444;border-radius:5px;padding:4px 6px;font-size:8pt;font-weight:bold;margin-bottom:4px}.j{border:1px solid #555;border-radius:6px;padding:5px;margin-bottom:4px;break-inside:avoid}.jt{display:flex;justify-content:space-between}.jt small{font-size:5pt}.jt h3{font-size:9pt;margin:1px 0}.bb{border:1px solid #111;background:#eee;border-radius:3px;padding:2px 3px;font-size:5.5pt;font-weight:bold}.tb{border:1px solid #111;background:#f3f3f3;border-radius:4px;padding:3px;text-align:center}.tb b{display:block;font-size:8pt}.tb span{font-size:4.5pt}.pq{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:3px}.pq div{border:1px solid #999;background:#f7f7f7;border-radius:3px;padding:2px;text-align:center}.pq b{display:block;font-size:8pt}.pq small,p,.ck,.st{font-size:5.5pt}p{margin:3px 0}.st{border-top:1px solid #bbb;padding-top:2px}@media print{button{display:none}}</style></head><body><button onclick="print()">Print</button><div class="head"><div><h1>FACTORY DAILY WORK SHEET</h1><p>'+pretty()+'</p></div><b>'+ (mode==='all'?'ALL WORK':mode==='prod'?'PRODUCTION':'BATCH MAKER') +'</b></div><div class="cols">'+(showBatch?'<section><div class="sh">BATCH MAKER</div>'+rows('batch')+'</section>':'')+(showProd?'<section><div class="sh">PRODUCTION / FILLING</div>'+rows('prod')+'</section>':'')+'</div><script>setTimeout(()=>print(),250)<\/script></body></html>';
   const w=open('','_blank');w.document.write(h);w.document.close()
@@ -336,7 +341,7 @@ $('shareProd').onclick=()=>shareDept('prod');$('shareBatch').onclick=()=>shareDe
 $('closeDrawer').onclick=closeDrawer;$('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
 $('saveQtyBtn').onclick=saveQty;$('saveOrderBtn').onclick=saveEditor;document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTarget===b.dataset.auto?null:b.dataset.auto));
-for(const id of ['tank','quart','gallon','five'])$(id).oninput=recalc;
+for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;$('jerryEnabled').onchange=()=>toggleJerryField(true);
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}};
 window.addEventListener('online',()=>{setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});window.addEventListener('offline',()=>setSync('offline','OFFLINE'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcile()});
 
