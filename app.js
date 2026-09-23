@@ -1,5 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
+const BUILD='20260923e';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -100,8 +101,17 @@ async function initialLoad(){
     render();
     let cloud=await fetchOrders();cloud=await importLegacyIfNeeded(cloud);orders=cloud;cache();
     logs=await fetchLogs();render();subscribeLive();setSync('live','LIVE');
-    reconcileTimer=setInterval(reconcile,4000);
+    reconcileTimer=setInterval(reconcile,4000);setInterval(checkAppVersion,30000);checkAppVersion();
   }catch(e){console.error(e);setSync('offline','OFFLINE');toast('Cloud connection problem — retrying');setTimeout(initialLoad,3500)}
+}
+async function checkAppVersion(){
+  try{
+    const {data,error}=await db.from('app_config').select('config_value').eq('config_key','build').maybeSingle();
+    if(error||!data)return;
+    if(data.config_value&&data.config_value!==BUILD){
+      const u=new URL(location.href);u.searchParams.set('refresh',Date.now().toString());location.replace(u.toString());
+    }
+  }catch{}
 }
 async function reconcile(){
   if(!navigator.onLine){setSync('offline','OFFLINE');return}
