@@ -1,1 +1,10 @@
-const C='gametime-v1';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['index.html','production.html','batch-maker.html','manifest.webmanifest','icon.svg']))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))})
+self.addEventListener('install', event => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
+});
