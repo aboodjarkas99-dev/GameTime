@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20260923g">
+<link rel="stylesheet" href="styles.css?v=20260923h">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -72,7 +72,7 @@
       <label>Priority<select id="priority"><option>Normal</option><option>Rush</option><option>First Thing Morning</option></select></label>
       <div class="full auto">
         <b>Auto-fill Remaining Gallons Into</b>
-        <div class="autobtns"><button type="button" data-auto="five">5 Gallon</button><button type="button" data-auto="gallon">1 Gallon</button><button type="button" data-auto="quart">Quarts</button></div>
+        <div class="autobtns"><button type="button" data-auto="five">5 Gallon</button><button type="button" data-auto="gallon">1 Gallon</button><button type="button" data-auto="quart">Quarts</button><button id="jerryAutoBtn" type="button" data-auto="jerry" style="display:none">Jerry Can 1.25G</button></div>
       </div>
       <label>Quarts<input id="quart"><small id="qBoxes"></small></label>
       <label>1 Gallon<input id="gallon"><small id="gBoxes"></small></label>
@@ -141,9 +141,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260923g"></script>
+<script src="app.js?v=20260923h"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923g').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923h').catch(()=>{});}
 </script>
 </body>
 </html>
