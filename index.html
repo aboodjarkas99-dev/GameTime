@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20260923f">
+<link rel="stylesheet" href="styles.css?v=20260923g">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -19,9 +19,8 @@
 <main class="wrap">
   <section class="toolbar">
     <button id="prevBtn">← Previous</button>
-    <div class="datebox" id="dateLabel"></div>
+    <button class="datebox dateclick" id="dateLabel" title="Open Calendar"></button>
     <button id="nextBtn">Next →</button>
-    <button id="monthBtn">▦ Month View</button>
     <input id="search" class="grow" placeholder="Search Product or Batch #">
     <button id="printBtn">Print / Save PDF</button>
     <button id="addBtn" class="primary">+ Add Work Order</button>
@@ -104,6 +103,23 @@
   </div>
 </div>
 
+<div class="modal" id="carryModal">
+  <div class="dialog carrydialog">
+    <div class="dialoghead"><h2>Move Remainder to Next Day</h2><button data-close="carryModal">✕</button></div>
+    <p class="carryhelp">Enter what Production actually filled today. GameTime will calculate the remaining quantities and create a Production-only carryover for the next day.</p>
+    <div id="carryProduct" class="planned"></div>
+    <div class="carrygrid">
+      <label>Move remainder to<input id="carryDate" type="date"></label>
+      <label id="carryQuartWrap">Quarts filled today<input id="carryQuart" inputmode="decimal"></label>
+      <label id="carryGallonWrap">1 Gallon filled today<input id="carryGallon" inputmode="decimal"></label>
+      <label id="carryFiveWrap">5 Gallon filled today<input id="carryFive" inputmode="decimal"></label>
+      <label id="carryJerryWrap">Jerry Can 1.25G filled today<input id="carryJerry" inputmode="decimal"></label>
+    </div>
+    <div id="carryPreview" class="summary carrypreview"></div>
+    <div class="dialogactions"><button data-close="carryModal">Cancel</button><button id="saveCarryBtn" class="primary">Move Remainder</button></div>
+  </div>
+</div>
+
 <div class="drawerbackdrop" id="drawerBackdrop">
   <aside class="drawer">
     <div class="drawerhead"><h3 id="drawerTitle"></h3><button id="closeDrawer">✕</button></div>
@@ -125,9 +141,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260923f"></script>
+<script src="app.js?v=20260923g"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923f').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923g').catch(()=>{});}
 </script>
 </body>
 </html>
