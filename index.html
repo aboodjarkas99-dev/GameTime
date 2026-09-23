@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20260923e">
+<link rel="stylesheet" href="styles.css?v=20260923f">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -78,6 +78,8 @@
       <label>Quarts<input id="quart"><small id="qBoxes"></small></label>
       <label>1 Gallon<input id="gallon"><small id="gBoxes"></small></label>
       <label>5 Gallon<input id="five"></label>
+      <label class="full optional-package"><input id="jerryEnabled" type="checkbox"> <span><b>Add Jerry Can 1.25 Gallon</b><small>Only show this package on the work order when selected.</small></span></label>
+      <label id="jerryField" style="display:none">Jerry Can 1.25 Gallon<input id="jerry" value="0" inputmode="decimal"></label>
       <div class="full summary" id="calc"></div>
       <label class="full">Batch Maker Note<input id="batchNote"></label>
       <label class="full">Production Note<input id="prodNote"></label>
@@ -123,9 +125,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260923e"></script>
+<script src="app.js?v=20260923f"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923e').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923f').catch(()=>{});}
 </script>
 </body>
 </html>
