@@ -7,13 +7,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20260923d">
+<link rel="stylesheet" href="styles.css?v=20260923e">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
 <header class="topbar">
   <div><div class="brand">GAMETIME FACTORY WORK BOARD</div><div class="subtitle" id="viewLabel">ALL WORK</div></div>
-  <div class="topright"><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
+  <div class="topright"><button id="currentUser" class="userbtn" type="button">👤 Set Your Name</button><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
 </header>
 
 <main class="wrap">
@@ -109,12 +109,23 @@
   </aside>
 </div>
 
+
+<div class="modal" id="identityModal">
+  <div class="dialog identitydialog">
+    <div class="identityicon">👤</div>
+    <h2>Who is using this device?</h2>
+    <p>Enter your name once. GameTime will remember it on this browser and automatically attach it to your changes.</p>
+    <label class="qtylabel">Your Name<input id="deviceNameInput" autocomplete="name" placeholder="Example: Abood"></label>
+    <button id="saveDeviceName" class="primary identitysave">Save Name on This Device</button>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260923d"></script>
+<script src="app.js?v=20260923e"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923d').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260923e').catch(()=>{});}
 </script>
 </body>
 </html>
