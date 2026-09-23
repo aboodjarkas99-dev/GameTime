@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260923g';
+const BUILD='20260923h';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -268,16 +268,42 @@ function openEditor(id=null,hold=false){
   $('editId').value=o?.id||'';$('editVersion').value=o?.version||'';$('product').value=o?.product||'';$('workDate').value=editorMode==='hold'?'':(o?.date||iso(selected));$('dateField').style.display=editorMode==='hold'?'none':'';
   $('batchNumber').value=o?.batch||'';$('tank').value=o?.tank||'';$('priority').value=o?.priority||'Normal';$('quart').value=o?.quart??'0';$('gallon').value=o?.gallon??'0';$('five').value=o?.five??'0';$('jerryEnabled').checked=!!o?.jerryEnabled;$('jerry').value=o?.jerry??'0';toggleJerryField(false);$('batchNote').value=o?.batchNote||'';$('prodNote').value=o?.prodNote||'';setAuto(o?.autoTarget||null);showModal('editorModal')
 }
-function setAuto(t){autoTarget=t;document.querySelectorAll('[data-auto]').forEach(b=>b.classList.toggle('on',b.dataset.auto===t));['quart','gallon','five'].forEach(k=>$(k).readOnly=k===t);recalc()}
+function setAuto(t){
+  if(t==='jerry'&&!$('jerryEnabled').checked)t=null;
+  autoTarget=t;
+  document.querySelectorAll('[data-auto]').forEach(b=>b.classList.toggle('on',b.dataset.auto===t));
+  ['quart','gallon','five','jerry'].forEach(k=>$(k).readOnly=k===t);
+  recalc()
+}
 function toggleJerryField(reset=true){
-  const on=$('jerryEnabled').checked;$('jerryField').style.display=on?'':'none';
+  const on=$('jerryEnabled').checked;
+  $('jerryField').style.display=on?'':'none';
+  $('jerryAutoBtn').style.display=on?'':'none';
+  if(!on&&autoTarget==='jerry')setAuto(null);
   if(!on&&reset)$('jerry').value='0';
   recalc();
 }
 function recalc(){
-  const total=num($('tank').value),jOn=$('jerryEnabled').checked,j=num($('jerry').value);
-  if(autoTarget){let used=0;for(const k of ['quart','gallon','five'])if(k!==autoTarget){const v=num($(k).value);used+=k==='five'?v*5:k==='gallon'?v:v*.25}if(jOn)used+=j*1.25;const rem=Math.max(0,total-used);$(autoTarget).value=String(autoTarget==='five'?Math.floor(rem/5):autoTarget==='gallon'?Math.floor(rem):Math.floor(rem*4))}
-  const q=num($('quart').value),g=num($('gallon').value),f=num($('five').value),used=f*5+g+q*.25+(jOn?j*1.25:0),left=total-used;$('qBoxes').textContent=Math.ceil(q/4)+' boxes';$('gBoxes').textContent=Math.ceil(g/4)+' boxes';$('calc').innerHTML='Total: <b>'+total+'</b> gal • Used: <b>'+used+'</b> gal • '+(jOn?'Jerry Can: <b>'+j+'</b> × 1.25 gal • ':'')+(Math.abs(left)<.001?'<b>Exact total ✓</b>':(left>0?'Unassigned: ':'Over: ')+'<b>'+Math.abs(left).toFixed(2)+'</b> gal')
+  const total=num($('tank').value),jOn=$('jerryEnabled').checked;
+  if(autoTarget){
+    let used=0;
+    for(const k of ['quart','gallon','five','jerry']){
+      if(k===autoTarget)continue;
+      if(k==='jerry'&&!jOn)continue;
+      const v=num($(k).value);
+      used+=k==='five'?v*5:k==='gallon'?v:k==='quart'?v*.25:v*1.25;
+    }
+    const rem=Math.max(0,total-used);
+    const autoValue=autoTarget==='five'?Math.floor(rem/5):
+                    autoTarget==='gallon'?Math.floor(rem):
+                    autoTarget==='quart'?Math.floor(rem*4):
+                    Math.floor(rem/1.25);
+    $(autoTarget).value=String(autoValue);
+  }
+  const q=num($('quart').value),g=num($('gallon').value),f=num($('five').value),j=jOn?num($('jerry').value):0;
+  const used=f*5+g+q*.25+j*1.25,left=total-used;
+  $('qBoxes').textContent=Math.ceil(q/4)+' boxes';$('gBoxes').textContent=Math.ceil(g/4)+' boxes';
+  $('calc').innerHTML='Total: <b>'+total+'</b> gal • Used: <b>'+used+'</b> gal • '+(jOn?'Jerry Can: <b>'+j+'</b> × 1.25 = <b>'+(j*1.25).toFixed(2)+'</b> gal • ':'')+(Math.abs(left)<.001?'<b>Exact total ✓</b>':(left>0?'Unassigned: ':'Over: ')+'<b>'+Math.abs(left).toFixed(2)+'</b> gal')
 }
 async function saveEditor(){
   if(saveBusy)return;const product=titleCase($('product').value.trim()),date=editorMode==='hold'?'':$('workDate').value;if(!product||(!date&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter Product Name and Date');return}
