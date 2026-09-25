@@ -179,3 +179,40 @@
   .ps-micro .ps-pkgs small{font-size:3.5pt}
   .ps-empty{border:1px dashed #bbb;border-radius:4px;padding:12px;text-align:center;font-size:7pt;color:#666}
 }
+
+/* PRODUCTION WAIT / READONLY HOLD */
+.card.prod-waiting{background:#f8fafc;border-color:#dbe3ec}
+.card.prod-waiting>*:not(.batchwait):not(.draghandle){opacity:.42}
+.card.prod-waiting .pkg{cursor:not-allowed}
+.card.prod-waiting .precheck{cursor:not-allowed}
+.card.prod-waiting .actions .start,
+.card.prod-waiting .actions .finish{cursor:not-allowed}
+.batchwait{
+  margin:5px 88px 6px 0;
+  border:1px solid #cbd5e1;
+  background:#eef2f7;
+  border-radius:6px;
+  padding:6px 7px;
+  font-size:8px;
+  font-weight:900;
+  color:#475569;
+  letter-spacing:.02em
+}
+.precheck.locked-wait{cursor:not-allowed}
+.holdreadonly{position:relative;padding-right:78px}
+.readonlytag{
+  position:absolute;
+  right:9px;
+  top:10px;
+  border:1px solid #cbd5e1;
+  background:#f8fafc;
+  color:#64748b;
+  border-radius:5px;
+  padding:3px 5px;
+  font-size:7px;
+  font-weight:900
+}
+@media(max-width:720px){
+  .batchwait{margin-right:0}
+  #holdLineBtn{grid-column:auto}
+}
