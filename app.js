@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260925b';
+const BUILD='20260925c';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -308,6 +308,12 @@ async function reorder(dragId,targetId,dept){
   try{setSync('syncing','SAVING');const {error}=await db.rpc('reorder_work_orders',{p_work_date:iso(selected),p_dept:dept,p_ids:day.map(o=>o.id),p_actor:actor()});if(error)throw error;day.forEach((o,i)=>{if(dept==='batch')o.batchOrder=i+1;else o.prodOrder=i+1});cache();render();setSync('live','LIVE')}catch(e){fail(e)}
 }
 
+function openMonth(){
+  monthCursor=new Date(selected);
+  monthCursor.setDate(1);
+  showModal('monthModal');
+  renderMonth();
+}
 function deptEntriesForDate(d){
   if(view==='batch')return batchDay(d).map(o=>({o,dept:'batch'}));
   if(view==='prod')return prodDay(d).map(o=>({o,dept:'prod'}));
