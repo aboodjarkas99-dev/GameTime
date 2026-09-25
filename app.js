@@ -323,6 +323,7 @@ async function saveEditor(){
         batchNo=$('batchNumber').value.trim();
   if(!product||((!batchDate||!prodDate)&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter both Batch Maker Date and Production Date');return}
   if(editorMode!=='hold'&&(isWeekendDateStr(batchDate)||isWeekendDateStr(prodDate))){toast('Saturday and Sunday are OFF — choose Monday through Friday');return}
+  if(editorMode!=='hold'&&prodDate<batchDate){toast('Production Date cannot be before Batch Maker Date');return}
   if(batchNo){
     const localDuplicate=orders.find(o=>o.id!==editingId&&String(o.batch||'').trim().toLowerCase()===batchNo.toLowerCase());
     if(localDuplicate){toast('Batch # '+batchNo+' already exists');return}
@@ -352,7 +353,7 @@ async function saveEditor(){
 async function softDelete(id){if(!isManager||!confirm('Move this order to deleted history?'))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast('Deleted — recoverable from audit history')}catch(e){fail(e)}}
 async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast('Moved to Hold Line')}catch(e){fail(e)}}
 async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast('Scheduled')}catch(e){fail(e)}}
-async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const o=orders.find(x=>x.id===id);if(!o)return;const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast('Rescheduled')}catch(e){fail(e)}}
+async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Production cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast('Rescheduled')}catch(e){fail(e)}}
 
 function bindDrag(){
   document.querySelectorAll('.draghandle[draggable="true"]').forEach(handle=>{
