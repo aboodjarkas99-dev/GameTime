@@ -26,3 +26,7 @@
 .carrydialog{width:min(620px,100%)}.carryhelp{font-size:10px;line-height:1.45;color:#64748b;margin:8px 0 10px}.carrygrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.carrygrid label{font-size:9px;font-weight:900}.carrygrid input{width:100%;margin-top:4px;border:1px solid var(--line);border-radius:8px;padding:9px}.carrypreview{margin-top:9px;line-height:1.5}
 @media(max-width:720px){.carrygrid{grid-template-columns:1fr}}
 .rollinfo{margin:4px 0 6px;border-left:3px solid #2563eb;background:#eff6ff;color:#1e3a8a;border-radius:5px;padding:5px 7px;font-size:8px;font-weight:900;letter-spacing:.01em}
+
+.day.weekend{background:#eef2f7;border-color:#d5dce5;cursor:not-allowed;color:#94a3b8}
+.weekendoff{margin-top:12px;text-align:center;font-size:9px;font-weight:900;letter-spacing:.12em;color:#94a3b8}
+.draghandle[draggable="true"]:active{cursor:grabbing}
