@@ -216,3 +216,7 @@
   .batchwait{margin-right:0}
   #holdLineBtn{grid-column:auto}
 }
+
+.schedule-dates{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border:1px solid var(--line);background:#f8fafc;border-radius:8px}
+.schedule-dates label{margin:0}
+@media(max-width:720px){.schedule-dates{grid-template-columns:1fr}}
