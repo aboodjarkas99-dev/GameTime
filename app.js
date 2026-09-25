@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260925e';
+const BUILD='20260925f';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -413,14 +413,79 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260925d':'batch-maker.html?build=20260925d'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260925f':'batch-maker.html?build=20260925f'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
 
 function printSheet(mode){
-  const batch=currentDay('batch'),prod=currentDay('prod'),n=Math.max(batch.length,prod.length,1),scale=n<=4?1:n<=6?.88:n<=8?.75:n<=10?.64:.54;
-  const rows=dept=>(dept==='batch'?batch:prod).slice().sort((a,b)=>dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder).map((o,i)=>'<div class="j"><div class="jt"><div><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3><span class="bb">BATCH # '+esc(dept==='prod'?prodBatch(o.batch):o.batch)+'</span>'+(dept==='prod'&&o.batchMadeDate?'<p><b>Batch made on '+esc(usDate(o.batchMadeDate))+'</b></p>':'')+'</div><div class="tb"><b>'+esc(o.tank)+'</b><span>TANK GAL</span></div></div>'+(dept==='prod'?'<div class="pq" style="grid-template-columns:repeat('+(o.jerryEnabled?4:3)+',1fr)"><div><b>'+esc(o.quart)+'</b><small>Q / '+boxes(o.quart)+' BX</small></div><div><b>'+esc(o.gallon)+'</b><small>1G / '+boxes(o.gallon)+' BX</small></div><div><b>'+esc(o.five)+'</b><small>5G</small></div>'+(o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>JERRY 1.25G</small></div>':'')+'</div><p>'+esc(o.prodNote||'')+'</p>':'<p>'+esc(o.batchNote||'Prepare batch for production.')+'</p>')+'<div class="ck">'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' '+(dept==='prod'?'Labels • Pallets • Containers':'Raw materials ready')+'</div><div class="st">STATUS <b>'+statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'')+'</b></div></div>').join('');
-  const showBatch=mode!=='prod',showProd=mode!=='batch',cols=showBatch&&showProd?'1fr 1fr':'1fr';
-  const h='<!doctype html><html><head><meta charset="utf-8"><style>@page{size:Letter;margin:.2in}*{box-sizing:border-box}body{font-family:Arial;margin:0;color:#111}.head{border:1.5px solid #111;border-radius:7px;background:#eee;padding:6px 8px;display:flex;justify-content:space-between}.head h1{font-size:14pt;margin:0}.head p{font-size:7pt;margin:2px 0}.cols{display:grid;grid-template-columns:'+cols+';gap:7px;margin-top:6px;zoom:'+scale+'}.sh{background:#e8e8e8;border:1px solid #444;border-radius:5px;padding:4px 6px;font-size:8pt;font-weight:bold;margin-bottom:4px}.j{border:1px solid #555;border-radius:6px;padding:5px;margin-bottom:4px;break-inside:avoid}.jt{display:flex;justify-content:space-between}.jt small{font-size:5pt}.jt h3{font-size:9pt;margin:1px 0}.bb{border:1px solid #111;background:#eee;border-radius:3px;padding:2px 3px;font-size:5.5pt;font-weight:bold}.tb{border:1px solid #111;background:#f3f3f3;border-radius:4px;padding:3px;text-align:center}.tb b{display:block;font-size:8pt}.tb span{font-size:4.5pt}.pq{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:3px}.pq div{border:1px solid #999;background:#f7f7f7;border-radius:3px;padding:2px;text-align:center}.pq b{display:block;font-size:8pt}.pq small,p,.ck,.st{font-size:5.5pt}p{margin:3px 0}.st{border-top:1px solid #bbb;padding-top:2px}@media print{button{display:none}}</style></head><body><button onclick="print()">Print</button><div class="head"><div><h1>FACTORY DAILY WORK SHEET</h1><p>'+pretty()+'</p></div><b>'+ (mode==='all'?'ALL WORK':mode==='prod'?'PRODUCTION':'BATCH MAKER') +'</b></div><div class="cols">'+(showBatch?'<section><div class="sh">BATCH MAKER</div>'+rows('batch')+'</section>':'')+(showProd?'<section><div class="sh">PRODUCTION / FILLING</div>'+rows('prod')+'</section>':'')+'</div><script>setTimeout(()=>print(),250)<\/script></body></html>';
-  const w=open('','_blank');w.document.write(h);w.document.close()
+  const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
+  const prod=currentDay('prod').slice().sort((a,b)=>a.prodOrder-b.prodOrder);
+  const showBatch=mode!=='prod',showProd=mode!=='batch';
+  const bCount=showBatch?batch.length:0,pCount=showProd?prod.length:0;
+
+  function cardCols(count,singleDept){
+    if(count<=5)return 1;
+    if(count<=10)return 2;
+    if(singleDept&&count<=15)return 3;
+    return 2;
+  }
+  const singleDept=!(showBatch&&showProd);
+  const bCols=showBatch?cardCols(bCount,singleDept):1;
+  const pCols=showProd?cardCols(pCount,singleDept):1;
+  const maxRows=Math.max(
+    showBatch?Math.ceil(Math.max(bCount,1)/bCols):0,
+    showProd?Math.ceil(Math.max(pCount,1)/pCols):0
+  );
+  const density=maxRows<=4?'normal':maxRows<=5?'compact':maxRows<=6?'dense':'micro';
+
+  function printCard(o,dept,i){
+    const bn=dept==='prod'?prodBatch(o.batch):o.batch;
+    const note=dept==='prod'?o.prodNote:o.batchNote;
+    const st=statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'').trim();
+    return '<article class="ps-card">'+
+      '<div class="ps-top"><div class="ps-main"><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3>'+
+      (bn?'<span class="ps-batch">BATCH # '+esc(bn)+'</span>':'')+
+      (dept==='prod'&&o.batchMadeDate?'<span class="ps-made">Made '+esc(usDate(o.batchMadeDate))+'</span>':'')+
+      '</div><div class="ps-tank"><b>'+esc(o.tank||'—')+'</b><span>TANK GAL</span></div></div>'+
+      (dept==='prod'
+        ?'<div class="ps-pkgs '+(o.jerryEnabled?'four':'three')+'">'+
+          '<div><b>'+esc(o.quart)+'</b><small>QUARTS</small></div>'+
+          '<div><b>'+esc(o.gallon)+'</b><small>1 GAL</small></div>'+
+          '<div><b>'+esc(o.five)+'</b><small>5 GAL</small></div>'+
+          (o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>JERRY 1.25G</small></div>':'')+
+          '</div>'
+        :'')+
+      '<div class="ps-note">'+esc(note||(dept==='batch'?'Prepare batch for production.':''))+'</div>'+
+      '<div class="ps-bottom"><span>'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' PRE-CHECK</span><b>'+esc(st)+'</b></div>'+
+      '</article>'
+  }
+
+  function section(title,list,dept,cols){
+    return '<section class="ps-section"><div class="ps-section-title">'+esc(title)+' <span>'+list.length+' TASK'+(list.length===1?'':'S')+'</span></div>'+
+      '<div class="ps-cards" style="--ps-cols:'+cols+'">'+
+      (list.length?list.map((o,i)=>printCard(o,dept,i)).join(''):'<div class="ps-empty">No work scheduled.</div>')+
+      '</div></section>'
+  }
+
+  const stage=$('printStage');
+  stage.className='print-stage ps-'+density+' '+(singleDept?'ps-single':'ps-all');
+  stage.innerHTML=
+    '<div class="ps-sheet">'+
+      '<header class="ps-head"><div><h1>GAMETIME FACTORY DAILY WORK SHEET</h1><p>'+esc(pretty())+'</p></div><strong>'+
+      (mode==='all'?'ALL WORK':mode==='prod'?'PRODUCTION / FILLING':'BATCH MAKER')+
+      '</strong></header>'+
+      '<div class="ps-layout">'+
+        (showBatch?section('BATCH MAKER',batch,'batch',bCols):'')+
+        (showProd?section('PRODUCTION / FILLING',prod,'prod',pCols):'')+
+      '</div>'+
+    '</div>';
+
+  document.body.classList.add('printing');
+  void stage.offsetHeight;
+  try{
+    window.print();
+  }catch(e){
+    console.error(e);
+    toast('Print could not open on this device. Try the browser Share / Print option.')
+  }
 }
 function showModal(id){$(id).classList.add('show')}function hideModal(id){$(id).classList.remove('show')}
 function fail(e){console.error(e);setSync('offline','RETRYING');toast('Could not save. Nothing was deleted — retrying sync.')}
@@ -449,6 +514,7 @@ $('saveQtyBtn').onclick=saveQty;$('saveCarryBtn').onclick=saveCarry;$('saveOrder
 for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;$('jerryEnabled').onchange=()=>toggleJerryField(true);
 $('workDate').onchange=()=>{if(isWeekendDateStr($('workDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday')};
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}};
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
 window.addEventListener('online',()=>{setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});window.addEventListener('offline',()=>setSync('offline','OFFLINE'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcile()});
 
 tick();setInterval(tick,30000);render();ensureIdentity();initialLoad();
