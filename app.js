@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260925a';
+const BUILD='20260925b';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -27,7 +27,7 @@ function boxes(v){return Math.ceil(num(v)/4)}
 function prodBatch(v){let m=String(v||'').trim().match(/^(.*?)(\d+)\s*$/);return m?m[1]+String(Number(m[2])+1).padStart(m[2].length,'0'):String(v||'')}
 function pretty(d=selected){return d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
 function usDate(s){if(!s)return'';const d=new Date(s+'T12:00:00');return d.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'})}
-function rolloverInfo(o){const a=[];if(o.batchMadeDate)a.push('Batch made on '+usDate(o.batchMadeDate));if(o.carryCount>0)a.push('Carried forward '+o.carryCount+' day'+(o.carryCount===1?'':'s'));return a.length?'<div class="rollinfo">'+a.map(esc).join(' • ')+'</div>':''}
+function rolloverInfo(o,dept){const a=[];if(dept==='prod'&&o.batchMadeDate)a.push('Batch made on '+usDate(o.batchMadeDate));const original=dept==='batch'?o.firstScheduledDate:o.firstScheduledDate,current=dept==='batch'?o.batchDate:o.prodDate;if(original&&current&&current>original)a.push('Moved forward from '+usDate(original));return a.length?'<div class="rollinfo">'+a.map(esc).join(' • ')+'</div>':''}
 function nextId(){return Date.now()*1000+Math.floor(Math.random()*1000)}
 function titleCase(s){return String(s||'').replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b.toUpperCase())}
 function statusText(s){return s==='done'?'✓ COMPLETED':s==='progress'?'● IN PROGRESS':'○ NOT STARTED'}
@@ -46,13 +46,13 @@ function normalizeLegacy(raw){
       priority:o.priority||'Normal',autoTarget:o.autoTarget||null,batchChecked:!!o.batchChecked,prodChecked:!!o.prodChecked,
       batchStatus:o.batchStatus||'ready',prodStatus:o.prodStatus||'ready',held:!!o.held,
       actualQuart:o.actual?.quart??null,actualGallon:o.actual?.gallon??null,actualFive:o.actual?.five??null,actualJerry:null,jerryEnabled:false,jerry:'0',
-      batchOrder:Number(o.batchOrder)||999,prodOrder:Number(o.prodOrder)||999,holdLine:!!o.holdLine,productionOnly:false,carryoverFrom:null,firstScheduledDate:o.date||'',batchMadeDate:null,lastCarriedFrom:null,carryCount:0,batchActive:true,prodActive:true,version:1
+      batchOrder:Number(o.batchOrder)||999,prodOrder:Number(o.prodOrder)||999,holdLine:!!o.holdLine,productionOnly:false,carryoverFrom:null,firstScheduledDate:o.date||'',batchMadeDate:null,lastCarriedFrom:null,carryCount:0,batchActive:true,prodActive:true,batchDate:o.date||'',prodDate:o.date||'',version:1
     });
   }
   return out;
 }
 function fromRow(r){return{
-  id:Number(r.id),date:r.work_date||'',product:r.product||'',batch:r.batch||'',tank:Number(r.tank)||0,
+  id:Number(r.id),date:r.work_date||'',batchDate:r.batch_work_date||r.work_date||'',prodDate:r.prod_work_date||r.work_date||'',product:r.product||'',batch:r.batch||'',tank:Number(r.tank)||0,
   quart:String(r.quart??'0'),gallon:String(r.gallon??'0'),five:String(r.five??'0'),jerryEnabled:!!r.jerry_enabled,jerry:String(r.jerry??'0'),batchNote:r.batch_note||'',prodNote:r.prod_note||'',
   priority:r.priority||'Normal',autoTarget:r.auto_target||null,batchChecked:!!r.batch_checked,prodChecked:!!r.prod_checked,
   batchStatus:r.batch_status||'ready',prodStatus:r.prod_status||'ready',held:!!r.held,
@@ -61,7 +61,7 @@ function fromRow(r){return{
   updatedAt:r.updated_at||null,deletedAt:r.deleted_at||null
 }}
 function toRow(o){return{
-  id:Number(o.id),work_date:o.holdLine?null:(o.date||null),product:o.product||'',batch:o.batch||'',tank:Number(o.tank)||0,
+  id:Number(o.id),work_date:o.holdLine?null:(o.date||o.prodDate||o.batchDate||null),batch_work_date:o.holdLine?null:(o.batchDate||o.date||null),prod_work_date:o.holdLine?null:(o.prodDate||o.date||null),product:o.product||'',batch:o.batch||'',tank:Number(o.tank)||0,
   quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),jerry_enabled:!!o.jerryEnabled,jerry:String(o.jerry??'0'),batch_note:o.batchNote||'',prod_note:o.prodNote||'',
   priority:o.priority||'Normal',auto_target:o.autoTarget||null,batch_checked:!!o.batchChecked,prod_checked:!!o.prodChecked,
   batch_status:o.batchStatus||'ready',prod_status:o.prodStatus||'ready',held:!!o.held,
@@ -71,7 +71,7 @@ function toRow(o){return{
   updated_by:actor(),updated_from:isManager?'manager':view
 }}
 function mergeOrder(o){const i=orders.findIndex(x=>x.id===o.id);if(o.deletedAt){if(i>=0)orders.splice(i,1)}else if(i>=0)orders[i]=o;else orders.push(o);cache()}
-function orderSig(list){return JSON.stringify(list.map(o=>[o.id,o.version,o.batchStatus,o.prodStatus,o.batchChecked,o.prodChecked,o.held,o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry,o.jerryEnabled,o.jerry,o.batchOrder,o.prodOrder,o.holdLine,o.productionOnly,o.carryoverFrom,o.firstScheduledDate,o.batchMadeDate,o.lastCarriedFrom,o.carryCount,o.batchActive,o.prodActive,o.date,o.deletedAt]))}
+function orderSig(list){return JSON.stringify(list.map(o=>[o.id,o.version,o.batchStatus,o.prodStatus,o.batchChecked,o.prodChecked,o.held,o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry,o.jerryEnabled,o.jerry,o.batchOrder,o.prodOrder,o.holdLine,o.productionOnly,o.carryoverFrom,o.firstScheduledDate,o.batchMadeDate,o.lastCarriedFrom,o.carryCount,o.batchActive,o.prodActive,o.batchDate,o.prodDate,o.date,o.deletedAt]))}
 
 async function fetchOrders(){
   const {data,error}=await db.from('work_orders').select('*').is('deleted_at',null);
@@ -144,9 +144,15 @@ async function insertOrder(o){
   if(error)throw error;mergeOrder(fromRow(data));render();setSync('live','LIVE');return data
 }
 
-function currentDay(){
+function searchMatch(o){
   const q=$('search').value.trim().toLowerCase();
-  return orders.filter(o=>!o.holdLine&&o.date===iso(selected)&&(!q||(o.product+' '+o.batch+' '+prodBatch(o.batch)).toLowerCase().includes(q)));
+  return !q||(o.product+' '+o.batch+' '+prodBatch(o.batch)).toLowerCase().includes(q)
+}
+function batchDay(date=iso(selected)){
+  return orders.filter(o=>!o.holdLine&&!o.productionOnly&&o.batchDate===date&&searchMatch(o))
+}
+function prodDay(date=iso(selected)){
+  return orders.filter(o=>!o.holdLine&&o.prodDate===date&&searchMatch(o))
 }
 function actual(o,k){return k==='quart'?o.actualQuart:k==='gallon'?o.actualGallon:k==='five'?o.actualFive:o.actualJerry}
 function pkgClass(o,k){const a=actual(o,k),p=num(o[k]);if(a==null)return'';return a>=p?'done':'partial'}
@@ -162,7 +168,7 @@ function card(o,dept,i){
     '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>TANK GAL</span></div>'+
     '<div class="order">'+(dept==='prod'?'FILLING':'BATCH')+' PRIORITY #'+(i+1)+'</div>'+
     '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(bn?'<span class="batch">BATCH # '+esc(bn)+'</span>':'')+'</div>'+
-    rolloverInfo(o)+
+    rolloverInfo(o,dept)+
     (o.held?'<div class="note"><b>ON HOLD</b></div>':'')+
     (dept==='prod'?'<div class="qty '+(o.jerryEnabled?'four':'')+'">'+pkgCard(o,'quart','QUARTS')+pkgCard(o,'gallon','1 GALLON')+pkgCard(o,'five','5 GALLON')+(o.jerryEnabled?pkgCard(o,'jerry','JERRY CAN 1.25G'):'')+'</div>'+(note?'<div class="note"><b>Production Note:</b> '+esc(note)+'</div>':''):'<div class="note">'+esc(note||'Prepare batch for production.')+'</div>')+
     '<label class="precheck '+(checked?'ok':'')+'" data-check="'+o.id+'" data-dept="'+dept+'"><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>PRE-CHECK</b><small>'+(dept==='prod'?'Labels • Pallets • Containers / Cans':'All raw materials are available and ready')+'</small></span></label>'+
@@ -175,8 +181,9 @@ function render(){
   $('viewLabel').textContent=isManager?'ALL WORK':view==='prod'?'PRODUCTION / FILLING':'BATCH MAKER';
   $('dateLabel').textContent=pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
-  const day=currentDay(),batch=[...day].filter(o=>o.batchActive&&!o.productionOnly).sort((a,b)=>a.batchOrder-b.batchOrder),prod=[...day].filter(o=>o.prodActive).sort((a,b)=>a.prodOrder-b.prodOrder),visible=view==='batch'?batch:view==='prod'?prod:day.filter(o=>o.batchActive||o.prodActive);
-  $('sOrders').textContent=visible.length;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=isManager?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
+  const batch=batchDay().sort((a,b)=>a.batchOrder-b.batchOrder),prod=prodDay().sort((a,b)=>a.prodOrder-b.prodOrder);
+  const visibleIds=new Set((view==='batch'?batch:view==='prod'?prod:[...batch,...prod]).map(o=>o.id));
+  $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=isManager?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
   $('batchCount').textContent=batch.length+' tasks';$('prodCount').textContent=prod.length+' tasks';
   $('batchList').innerHTML=batch.length?batch.map((o,i)=>card(o,'batch',i)).join(''):'<div class="empty">No Batch Maker work.</div>';
   $('prodList').innerHTML=prod.length?prod.map((o,i)=>card(o,'prod',i)).join(''):'<div class="empty">No Production work.</div>';
@@ -262,21 +269,26 @@ async function saveEditor(){
   if(saveBusy)return;const product=titleCase($('product').value.trim()),date=editorMode==='hold'?'':$('workDate').value;if(!product||(!date&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter Product Name and Date');return}
   saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent='Saving…';
   try{
+    const original=editingId?orders.find(x=>x.id===editingId):null;
     const plan={work_date:editorMode==='hold'?null:date,hold_line:editorMode==='hold',product,batch:$('batchNumber').value.trim(),tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
+    if(editingId&&editorMode!=='hold'&&original){
+      const wasTogether=(original.batchDate===original.prodDate);
+      if(wasTogether){plan.batch_work_date=date;plan.prod_work_date=date}
+    }
     if(editingId){
       const res=await patchOrder(editingId,plan,editingVersion);
       if(res.conflict){await reconcile();hideModal('editorModal');toast('This order changed on another manager screen. Latest version loaded.');return}
     }else{
-      const sameDate=orders.filter(o=>!o.holdLine&&o.date===date),o={id:nextId(),date,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,firstScheduledDate:date,batchMadeDate:null,lastCarriedFrom:null,carryCount:0,batchActive:true,prodActive:true,batchOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.prodOrder))+1};
+      const sameDate=orders.filter(o=>!o.holdLine&&o.date===date),o={id:nextId(),date,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,firstScheduledDate:date,batchMadeDate:null,lastCarriedFrom:null,carryCount:0,batchActive:true,prodActive:true,batchDate:date,prodDate:date,batchOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
     hideModal('editorModal');if(editorMode!=='hold')selected=new Date(date+'T12:00:00');render();toast('Saved to cloud')
   }catch(e){fail(e)}finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent='Save Work Order'}
 }
 async function softDelete(id){if(!isManager||!confirm('Move this order to deleted history?'))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast('Deleted — recoverable from audit history')}catch(e){fail(e)}}
-async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null});toast('Moved to Hold Line')}catch(e){fail(e)}}
-async function scheduleHold(id,date){if(!date)return;const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast('Scheduled')}catch(e){fail(e)}}
-async function reschedule(id,date){if(!date)return;try{await patchOrder(id,{work_date:date});selected=new Date(date+'T12:00:00');closeDrawer();toast('Rescheduled')}catch(e){fail(e)}}
+async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast('Moved to Hold Line')}catch(e){fail(e)}}
+async function scheduleHold(id,date){if(!date)return;const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast('Scheduled')}catch(e){fail(e)}}
+async function reschedule(id,date){if(!date)return;const o=orders.find(x=>x.id===id);if(!o)return;const patch={work_date:date};if(o.batchStatus!=='done')patch.batch_work_date=date;if(o.prodStatus!=='done')patch.prod_work_date=date;try{await patchOrder(id,patch);selected=new Date(date+'T12:00:00');closeDrawer();toast('Unfinished work rescheduled')}catch(e){fail(e)}}
 
 function bindDrag(){
   document.querySelectorAll('.card[draggable="true"]').forEach(card=>{
@@ -292,19 +304,22 @@ document.addEventListener('touchstart',e=>{const h=e.target.closest('.draghandle
 document.addEventListener('touchmove',e=>{if(!touchDrag)return;const t=e.touches[0],card=document.elementFromPoint(t.clientX,t.clientY)?.closest('.card');document.querySelectorAll('.dropzone').forEach(x=>x.classList.remove('dropzone'));if(card&&card.dataset.dept===touchDrag.dept){card.classList.add('dropzone');touchDrag.target=Number(card.dataset.card)}e.preventDefault()},{passive:false});
 document.addEventListener('touchend',()=>{if(!touchDrag)return;document.querySelectorAll('.dragging,.dropzone').forEach(x=>x.classList.remove('dragging','dropzone'));if(touchDrag.target)reorder(touchDrag.id,touchDrag.target,touchDrag.dept);touchDrag=null});
 async function reorder(dragId,targetId,dept){
-  if(dragId===targetId)return;const day=currentDay().sort((a,b)=>(dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder)),from=day.findIndex(o=>o.id===dragId),to=day.findIndex(o=>o.id===targetId);if(from<0||to<0)return;const item=day.splice(from,1)[0];day.splice(to,0,item);
+  if(dragId===targetId)return;const day=(dept==='batch'?batchDay():prodDay()).sort((a,b)=>(dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder)),from=day.findIndex(o=>o.id===dragId),to=day.findIndex(o=>o.id===targetId);if(from<0||to<0)return;const item=day.splice(from,1)[0];day.splice(to,0,item);
   try{setSync('syncing','SAVING');const {error}=await db.rpc('reorder_work_orders',{p_work_date:iso(selected),p_dept:dept,p_ids:day.map(o=>o.id),p_actor:actor()});if(error)throw error;day.forEach((o,i)=>{if(dept==='batch')o.batchOrder=i+1;else o.prodOrder=i+1});cache();render();setSync('live','LIVE')}catch(e){fail(e)}
 }
 
-function dayState(d){
-  const arr=orders.filter(o=>!o.holdLine&&o.date===d&&(view==='batch'?o.batchActive&&!o.productionOnly:view==='prod'?o.prodActive:(o.batchActive||o.prodActive)));if(!arr.length)return'emptyday';
-  return arr.every(orderCompleteForView)?'good':'bad'
+function deptEntriesForDate(d){
+  if(view==='batch')return batchDay(d).map(o=>({o,dept:'batch'}));
+  if(view==='prod')return prodDay(d).map(o=>({o,dept:'prod'}));
+  return [
+    ...batchDay(d).map(o=>({o,dept:'batch'})),
+    ...prodDay(d).map(o=>({o,dept:'prod'}))
+  ]
 }
-function orderCompleteForView(o){
-  if(view==='batch')return o.batchStatus==='done';
-  if(view==='prod')return o.prodStatus==='done';
-  const batchDone=!o.batchActive||o.batchStatus==='done',prodDone=!o.prodActive||o.prodStatus==='done';
-  return batchDone&&prodDone
+function entryDone(e){return e.dept==='batch'?e.o.batchStatus==='done':e.o.prodStatus==='done'}
+function dayState(d){
+  const arr=deptEntriesForDate(d);if(!arr.length)return'emptyday';
+  return arr.every(entryDone)?'good':'bad'
 }
 function renderMonth(){
   $('monthTitle').textContent=monthCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
@@ -312,16 +327,25 @@ function renderMonth(){
       first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
   start.setDate(1-first.getDay());const today=iso(new Date());
   for(let i=0;i<42;i++){
-    const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d);
-    const arr=orders.filter(o=>!o.holdLine&&o.date===di&&(view==='batch'?o.batchActive&&!o.productionOnly:view==='prod'?o.prodActive:(o.batchActive||o.prodActive))).sort((a,b)=>(view==='prod'?a.prodOrder:a.batchOrder||999)-(view==='prod'?b.prodOrder:b.batchOrder||999));
-    const chips=arr.map(o=>'<div class="calorder '+(orderCompleteForView(o)?'calgood':'calbad')+'" title="'+esc(o.product)+'">'+(o.carryCount>0?'↪ ':'')+esc(o.product)+(o.batch?' <span>'+esc(o.batch)+'</span>':'')+(o.batchMadeDate?' <span>• Made '+esc(usDate(o.batchMadeDate))+'</span>':'')+'</div>').join('');
-    html+='<div class="day '+(!arr.length?'emptyday ':'')+(di===today?'today':'')+'" data-day="'+di+'"><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+chips+'</div></div>';
+    const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),entries=deptEntriesForDate(di);
+    const chips=entries
+      .sort((a,b)=>a.dept===b.dept?(a.dept==='batch'?a.o.batchOrder-b.o.batchOrder:a.o.prodOrder-b.o.prodOrder):(a.dept==='batch'?-1:1))
+      .map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');
+    html+='<div class="day '+(!entries.length?'emptyday ':'')+(di===today?'today':'')+'" data-day="'+di+'"><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+chips+'</div></div>';
   }
   $('calendar').innerHTML=html;
   document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{selected=new Date(el.dataset.day+'T12:00:00');hideModal('monthModal');render()})
 }
 function renderFeedHTML(){return logs.length?logs.slice(0,80).map(e=>'<div class="event '+(e.type==='progress'?'start':e.type==='done'?'done':e.type==='package'?'package':'')+'"><b>'+esc(e.product)+' — '+esc(e.dept||'')+'</b><small>'+new Date(e.ts).toLocaleString()+' • '+esc(String(e.type||'').toUpperCase())+(e.actor?' • BY '+esc(e.actor):'')+(e.extra?' • '+esc(e.extra):'')+'</small></div>').join(''):'<div class="event">No activity yet.</div>'}
-function renderQueueHTML(){const today=iso(new Date()),q=orders.filter(o=>!o.holdLine&&o.date&&o.date<today&&(o.batchStatus!=='done'||o.prodStatus!=='done'));return q.length?q.map(o=>'<div class="queueitem"><b>'+esc(o.product)+(o.batch?' • '+esc(o.batch):'')+'</b><small>From '+o.date+' • '+(o.batchStatus!=='done'?'Batch unfinished ':'')+(o.prodStatus!=='done'?'Production unfinished':'')+'</small><input type="date" data-resdate="'+o.id+'" value="'+iso(selected)+'"><button data-reschedule="'+o.id+'">Schedule on selected date</button></div>').join(''):'<div class="queueitem">Nothing unfinished.</div>'}
+function renderQueueHTML(){
+  const today=iso(new Date()),items=[];
+  for(const o of orders){
+    if(o.holdLine)continue;
+    if(o.batchStatus!=='done'&&o.batchDate&&o.batchDate<today)items.push({o,dept:'Batch',from:o.batchDate});
+    if(o.prodStatus!=='done'&&o.prodDate&&o.prodDate<today)items.push({o,dept:'Production',from:o.prodDate});
+  }
+  return items.length?items.map(x=>'<div class="queueitem"><b>'+esc(x.o.product)+(x.o.batch?' • '+esc(x.o.batch):'')+'</b><small>'+x.dept+' unfinished from '+x.from+'</small><input type="date" data-resdate="'+x.o.id+'" value="'+iso(selected)+'"><button data-reschedule="'+x.o.id+'">Schedule unfinished work</button></div>').join(''):'<div class="queueitem">Nothing unfinished.</div>'
+}
 function renderHoldHTML(){const q=orders.filter(o=>o.holdLine);return '<div style="padding:8px"><button class="draweraction" id="addHold">+ Add Hold Line Item</button></div>'+(q.length?q.map(o=>'<div class="holditem"><b>'+esc(o.product)+(o.batch?' • '+esc(o.batch):'')+'</b><small>'+(o.tank?o.tank+' gal • ':'')+esc(o.batchNote||'No date assigned yet')+'</small><input type="date" data-holddate="'+o.id+'" value="'+iso(selected)+'"><div class="holdactions"><button data-schedulehold="'+o.id+'">Schedule</button><button class="secondary" data-edithold="'+o.id+'">Edit</button><button class="secondary" data-delhold="'+o.id+'">Delete</button></div></div>').join(''):'<div class="holditem">Hold Line is empty.</div>')}
 function openDrawer(type){
   if(!isManager)return;$('drawerBackdrop').classList.add('show');$('drawerBackdrop').dataset.type=type;$('drawerTitle').textContent=type==='activity'?'LIVE ACTIVITY':type==='queue'?'UNFINISHED QUEUE':type==='holdline'?'HOLD LINE':'PRINT / SAVE PDF';
@@ -332,11 +356,11 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260923d':'batch-maker.html?build=20260923d'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260925b':'batch-maker.html?build=20260925b'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
 
 function printSheet(mode){
-  const day=orders.filter(o=>!o.holdLine&&o.date===iso(selected)),n=Math.max(day.length,1),scale=n<=4?1:n<=6?.88:n<=8?.75:n<=10?.64:.54;
-  const rows=dept=>day.filter(o=>dept==='batch'?(o.batchActive&&!o.productionOnly):o.prodActive).slice().sort((a,b)=>dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder).map((o,i)=>'<div class="j"><div class="jt"><div><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3><span class="bb">BATCH # '+esc(dept==='prod'?prodBatch(o.batch):o.batch)+'</span>'+(o.batchMadeDate?'<p><b>Batch made on '+esc(usDate(o.batchMadeDate))+'</b></p>':'')+'</div><div class="tb"><b>'+esc(o.tank)+'</b><span>TANK GAL</span></div></div>'+(dept==='prod'?'<div class="pq" style="grid-template-columns:repeat('+(o.jerryEnabled?4:3)+',1fr)"><div><b>'+esc(o.quart)+'</b><small>Q / '+boxes(o.quart)+' BX</small></div><div><b>'+esc(o.gallon)+'</b><small>1G / '+boxes(o.gallon)+' BX</small></div><div><b>'+esc(o.five)+'</b><small>5G</small></div>'+(o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>JERRY 1.25G</small></div>':'')+'</div><p>'+esc(o.prodNote||'')+'</p>':'<p>'+esc(o.batchNote||'Prepare batch for production.')+'</p>')+'<div class="ck">'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' '+(dept==='prod'?'Labels • Pallets • Containers':'Raw materials ready')+'</div><div class="st">STATUS <b>'+statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'')+'</b></div></div>').join('');
+  const batch=batchDay(),prod=prodDay(),n=Math.max(batch.length,prod.length,1),scale=n<=4?1:n<=6?.88:n<=8?.75:n<=10?.64:.54;
+  const rows=dept=>(dept==='batch'?batch:prod).slice().sort((a,b)=>dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder).map((o,i)=>'<div class="j"><div class="jt"><div><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3><span class="bb">BATCH # '+esc(dept==='prod'?prodBatch(o.batch):o.batch)+'</span>'+(o.batchMadeDate?'<p><b>Batch made on '+esc(usDate(o.batchMadeDate))+'</b></p>':'')+'</div><div class="tb"><b>'+esc(o.tank)+'</b><span>TANK GAL</span></div></div>'+(dept==='prod'?'<div class="pq" style="grid-template-columns:repeat('+(o.jerryEnabled?4:3)+',1fr)"><div><b>'+esc(o.quart)+'</b><small>Q / '+boxes(o.quart)+' BX</small></div><div><b>'+esc(o.gallon)+'</b><small>1G / '+boxes(o.gallon)+' BX</small></div><div><b>'+esc(o.five)+'</b><small>5G</small></div>'+(o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>JERRY 1.25G</small></div>':'')+'</div><p>'+esc(o.prodNote||'')+'</p>':'<p>'+esc(o.batchNote||'Prepare batch for production.')+'</p>')+'<div class="ck">'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' '+(dept==='prod'?'Labels • Pallets • Containers':'Raw materials ready')+'</div><div class="st">STATUS <b>'+statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'')+'</b></div></div>').join('');
   const showBatch=mode!=='prod',showProd=mode!=='batch',cols=showBatch&&showProd?'1fr 1fr':'1fr';
   const h='<!doctype html><html><head><meta charset="utf-8"><style>@page{size:Letter;margin:.2in}*{box-sizing:border-box}body{font-family:Arial;margin:0;color:#111}.head{border:1.5px solid #111;border-radius:7px;background:#eee;padding:6px 8px;display:flex;justify-content:space-between}.head h1{font-size:14pt;margin:0}.head p{font-size:7pt;margin:2px 0}.cols{display:grid;grid-template-columns:'+cols+';gap:7px;margin-top:6px;zoom:'+scale+'}.sh{background:#e8e8e8;border:1px solid #444;border-radius:5px;padding:4px 6px;font-size:8pt;font-weight:bold;margin-bottom:4px}.j{border:1px solid #555;border-radius:6px;padding:5px;margin-bottom:4px;break-inside:avoid}.jt{display:flex;justify-content:space-between}.jt small{font-size:5pt}.jt h3{font-size:9pt;margin:1px 0}.bb{border:1px solid #111;background:#eee;border-radius:3px;padding:2px 3px;font-size:5.5pt;font-weight:bold}.tb{border:1px solid #111;background:#f3f3f3;border-radius:4px;padding:3px;text-align:center}.tb b{display:block;font-size:8pt}.tb span{font-size:4.5pt}.pq{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:3px}.pq div{border:1px solid #999;background:#f7f7f7;border-radius:3px;padding:2px;text-align:center}.pq b{display:block;font-size:8pt}.pq small,p,.ck,.st{font-size:5.5pt}p{margin:3px 0}.st{border-top:1px solid #bbb;padding-top:2px}@media print{button{display:none}}</style></head><body><button onclick="print()">Print</button><div class="head"><div><h1>FACTORY DAILY WORK SHEET</h1><p>'+pretty()+'</p></div><b>'+ (mode==='all'?'ALL WORK':mode==='prod'?'PRODUCTION':'BATCH MAKER') +'</b></div><div class="cols">'+(showBatch?'<section><div class="sh">BATCH MAKER</div>'+rows('batch')+'</section>':'')+(showProd?'<section><div class="sh">PRODUCTION / FILLING</div>'+rows('prod')+'</section>':'')+'</div><script>setTimeout(()=>print(),250)<\/script></body></html>';
   const w=open('','_blank');w.document.write(h);w.document.close()
