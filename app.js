@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260925d';
+const BUILD='20260925e';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -21,6 +21,10 @@ let orders=[],logs=[],selected=new Date(),monthCursor=new Date(),editorMode='ord
 selected.setHours(12,0,0,0);
 
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function isWeekendDateStr(s){if(!s)return false;const d=new Date(s+'T12:00:00'),n=d.getDay();return n===0||n===6}
+function shiftWorkdayDate(d,step){const x=new Date(d);do{x.setDate(x.getDate()+step)}while(x.getDay()===0||x.getDay()===6);return x}
+function nextBusinessDateStr(s){let d=new Date(s+'T12:00:00');do{d.setDate(d.getDate()+1)}while(d.getDay()===0||d.getDay()===6);return iso(d)}
+if(selected.getDay()===0||selected.getDay()===6){while(selected.getDay()===0||selected.getDay()===6)selected.setDate(selected.getDate()+1)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 function num(v){let m=String(v??'').match(/-?\d+(?:\.\d+)?/);return m?Math.max(0,Number(m[0])||0):0}
 function boxes(v){return Math.ceil(num(v)/4)}
@@ -161,9 +165,9 @@ function pkgCard(o,k,label){
 }
 function card(o,dept,i){
   const checked=dept==='batch'?o.batchChecked:o.prodChecked,st=dept==='batch'?o.batchStatus:o.prodStatus,bn=dept==='prod'?prodBatch(o.batch):o.batch,note=dept==='prod'?o.prodNote:o.batchNote;
-  const drag=isManager?' draggable="true" data-card="'+o.id+'" data-dept="'+dept+'"':'';
+  const drag=isManager?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
   return '<article class="card"'+drag+'>'+
-    (isManager?'<div class="draghandle" data-drag="'+o.id+'" data-dept="'+dept+'">☰ DRAG TO REORDER</div>':'')+
+    (isManager?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">☰ DRAG TO REORDER</div>':'')+
     '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>TANK GAL</span></div>'+
     '<div class="order">'+(dept==='prod'?'FILLING':'BATCH')+' PRIORITY #'+(i+1)+'</div>'+
     '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(bn?'<span class="batch">BATCH # '+esc(bn)+'</span>':'')+'</div>'+
@@ -221,7 +225,7 @@ async function saveQty(){
   const field=qtyState.key==='quart'?'actual_quart':qtyState.key==='gallon'?'actual_gallon':qtyState.key==='five'?'actual_five':'actual_jerry';
   try{$('saveQtyBtn').disabled=true;await patchOrder(qtyState.id,{[field]:v});hideModal('qtyModal');toast('Actual quantity saved')}catch(e){fail(e)}finally{$('saveQtyBtn').disabled=false}
 }
-function carryTomorrow(dateStr){const d=new Date((dateStr||iso(selected))+'T12:00:00');d.setDate(d.getDate()+1);return iso(d)}
+function carryTomorrow(dateStr){return nextBusinessDateStr(dateStr||iso(selected))}
 function carryValue(id){const raw=$(id).value.trim(),v=Number(raw);return raw!==''&&Number.isFinite(v)&&v>=0?v:null}
 function updateCarryPreview(){
   if(!carryState)return;const o=orders.find(x=>x.id===carryState.id);if(!o)return;
@@ -251,6 +255,7 @@ async function saveCarry(){
   if(!carryState)return;const o=orders.find(x=>x.id===carryState.id);if(!o)return;
   const q=carryValue('carryQuart'),g=carryValue('carryGallon'),f=carryValue('carryFive'),j=o.jerryEnabled?carryValue('carryJerry'):0,date=$('carryDate').value;
   if([q,g,f,j].some(v=>v===null)||!date){toast('Enter valid filled quantities and next date');return}
+  if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}
   if(date<=o.date){toast('Choose a date after the current work date');return}
   const remaining=Math.max(num(o.quart)-q,0)+Math.max(num(o.gallon)-g,0)+Math.max(num(o.five)-f,0)+(o.jerryEnabled?Math.max(num(o.jerry)-j,0):0);
   if(remaining<=0){toast('Nothing remains. Use WORK DONE instead.');return}
@@ -305,10 +310,20 @@ function recalc(){
   $('calc').innerHTML='Total: <b>'+total+'</b> gal • Used: <b>'+used+'</b> gal • '+(jOn?'Jerry Can: <b>'+j+'</b> × 1.25 = <b>'+(j*1.25).toFixed(2)+'</b> gal • ':'')+(Math.abs(left)<.001?'<b>Exact total ✓</b>':(left>0?'Unassigned: ':'Over: ')+'<b>'+Math.abs(left).toFixed(2)+'</b> gal')
 }
 async function saveEditor(){
-  if(saveBusy)return;const product=titleCase($('product').value.trim()),date=editorMode==='hold'?'':$('workDate').value;if(!product||(!date&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter Product Name and Date');return}
+  if(saveBusy)return;
+  const product=titleCase($('product').value.trim()),date=editorMode==='hold'?'':$('workDate').value,batchNo=$('batchNumber').value.trim();
+  if(!product||(!date&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter Product Name and Date');return}
+  if(editorMode!=='hold'&&isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose Monday through Friday');return}
+  if(batchNo){
+    const localDuplicate=orders.find(o=>o.id!==editingId&&String(o.batch||'').trim().toLowerCase()===batchNo.toLowerCase());
+    if(localDuplicate){toast('Batch # '+batchNo+' already exists');return}
+    const {data:available,error:batchError}=await db.rpc('batch_number_available',{p_batch:batchNo,p_exclude_id:editingId});
+    if(batchError){fail(batchError);return}
+    if(!available){toast('Batch # '+batchNo+' already exists');return}
+  }
   saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent='Saving…';
   try{
-    const plan={work_date:editorMode==='hold'?null:date,hold_line:editorMode==='hold',product,batch:$('batchNumber').value.trim(),tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
+    const plan={work_date:editorMode==='hold'?null:date,hold_line:editorMode==='hold',product,batch:batchNo,tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
     if(editingId){
       const res=await patchOrder(editingId,plan,editingVersion);
       if(res.conflict){await reconcile();hideModal('editorModal');toast('This order changed on another manager screen. Latest version loaded.');return}
@@ -317,20 +332,39 @@ async function saveEditor(){
       await insertOrder(o)
     }
     hideModal('editorModal');if(editorMode!=='hold')selected=new Date(date+'T12:00:00');render();toast('Saved to cloud')
-  }catch(e){fail(e)}finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent='Save Work Order'}
+  }catch(e){
+    if(e&&e.code==='23505'){toast('That Batch Number already exists — use a different number')}
+    else if(e&&e.code==='23514'){toast('Saturday and Sunday are OFF — choose Monday through Friday')}
+    else fail(e)
+  }finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent='Save Work Order'}
 }
 async function softDelete(id){if(!isManager||!confirm('Move this order to deleted history?'))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast('Deleted — recoverable from audit history')}catch(e){fail(e)}}
 async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast('Moved to Hold Line')}catch(e){fail(e)}}
-async function scheduleHold(id,date){if(!date)return;const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast('Scheduled')}catch(e){fail(e)}}
-async function reschedule(id,date){if(!date)return;const o=orders.find(x=>x.id===id);if(!o)return;const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast('Rescheduled')}catch(e){fail(e)}}
+async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast('Scheduled')}catch(e){fail(e)}}
+async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const o=orders.find(x=>x.id===id);if(!o)return;const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast('Rescheduled')}catch(e){fail(e)}}
 
 function bindDrag(){
-  document.querySelectorAll('.card[draggable="true"]').forEach(card=>{
-    card.ondragstart=e=>{if(!e.target.closest('.draghandle')){e.preventDefault();return}dragState={id:Number(card.dataset.card),dept:card.dataset.dept};card.classList.add('dragging');e.dataTransfer.effectAllowed='move'};
-    card.ondragover=e=>{if(dragState&&dragState.dept===card.dataset.dept){e.preventDefault();card.classList.add('dropzone')}};
+  document.querySelectorAll('.draghandle[draggable="true"]').forEach(handle=>{
+    const card=handle.closest('.card');if(!card)return;
+    handle.ondragstart=e=>{
+      dragState={id:Number(handle.dataset.drag),dept:handle.dataset.dept};
+      card.classList.add('dragging');
+      if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(dragState.id))}
+    };
+    handle.ondragend=()=>{
+      document.querySelectorAll('.dragging,.dropzone').forEach(x=>x.classList.remove('dragging','dropzone'));
+      dragState=null
+    };
+  });
+  document.querySelectorAll('.card[data-card]').forEach(card=>{
+    card.ondragover=e=>{
+      if(dragState&&dragState.dept===card.dataset.dept){e.preventDefault();card.classList.add('dropzone')}
+    };
     card.ondragleave=()=>card.classList.remove('dropzone');
-    card.ondrop=e=>{e.preventDefault();card.classList.remove('dropzone');if(dragState&&dragState.dept===card.dataset.dept)reorder(dragState.id,Number(card.dataset.card),dragState.dept)};
-    card.ondragend=()=>{document.querySelectorAll('.dragging,.dropzone').forEach(x=>x.classList.remove('dragging','dropzone'));dragState=null}
+    card.ondrop=e=>{
+      e.preventDefault();card.classList.remove('dropzone');
+      if(dragState&&dragState.dept===card.dataset.dept)reorder(dragState.id,Number(card.dataset.card),dragState.dept)
+    };
   });
 }
 let touchDrag=null;
@@ -359,10 +393,10 @@ function renderMonth(){
       first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
   start.setDate(1-first.getDay());const today=iso(new Date());
   for(let i=0;i<42;i++){
-    const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d);
-    const arr=entriesForDate(di);
-    const chips=arr.map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');
-    html+='<div class="day '+(!arr.length?'emptyday ':'')+(di===today?'today':'')+'" data-day="'+di+'"><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+chips+'</div></div>';
+    const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6;
+    const arr=weekend?[]:entriesForDate(di);
+    const chips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');
+    html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(di===today?'today':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+chips+'</div></div>';
   }
   $('calendar').innerHTML=html;
   document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{selected=new Date(el.dataset.day+'T12:00:00');hideModal('monthModal');render()})
@@ -405,14 +439,15 @@ function ensureIdentity(){refreshUserLabel();if(!deviceName)openIdentity()}
 
 function tick(){$('clock').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
 
-$('prevBtn').onclick=()=>{selected.setDate(selected.getDate()-1);render()};
-$('nextBtn').onclick=()=>{selected.setDate(selected.getDate()+1);render()};
+$('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
+$('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
 $('dateLabel').onclick=openMonth;$('search').oninput=render;$('addBtn').onclick=()=>openEditor(null,false);$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);
 $('shareProd').onclick=()=>shareDept('prod');$('shareBatch').onclick=()=>shareDept('batch');$('currentUser').onclick=openIdentity;$('saveDeviceName').onclick=saveIdentity;document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>openDrawer(b.dataset.drawer));
 $('closeDrawer').onclick=closeDrawer;$('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
 $('saveQtyBtn').onclick=saveQty;$('saveCarryBtn').onclick=saveCarry;$('saveOrderBtn').onclick=saveEditor;document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTarget===b.dataset.auto?null:b.dataset.auto));
 for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;$('jerryEnabled').onchange=()=>toggleJerryField(true);
+$('workDate').onchange=()=>{if(isWeekendDateStr($('workDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday')};
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}};
 window.addEventListener('online',()=>{setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});window.addEventListener('offline',()=>setSync('offline','OFFLINE'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcile()});
 
