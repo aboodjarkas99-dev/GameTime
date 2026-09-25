@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260925g';
+const BUILD='20260925h';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -271,7 +271,11 @@ async function saveCarry(){
 function openEditor(id=null,hold=false){
   if(!isManager)return;const o=id?orders.find(x=>x.id===id):null;editorMode=hold||o?.holdLine?'hold':'order';editingId=o?.id||null;editingVersion=o?.version||null;
   $('editorTitle').textContent=editorMode==='hold'?(o?'Edit Hold Line Item':'Add Hold Line Item'):(o?'Edit Work Order':'Add Work Order');
-  $('editId').value=o?.id||'';$('editVersion').value=o?.version||'';$('product').value=o?.product||'';$('workDate').value=editorMode==='hold'?'':(o?.date||iso(selected));$('dateField').style.display=editorMode==='hold'?'none':'';
+  $('editId').value=o?.id||'';$('editVersion').value=o?.version||'';$('product').value=o?.product||'';
+  const defaultDate=iso(selected);
+  $('workDate').value=editorMode==='hold'?'':(o?.batchDate||o?.date||defaultDate);
+  $('prodWorkDate').value=editorMode==='hold'?'':(o?.prodDate||o?.date||defaultDate);
+  $('dateField').style.display=editorMode==='hold'?'none':'';
   $('batchNumber').value=o?.batch||'';$('tank').value=o?.tank||'';$('priority').value=o?.priority||'Normal';$('quart').value=o?.quart??'0';$('gallon').value=o?.gallon??'0';$('five').value=o?.five??'0';$('jerryEnabled').checked=!!o?.jerryEnabled;$('jerry').value=o?.jerry??'0';toggleJerryField(false);$('batchNote').value=o?.batchNote||'';$('prodNote').value=o?.prodNote||'';setAuto(o?.autoTarget||null);showModal('editorModal')
 }
 function setAuto(t){
@@ -313,9 +317,12 @@ function recalc(){
 }
 async function saveEditor(){
   if(saveBusy)return;
-  const product=titleCase($('product').value.trim()),date=editorMode==='hold'?'':$('workDate').value,batchNo=$('batchNumber').value.trim();
-  if(!product||(!date&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter Product Name and Date');return}
-  if(editorMode!=='hold'&&isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose Monday through Friday');return}
+  const product=titleCase($('product').value.trim()),
+        batchDate=editorMode==='hold'?'':$('workDate').value,
+        prodDate=editorMode==='hold'?'':$('prodWorkDate').value,
+        batchNo=$('batchNumber').value.trim();
+  if(!product||((!batchDate||!prodDate)&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter both Batch Maker Date and Production Date');return}
+  if(editorMode!=='hold'&&(isWeekendDateStr(batchDate)||isWeekendDateStr(prodDate))){toast('Saturday and Sunday are OFF — choose Monday through Friday');return}
   if(batchNo){
     const localDuplicate=orders.find(o=>o.id!==editingId&&String(o.batch||'').trim().toLowerCase()===batchNo.toLowerCase());
     if(localDuplicate){toast('Batch # '+batchNo+' already exists');return}
@@ -325,15 +332,17 @@ async function saveEditor(){
   }
   saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent='Saving…';
   try{
-    const plan={work_date:editorMode==='hold'?null:date,hold_line:editorMode==='hold',product,batch:batchNo,tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
+    const plan={work_date:editorMode==='hold'?null:batchDate,batch_work_date:editorMode==='hold'?null:batchDate,prod_work_date:editorMode==='hold'?null:prodDate,hold_line:editorMode==='hold',product,batch:batchNo,tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
     if(editingId){
       const res=await patchOrder(editingId,plan,editingVersion);
       if(res.conflict){await reconcile();hideModal('editorModal');toast('This order changed on another manager screen. Latest version loaded.');return}
     }else{
-      const sameDate=orders.filter(o=>!o.holdLine&&o.date===date),o={id:nextId(),date,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate:date,prodDate:date,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameDate.map(x=>x.prodOrder))+1};
+      const sameBatchDate=orders.filter(o=>!o.holdLine&&o.batchDate===batchDate),
+            sameProdDate=orders.filter(o=>!o.holdLine&&o.prodDate===prodDate),
+            o={id:nextId(),date:batchDate,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate,prodDate,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameBatchDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameProdDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
-    hideModal('editorModal');if(editorMode!=='hold')selected=new Date(date+'T12:00:00');render();toast('Saved to cloud')
+    hideModal('editorModal');if(editorMode!=='hold')selected=new Date(batchDate+'T12:00:00');render();toast('Saved — Batch '+usDate(batchDate)+' • Production '+usDate(prodDate))
   }catch(e){
     if(e&&e.code==='23505'){toast('That Batch Number already exists — use a different number')}
     else if(e&&e.code==='23514'){toast('Saturday and Sunday are OFF — choose Monday through Friday')}
@@ -426,7 +435,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260925g':'batch-maker.html?build=20260925g'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260925h':'batch-maker.html?build=20260925h'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
@@ -525,7 +534,10 @@ $('closeDrawer').onclick=closeDrawer;$('drawerBackdrop').onclick=e=>{if(e.target
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
 $('saveQtyBtn').onclick=saveQty;$('saveCarryBtn').onclick=saveCarry;$('saveOrderBtn').onclick=saveEditor;document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTarget===b.dataset.auto?null:b.dataset.auto));
 for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;$('jerryEnabled').onchange=()=>toggleJerryField(true);
-$('workDate').onchange=()=>{if(isWeekendDateStr($('workDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday')};
+$('workDate').onchange=()=>{
+  if(isWeekendDateStr($('workDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday');
+};
+$('prodWorkDate').onchange=()=>{if(isWeekendDateStr($('prodWorkDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday')};
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}};
 window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
 window.addEventListener('online',()=>{setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});window.addEventListener('offline',()=>setSync('offline','OFFLINE'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcile()});
