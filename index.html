@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20260925g">
+<link rel="stylesheet" href="styles.css?v=20260925h">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -67,7 +67,10 @@
     <input type="hidden" id="editId"><input type="hidden" id="editVersion">
     <div class="grid">
       <label class="full">Product Name<input id="product" autocomplete="off"></label>
-      <label id="dateField">Date<input id="workDate" type="date"></label>
+      <div id="dateField" class="schedule-dates">
+        <label>Batch Maker Date<input id="workDate" type="date"></label>
+        <label>Production Date<input id="prodWorkDate" type="date"></label>
+      </div>
       <label>Batch Number<input id="batchNumber"></label>
       <label>Total Batch Gallons<input id="tank" inputmode="decimal"></label>
       <label>Priority<select id="priority"><option>Normal</option><option>Rush</option><option>First Thing Morning</option></select></label>
@@ -144,9 +147,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260925g"></script>
+<script src="app.js?v=20260925h"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260925g').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260925h').catch(()=>{});}
 </script>
 </body>
 </html>
