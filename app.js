@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260925h';
+const BUILD='20260928a';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -11,12 +11,133 @@ const CACHE_KEY='gametime_cloud_cache_v1';
 const LEGACY_KEY='gametime_factory_orders_v2';
 const DEVICE_KEY='gametime_device_id';
 const NAME_KEY='gametime_device_name';
+const LANG_KEY='gametime_language';
+const STRINGS={
+  en:{
+    setYourName:'Set Your Name',manager:'Manager',productionRole:'Production',batchMakerRole:'Batch Maker',
+    allWork:'ALL WORK',productionFilling:'PRODUCTION / FILLING',batchMaker:'BATCH MAKER',
+    previous:'← Previous',next:'Next →',searchPlaceholder:'Search Product or Batch #',printSavePdf:'Print / Save PDF',holdLine:'▣ HOLD LINE',addWorkOrder:'+ Add Work Order',
+    sendBoard:'Send work board to employees',sendProduction:'↗ Send to Production',sendBatchMaker:'↗ Send to Batch Maker',liveActivity:'● Live Activity',unfinishedQueue:'☰ Unfinished Queue',
+    workOrders:'Work Orders',batchTasks:'Batch Tasks',productionTasks:'Production Tasks',completed:'Completed',tasks:'tasks',
+    noBatchWork:'No Batch Maker work.',noProductionWork:'No Production work.',
+    dragReorder:'☰ DRAG TO REORDER',tankGal:'TANK GAL',filling:'FILLING',batchWord:'BATCH',priority:'PRIORITY',batchNumber:'BATCH #',
+    waitingBatch:'⏳ WAITING FOR BATCH MAKER — Production locked until WORK DONE',onHold:'ON HOLD',
+    productionNote:'Production Note:',batchNote:'Batch Maker Note:',prepareBatch:'Prepare batch for production.',
+    precheck:'PRE-CHECK',prodCheckHint:'Labels • Pallets • Containers / Cans',batchCheckHint:'All raw materials are available and ready',
+    startWork:'▶ START WORK',workDone:'✓ WORK DONE',resumeWork:'RESUME WORK',putOnHold:'PUT ON HOLD',
+    edit:'Edit',moveToHold:'Move to Hold Line',delete:'Delete',
+    quarts:'QUARTS',oneGallon:'1 GALLON',fiveGallon:'5 GALLON',jerryCan:'JERRY CAN 1.25G',
+    tapWhenFilled:'Tap when filled',boxes:'BOXES',actual:'ACTUAL',planned:'Planned amount',batchMadeOn:'Batch made on',
+    notStarted:'○ NOT STARTED',inProgress:'● IN PROGRESS',completedStatus:'✓ COMPLETED',
+    readOnly:'READ ONLY',waitingSchedule:'Waiting for schedule',holdEmpty:'Hold Line is empty.',addHoldItem:'+ Add Hold Line Item',schedule:'Schedule',noDateAssigned:'No date assigned yet',
+    noActivity:'No activity yet.',nothingUnfinished:'Nothing unfinished.',by:'BY',from:'From',batchUnfinished:'Batch unfinished',productionUnfinished:'Production unfinished',scheduleSelected:'Schedule on selected date',
+    fullDayPrint:'Full Day — Batch + Production',printBatch:'Batch Maker',printProduction:'Production / Filling',
+    addHoldLineItem:'Add Hold Line Item',editHoldLineItem:'Edit Hold Line Item',editWorkOrder:'Edit Work Order',
+    productName:'Product Name',batchMakerDate:'Batch Maker Date',productionDate:'Production Date',totalBatchGallons:'Total Batch Gallons',
+    normal:'Normal',rush:'Rush',firstThingMorning:'First Thing Morning',autoFillRemaining:'Auto-fill Remaining Gallons Into',
+    addJerry:'Add Jerry Can 1.25 Gallon',onlyShowPackage:'Only show this package on the work order when selected.',
+    cancel:'Cancel',saveWorkOrder:'Save Work Order',saving:'Saving…',
+    actualQuantity:'Actual Quantity',actualFilled:'Actual amount filled',saveActualQuantity:'Save Actual Quantity',
+    whoUsing:'Who is using this device?',identityHelp:'Enter your name once. GameTime will remember it on this browser and automatically attach it to your changes.',
+    yourName:'Your Name',exampleName:'Example: Abood',saveNameDevice:'Save Name on This Device',
+    moveRemainderNext:'Move Remainder to Next Day',carryHelp:'Enter what Production actually filled today. GameTime will calculate the remaining quantities for the next work day.',
+    moveRemainderTo:'Move remainder to',quartsFilled:'Quarts filled today',oneFilled:'1 Gallon filled today',fiveFilled:'5 Gallon filled today',jerryFilled:'Jerry Can 1.25G filled today',moveRemainder:'Move Remainder',
+    total:'Total',used:'Used',exactTotal:'Exact total ✓',unassigned:'Unassigned',over:'Over',
+    waitingBatchToast:'Waiting for Batch Maker to complete this batch',productionLocked:'Waiting for Batch Maker — Production is locked until WORK DONE',quantitiesLocked:'Waiting for Batch Maker — quantities are locked',
+    completePrecheck:'Complete PRE-CHECK first',enterActualFirst:'Enter actual filled quantity for each planned package first',
+    enterValidNumber:'Enter a valid number 0 or higher',actualSaved:'Actual quantity saved',
+    weekendOff:'Saturday and Sunday are OFF — choose Monday through Friday',enterProduct:'Enter Product Name',enterBothDates:'Enter both Batch Maker Date and Production Date',
+    productionBeforeBatch:'Production Date cannot be before Batch Maker Date',batchExists:'That Batch Number already exists — use a different number',
+    saved:'Saved',deletedHistory:'Deleted — recoverable from audit history',movedHold:'Moved to Hold Line',scheduled:'Scheduled',rescheduled:'Rescheduled',
+    confirmDelete:'Move this order to deleted history?',printError:'Print could not open on this device. Try the browser Share / Print option.',
+    noWorkScheduled:'No work scheduled.',factorySheet:'GAMETIME FACTORY DAILY WORK SHEET',task:'TASK',taskPlural:'TASKS',
+    syncLive:'LIVE',syncSyncing:'SYNCING',syncSaving:'SAVING',syncOffline:'OFFLINE',syncRetrying:'RETRYING',syncReconnecting:'RECONNECTING',syncImporting:'IMPORTING',
+    languageButton:'Español'
+  },
+  es:{
+    setYourName:'Pon tu nombre',manager:'Gerente',productionRole:'Producción',batchMakerRole:'Preparación',
+    allWork:'TODO EL TRABAJO',productionFilling:'PRODUCCIÓN / LLENADO',batchMaker:'PREPARACIÓN DE LOTES',
+    previous:'← Anterior',next:'Siguiente →',searchPlaceholder:'Buscar producto o lote #',printSavePdf:'Imprimir / Guardar PDF',holdLine:'▣ LÍNEA DE ESPERA',addWorkOrder:'+ Agregar orden',
+    sendBoard:'Enviar tablero a empleados',sendProduction:'↗ Enviar a Producción',sendBatchMaker:'↗ Enviar a Preparación',liveActivity:'● Actividad en vivo',unfinishedQueue:'☰ Trabajo pendiente',
+    workOrders:'Órdenes',batchTasks:'Tareas de lotes',productionTasks:'Tareas de producción',completed:'Completadas',tasks:'tareas',
+    noBatchWork:'No hay trabajo de preparación.',noProductionWork:'No hay trabajo de producción.',
+    dragReorder:'☰ ARRASTRA PARA ORDENAR',tankGal:'GAL. DEL TANQUE',filling:'LLENADO',batchWord:'LOTE',priority:'PRIORIDAD',batchNumber:'LOTE #',
+    waitingBatch:'⏳ ESPERANDO PREPARACIÓN DEL LOTE — Producción bloqueada hasta TERMINAR TRABAJO',onHold:'EN ESPERA',
+    productionNote:'Nota de Producción:',batchNote:'Nota de Preparación:',prepareBatch:'Preparar lote para producción.',
+    precheck:'VERIFICACIÓN PREVIA',prodCheckHint:'Etiquetas • Tarimas • Envases / Latas',batchCheckHint:'Todas las materias primas están disponibles y listas',
+    startWork:'▶ INICIAR TRABAJO',workDone:'✓ TRABAJO TERMINADO',resumeWork:'REANUDAR TRABAJO',putOnHold:'PONER EN ESPERA',
+    edit:'Editar',moveToHold:'Mover a Línea de Espera',delete:'Eliminar',
+    quarts:'QUARTS',oneGallon:'1 GALÓN',fiveGallon:'5 GALONES',jerryCan:'JERRY CAN 1.25G',
+    tapWhenFilled:'Toca al llenar',boxes:'CAJAS',actual:'REAL',planned:'Cantidad planificada',batchMadeOn:'Lote hecho el',
+    notStarted:'○ NO INICIADO',inProgress:'● EN PROGRESO',completedStatus:'✓ COMPLETADO',
+    readOnly:'SOLO LECTURA',waitingSchedule:'Esperando fecha',holdEmpty:'La Línea de Espera está vacía.',addHoldItem:'+ Agregar a Línea de Espera',schedule:'Programar',noDateAssigned:'Sin fecha asignada',
+    noActivity:'Todavía no hay actividad.',nothingUnfinished:'No hay trabajo pendiente.',by:'POR',from:'Desde',batchUnfinished:'Preparación pendiente',productionUnfinished:'Producción pendiente',scheduleSelected:'Programar en la fecha seleccionada',
+    fullDayPrint:'Día completo — Preparación + Producción',printBatch:'Preparación de Lotes',printProduction:'Producción / Llenado',
+    addHoldLineItem:'Agregar a Línea de Espera',editHoldLineItem:'Editar Línea de Espera',editWorkOrder:'Editar orden',
+    productName:'Nombre del producto',batchMakerDate:'Fecha de Preparación',productionDate:'Fecha de Producción',totalBatchGallons:'Galones totales del lote',
+    normal:'Normal',rush:'Urgente',firstThingMorning:'Primero en la mañana',autoFillRemaining:'Completar galones restantes en',
+    addJerry:'Agregar Jerry Can de 1.25 galones',onlyShowPackage:'Mostrar este envase solo cuando esté seleccionado.',
+    cancel:'Cancelar',saveWorkOrder:'Guardar orden',saving:'Guardando…',
+    actualQuantity:'Cantidad real',actualFilled:'Cantidad realmente llenada',saveActualQuantity:'Guardar cantidad real',
+    whoUsing:'¿Quién está usando este dispositivo?',identityHelp:'Escribe tu nombre una vez. GameTime lo recordará en este navegador y lo agregará automáticamente a tus cambios.',
+    yourName:'Tu nombre',exampleName:'Ejemplo: Abood',saveNameDevice:'Guardar nombre en este dispositivo',
+    moveRemainderNext:'Mover restante al próximo día',carryHelp:'Escribe lo que Producción llenó hoy. GameTime calculará lo restante para el próximo día laboral.',
+    moveRemainderTo:'Mover restante a',quartsFilled:'Quarts llenados hoy',oneFilled:'1 galón llenado hoy',fiveFilled:'5 galones llenados hoy',jerryFilled:'Jerry Can 1.25G llenados hoy',moveRemainder:'Mover restante',
+    total:'Total',used:'Usado',exactTotal:'Total exacto ✓',unassigned:'Sin asignar',over:'Exceso',
+    waitingBatchToast:'Esperando que Preparación termine este lote',productionLocked:'Esperando Preparación — Producción está bloqueada hasta TERMINAR TRABAJO',quantitiesLocked:'Esperando Preparación — las cantidades están bloqueadas',
+    completePrecheck:'Completa la VERIFICACIÓN PREVIA primero',enterActualFirst:'Ingresa la cantidad real de cada envase planificado primero',
+    enterValidNumber:'Ingresa un número válido de 0 o mayor',actualSaved:'Cantidad real guardada',
+    weekendOff:'Sábado y domingo están cerrados — elige de lunes a viernes',enterProduct:'Ingresa el nombre del producto',enterBothDates:'Ingresa la fecha de Preparación y la fecha de Producción',
+    productionBeforeBatch:'La fecha de Producción no puede ser antes de la fecha de Preparación',batchExists:'Ese número de lote ya existe — usa otro número',
+    saved:'Guardado',deletedHistory:'Eliminado — recuperable desde el historial',movedHold:'Movido a Línea de Espera',scheduled:'Programado',rescheduled:'Reprogramado',
+    confirmDelete:'¿Mover esta orden al historial de eliminados?',printError:'No se pudo abrir la impresión. Usa la opción Compartir / Imprimir del navegador.',
+    noWorkScheduled:'No hay trabajo programado.',factorySheet:'HOJA DIARIA DE TRABAJO GAMETIME',task:'TAREA',taskPlural:'TAREAS',
+    syncLive:'EN VIVO',syncSyncing:'SINCRONIZANDO',syncSaving:'GUARDANDO',syncOffline:'SIN CONEXIÓN',syncRetrying:'REINTENTANDO',syncReconnecting:'RECONECTANDO',syncImporting:'IMPORTANDO',
+    languageButton:'English'
+  }
+};
+let lang=localStorage.getItem(LANG_KEY)==='es'?'es':'en';
+function t(key){return STRINGS[lang]?.[key]??STRINGS.en[key]??key}
+function locale(){return lang==='es'?'es-US':'en-US'}
+function directLabel(inputId,key){
+  const input=$(inputId),label=input&&input.closest?input.closest('label'):null;if(!label)return;
+  const node=[...label.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());if(node)node.textContent=t(key)
+}
+function staticText(selector,key){const el=document.querySelector(selector);if(el)el.textContent=t(key)}
+function applyLanguage(){
+  document.documentElement.lang=lang;
+  const lt=$('langToggle');if(lt)lt.textContent=t('languageButton');
+  refreshUserLabel();
+  const map={prevBtn:'previous',nextBtn:'next',printBtn:'printSavePdf',holdLineBtn:'holdLine',addBtn:'addWorkOrder',shareProd:'sendProduction',shareBatch:'sendBatchMaker',saveOrderBtn:'saveWorkOrder',saveQtyBtn:'saveActualQuantity',saveCarryBtn:'moveRemainder',saveDeviceName:'saveNameDevice'};
+  for(const [id,key] of Object.entries(map)){const el=$(id);if(el)el.textContent=t(key)}
+  const search=$('search');if(search)search.placeholder=t('searchPlaceholder');
+  staticText('#managerTools .sendbox > b','sendBoard');
+  staticText('[data-drawer="activity"]','liveActivity');staticText('[data-drawer="queue"]','unfinishedQueue');staticText('[data-drawer="holdline"]','holdLine');
+  staticText('.stats .stat:nth-child(1) span','workOrders');staticText('.stats .stat:nth-child(2) span','batchTasks');staticText('.stats .stat:nth-child(3) span','productionTasks');staticText('.stats .stat:nth-child(4) span','completed');
+  staticText('#batchPanel .panelhead h2','batchMaker');staticText('#prodPanel .panelhead h2','productionFilling');
+  directLabel('product','productName');directLabel('workDate','batchMakerDate');directLabel('prodWorkDate','productionDate');directLabel('batchNumber','batchNumber');directLabel('tank','totalBatchGallons');directLabel('priority','priority');
+  directLabel('quart','quarts');directLabel('gallon','oneGallon');directLabel('five','fiveGallon');directLabel('jerry','jerryCan');directLabel('batchNote','batchNote');directLabel('prodNote','productionNote');
+  staticText('.auto > b','autoFillRemaining');
+  const ab={five:'fiveGallon',gallon:'oneGallon',quart:'quarts',jerry:'jerryCan'};document.querySelectorAll('[data-auto]').forEach(b=>{if(ab[b.dataset.auto])b.textContent=t(ab[b.dataset.auto])});
+  staticText('.optional-package span b','addJerry');staticText('.optional-package span small','onlyShowPackage');
+  const opts=$('priority')?.options;if(opts&&opts.length>=3){opts[0].textContent=t('normal');opts[1].textContent=t('rush');opts[2].textContent=t('firstThingMorning')}
+  document.querySelectorAll('.dialogactions button[data-close]').forEach(b=>{if(b.textContent.trim()!=='✕')b.textContent=t('cancel')});
+  staticText('#qtyModal .qtylabel','actualFilled'); // repaired below because input must remain
+  directLabel('qtyInput','actualFilled');
+  staticText('#identityModal h2','whoUsing');staticText('#identityModal p','identityHelp');directLabel('deviceNameInput','yourName');if($('deviceNameInput'))$('deviceNameInput').placeholder=t('exampleName');
+  staticText('#carryModal .dialoghead h2','moveRemainderNext');staticText('#carryModal .carryhelp','carryHelp');directLabel('carryDate','moveRemainderTo');directLabel('carryQuart','quartsFilled');directLabel('carryGallon','oneFilled');directLabel('carryFive','fiveFilled');directLabel('carryJerry','jerryFilled');
+}
+function setLanguage(next){
+  lang=next==='es'?'es':'en';localStorage.setItem(LANG_KEY,lang);applyLanguage();render();
+  if($('monthModal')?.classList.contains('show'))renderMonth();
+  if($('drawerBackdrop')?.classList.contains('show'))openDrawer($('drawerBackdrop').dataset.type);
+}
 let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
 let deviceName=(localStorage.getItem(NAME_KEY)||'').trim();
-function roleLabel(){return isManager?'Manager':view==='prod'?'Production':'Batch Maker'}
+function roleLabel(){return isManager?t('manager'):view==='prod'?t('productionRole'):t('batchMakerRole')}
 function actor(){return deviceName?deviceName:roleLabel()+'-'+deviceId.slice(-5)}
-function refreshUserLabel(){const el=$('currentUser');if(el)el.textContent='👤 '+(deviceName||'Set Your Name')}
+function refreshUserLabel(){const el=$('currentUser');if(el)el.textContent='👤 '+(deviceName||t('setYourName'))}
 let orders=[],logs=[],selected=new Date(),monthCursor=new Date(),editorMode='order',editingId=null,editingVersion=null,autoTarget=null,qtyState=null,carryState=null,saveBusy=false,dragState=null,channel=null,reconcileTimer=null,logPollTick=0;
 selected.setHours(12,0,0,0);
 
@@ -29,13 +150,13 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function num(v){let m=String(v??'').match(/-?\d+(?:\.\d+)?/);return m?Math.max(0,Number(m[0])||0):0}
 function boxes(v){return Math.ceil(num(v)/4)}
 function prodBatch(v){let m=String(v||'').trim().match(/^(.*?)(\d+)\s*$/);return m?m[1]+String(Number(m[2])+1).padStart(m[2].length,'0'):String(v||'')}
-function pretty(d=selected){return d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+function pretty(d=selected){return d.toLocaleDateString(locale(),{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
 function usDate(s){if(!s)return'';return new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'})}
 function nextId(){return Date.now()*1000+Math.floor(Math.random()*1000)}
 function titleCase(s){return String(s||'').replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b.toUpperCase())}
-function statusText(s){return s==='done'?'✓ COMPLETED':s==='progress'?'● IN PROGRESS':'○ NOT STARTED'}
+function statusText(s){return s==='done'?t('completedStatus'):s==='progress'?t('inProgress'):t('notStarted')}
 function statusClass(s){return s==='done'?'done-status':s==='progress'?'progress':'ready'}
-function setSync(state,label){const el=$('syncStatus');el.className='sync '+state;el.textContent=label||state.toUpperCase()}
+function setSync(state,label){const el=$('syncStatus');el.className='sync '+state;const k={LIVE:'syncLive',SYNCING:'syncSyncing',SAVING:'syncSaving',OFFLINE:'syncOffline',RETRYING:'syncRetrying',RECONNECTING:'syncReconnecting',IMPORTING:'syncImporting'}[label||state.toUpperCase()];el.textContent=k?t(k):(label||state.toUpperCase())}
 let toastTimer=null;function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
 function cache(){localStorage.setItem(CACHE_KEY,JSON.stringify(orders))}
 function normalizeLegacy(raw){
@@ -436,7 +557,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260925h':'batch-maker.html?build=20260925h'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260928a':'batch-maker.html?build=20260928a'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
