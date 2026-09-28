@@ -121,6 +121,7 @@ function applyLanguage(){
   const ab={five:'fiveGallon',gallon:'oneGallon',quart:'quarts',jerry:'jerryCan'};document.querySelectorAll('[data-auto]').forEach(b=>{if(ab[b.dataset.auto])b.textContent=t(ab[b.dataset.auto])});
   staticText('.optional-package span b','addJerry');staticText('.optional-package span small','onlyShowPackage');
   const opts=$('priority')?.options;if(opts&&opts.length>=3){opts[0].textContent=t('normal');opts[1].textContent=t('rush');opts[2].textContent=t('firstThingMorning')}
+  if($('editorTitle')){const eo=editingId?orders.find(x=>x.id===editingId):null;$('editorTitle').textContent=editorMode==='hold'?(eo?t('editHoldLineItem'):t('addHoldLineItem')):(eo?t('editWorkOrder'):t('addWorkOrder'))}
   document.querySelectorAll('.dialogactions button[data-close]').forEach(b=>{if(b.textContent.trim()!=='✕')b.textContent=t('cancel')});
   directLabel('qtyInput','actualFilled');
   staticText('#identityModal h2','whoUsing');staticText('#identityModal p','identityHelp');directLabel('deviceNameInput','yourName');if($('deviceNameInput'))$('deviceNameInput').placeholder=t('exampleName');
@@ -387,7 +388,7 @@ async function saveCarry(){
   if(!carryState)return;const o=orders.find(x=>x.id===carryState.id);if(!o)return;
   const q=carryValue('carryQuart'),g=carryValue('carryGallon'),f=carryValue('carryFive'),j=o.jerryEnabled?carryValue('carryJerry'):0,date=$('carryDate').value;
   if([q,g,f,j].some(v=>v===null)||!date){toast('Enter valid filled quantities and next date');return}
-  if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}
+  if(isWeekendDateStr(date)){toast(t('weekendOff'));return}
   if(date<=o.date){toast('Choose a date after the current work date');return}
   const remaining=Math.max(num(o.quart)-q,0)+Math.max(num(o.gallon)-g,0)+Math.max(num(o.five)-f,0)+(o.jerryEnabled?Math.max(num(o.jerry)-j,0):0);
   if(remaining<=0){toast('Nothing remains. Use WORK DONE instead.');return}
@@ -476,14 +477,14 @@ async function saveEditor(){
     hideModal('editorModal');if(editorMode!=='hold')selected=new Date(batchDate+'T12:00:00');render();toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
   }catch(e){
     if(e&&e.code==='23505'){toast(t('batchExists'))}
-    else if(e&&e.code==='23514'){toast('Saturday and Sunday are OFF — choose Monday through Friday')}
+    else if(e&&e.code==='23514'){toast(t('weekendOff'))}
     else fail(e)
   }finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent=t('saveWorkOrder')}
 }
 async function softDelete(id){if(!isManager||!confirm(t('confirmDelete')))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast(t('deletedHistory'))}catch(e){fail(e)}}
 async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast(t('movedHold'))}catch(e){fail(e)}}
-async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast(t('scheduled'))}catch(e){fail(e)}}
-async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Production cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast(t('rescheduled'))}catch(e){fail(e)}}
+async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast(t('scheduled'))}catch(e){fail(e)}}
+async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Production cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast(t('rescheduled'))}catch(e){fail(e)}}
 
 function bindDrag(){
   document.querySelectorAll('.draghandle[draggable="true"]').forEach(handle=>{
@@ -657,13 +658,14 @@ function openIdentity(){
 }
 function saveIdentity(){
   const name=$('deviceNameInput').value.trim();
-  if(!name){toast('Enter your name');return}
-  deviceName=name;localStorage.setItem(NAME_KEY,name);refreshUserLabel();hideModal('identityModal');toast('This device is now identified as '+name)
+  if(!name){toast(t('yourName'));return}
+  deviceName=name;localStorage.setItem(NAME_KEY,name);refreshUserLabel();hideModal('identityModal');toast((lang==='es'?'Este dispositivo ahora está identificado como ':'This device is now identified as ')+name)
 }
 function ensureIdentity(){refreshUserLabel();if(!deviceName)openIdentity()}
 
-function tick(){$('clock').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
+function tick(){$('clock').textContent=new Date().toLocaleTimeString(locale(),{hour:'numeric',minute:'2-digit'})}
 
+$('langToggle').onclick=()=>setLanguage(lang==='en'?'es':'en');
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
 $('dateLabel').onclick=openMonth;$('search').oninput=render;$('addBtn').onclick=()=>openEditor(null,false);$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);$('holdLineBtn').onclick=()=>openDrawer('holdline');
@@ -673,11 +675,11 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.d
 $('saveQtyBtn').onclick=saveQty;$('saveCarryBtn').onclick=saveCarry;$('saveOrderBtn').onclick=saveEditor;document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTarget===b.dataset.auto?null:b.dataset.auto));
 for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;$('jerryEnabled').onchange=()=>toggleJerryField(true);
 $('workDate').onchange=()=>{
-  if(isWeekendDateStr($('workDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday');
+  if(isWeekendDateStr($('workDate').value))toast(t('weekendOff'));
 };
-$('prodWorkDate').onchange=()=>{if(isWeekendDateStr($('prodWorkDate').value))toast('Saturday and Sunday are OFF — choose Monday through Friday')};
+$('prodWorkDate').onchange=()=>{if(isWeekendDateStr($('prodWorkDate').value))toast(t('weekendOff'))};
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}};
 window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
 window.addEventListener('online',()=>{setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});window.addEventListener('offline',()=>setSync('offline','OFFLINE'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcile()});
 
-tick();setInterval(tick,30000);render();ensureIdentity();initialLoad();
+applyLanguage();tick();setInterval(tick,30000);render();ensureIdentity();initialLoad();
