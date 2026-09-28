@@ -347,8 +347,8 @@ async function handleAction(btn){
 }
 function openQty(id,key){
   if(view!=='prod'&&!isManager)return;const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus!=='done'){toast(t('quantitiesLocked'));return}qtyState={id,key};
-  const label=key==='quart'?'Quarts':key==='gallon'?'1 Gallon':key==='five'?'5 Gallon':'Jerry Can 1.25 Gallon',a=actual(o,key),p=num(o[key]);
-  $('qtyTitle').textContent=label+' — Actual Filled';$('qtyPlanned').innerHTML='Planned amount: <b>'+p+'</b><br><small>You may enter any number 0 or higher.</small>';$('qtyInput').value=a==null?String(p):String(a);showModal('qtyModal');setTimeout(()=>$('qtyInput').select(),50)
+  const keyMap={quart:'quarts',gallon:'oneGallon',five:'fiveGallon',jerry:'jerryCan'},label=t(keyMap[key]),a=actual(o,key),p=num(o[key]);
+  $('qtyTitle').textContent=label+' — '+t('actualQuantity');$('qtyPlanned').innerHTML=esc(t('planned'))+': <b>'+p+'</b><br><small>'+esc(t('enterValidNumber'))+'</small>';$('qtyInput').value=a==null?String(p):String(a);showModal('qtyModal');setTimeout(()=>$('qtyInput').select(),50)
 }
 async function saveQty(){
   if(!qtyState)return;const raw=$('qtyInput').value.trim(),v=Number(raw);if(raw===''||!Number.isFinite(v)||v<0){toast(t('enterValidNumber'));return}
@@ -398,7 +398,7 @@ async function saveCarry(){
 }
 function openEditor(id=null,hold=false){
   if(!isManager)return;const o=id?orders.find(x=>x.id===id):null;editorMode=hold||o?.holdLine?'hold':'order';editingId=o?.id||null;editingVersion=o?.version||null;
-  $('editorTitle').textContent=editorMode==='hold'?(o?'Edit Hold Line Item':'Add Hold Line Item'):(o?'Edit Work Order':'Add Work Order');
+  $('editorTitle').textContent=editorMode==='hold'?(o?t('editHoldLineItem'):t('addHoldLineItem')):(o?t('editWorkOrder'):t('addWorkOrder'));
   $('editId').value=o?.id||'';$('editVersion').value=o?.version||'';$('product').value=o?.product||'';
   const defaultDate=iso(selected);
   $('workDate').value=editorMode==='hold'?'':(o?.batchDate||o?.date||defaultDate);
@@ -440,8 +440,8 @@ function recalc(){
   }
   const q=num($('quart').value),g=num($('gallon').value),f=num($('five').value),j=jOn?num($('jerry').value):0;
   const used=f*5+g+q*.25+j*1.25,left=total-used;
-  $('qBoxes').textContent=Math.ceil(q/4)+' boxes';$('gBoxes').textContent=Math.ceil(g/4)+' boxes';
-  $('calc').innerHTML='Total: <b>'+total+'</b> gal • Used: <b>'+used+'</b> gal • '+(jOn?'Jerry Can: <b>'+j+'</b> × 1.25 = <b>'+(j*1.25).toFixed(2)+'</b> gal • ':'')+(Math.abs(left)<.001?'<b>Exact total ✓</b>':(left>0?'Unassigned: ':'Over: ')+'<b>'+Math.abs(left).toFixed(2)+'</b> gal')
+  $('qBoxes').textContent=Math.ceil(q/4)+' '+t('boxes').toLowerCase();$('gBoxes').textContent=Math.ceil(g/4)+' '+t('boxes').toLowerCase();
+  $('calc').innerHTML=esc(t('total'))+': <b>'+total+'</b> gal • '+esc(t('used'))+': <b>'+used+'</b> gal • '+(jOn?esc(t('jerryCan'))+': <b>'+j+'</b> × 1.25 = <b>'+(j*1.25).toFixed(2)+'</b> gal • ':'')+(Math.abs(left)<.001?'<b>'+esc(t('exactTotal'))+'</b>':esc(left>0?t('unassigned'):t('over'))+': <b>'+Math.abs(left).toFixed(2)+'</b> gal')
 }
 async function saveEditor(){
   if(saveBusy)return;
@@ -449,17 +449,17 @@ async function saveEditor(){
         batchDate=editorMode==='hold'?'':$('workDate').value,
         prodDate=editorMode==='hold'?'':$('prodWorkDate').value,
         batchNo=$('batchNumber').value.trim();
-  if(!product||((!batchDate||!prodDate)&&editorMode!=='hold')){toast(editorMode==='hold'?'Enter Product Name':'Enter both Batch Maker Date and Production Date');return}
-  if(editorMode!=='hold'&&(isWeekendDateStr(batchDate)||isWeekendDateStr(prodDate))){toast('Saturday and Sunday are OFF — choose Monday through Friday');return}
-  if(editorMode!=='hold'&&prodDate<batchDate){toast('Production Date cannot be before Batch Maker Date');return}
+  if(!product||((!batchDate||!prodDate)&&editorMode!=='hold')){toast(editorMode==='hold'?t('enterProduct'):t('enterBothDates'));return}
+  if(editorMode!=='hold'&&(isWeekendDateStr(batchDate)||isWeekendDateStr(prodDate))){toast(t('weekendOff'));return}
+  if(editorMode!=='hold'&&prodDate<batchDate){toast(t('productionBeforeBatch'));return}
   if(batchNo){
     const localDuplicate=orders.find(o=>o.id!==editingId&&String(o.batch||'').trim().toLowerCase()===batchNo.toLowerCase());
-    if(localDuplicate){toast('Batch # '+batchNo+' already exists');return}
+    if(localDuplicate){toast(t('batchExists'));return}
     const {data:available,error:batchError}=await db.rpc('batch_number_available',{p_batch:batchNo,p_exclude_id:editingId});
     if(batchError){fail(batchError);return}
     if(!available){toast('Batch # '+batchNo+' already exists');return}
   }
-  saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent='Saving…';
+  saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent=t('saving');
   try{
     const plan={work_date:editorMode==='hold'?null:batchDate,batch_work_date:editorMode==='hold'?null:batchDate,prod_work_date:editorMode==='hold'?null:prodDate,hold_line:editorMode==='hold',product,batch:batchNo,tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
     if(editingId){
@@ -471,17 +471,17 @@ async function saveEditor(){
             o={id:nextId(),date:batchDate,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate,prodDate,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameBatchDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameProdDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
-    hideModal('editorModal');if(editorMode!=='hold')selected=new Date(batchDate+'T12:00:00');render();toast('Saved — Batch '+usDate(batchDate)+' • Production '+usDate(prodDate))
+    hideModal('editorModal');if(editorMode!=='hold')selected=new Date(batchDate+'T12:00:00');render();toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
   }catch(e){
-    if(e&&e.code==='23505'){toast('That Batch Number already exists — use a different number')}
+    if(e&&e.code==='23505'){toast(t('batchExists'))}
     else if(e&&e.code==='23514'){toast('Saturday and Sunday are OFF — choose Monday through Friday')}
     else fail(e)
-  }finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent='Save Work Order'}
+  }finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent=t('saveWorkOrder')}
 }
-async function softDelete(id){if(!isManager||!confirm('Move this order to deleted history?'))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast('Deleted — recoverable from audit history')}catch(e){fail(e)}}
-async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast('Moved to Hold Line')}catch(e){fail(e)}}
-async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast('Scheduled')}catch(e){fail(e)}}
-async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Production cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast('Rescheduled')}catch(e){fail(e)}}
+async function softDelete(id){if(!isManager||!confirm(t('confirmDelete')))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast(t('deletedHistory'))}catch(e){fail(e)}}
+async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast(t('movedHold'))}catch(e){fail(e)}}
+async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast(t('scheduled'))}catch(e){fail(e)}}
+async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast('Saturday and Sunday are OFF — choose a weekday');return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Production cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast(t('rescheduled'))}catch(e){fail(e)}}
 
 function bindDrag(){
   document.querySelectorAll('.draghandle[draggable="true"]').forEach(handle=>{
@@ -528,7 +528,7 @@ function entryDone(e){return e.dept==='batch'?e.o.batchStatus==='done':e.o.prodS
 function dayState(d){const a=entriesForDate(d);if(!a.length)return'emptyday';return a.every(entryDone)?'good':'bad'}
 function openMonth(){monthCursor=new Date(selected.getFullYear(),selected.getMonth(),1);showModal('monthModal');renderMonth()}
 function renderMonth(){
-  $('monthTitle').textContent=monthCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  $('monthTitle').textContent=monthCursor.toLocaleDateString(locale(),{month:'long',year:'numeric'});
   let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>'<div class="dow">'+x+'</div>').join(''),
       first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
   start.setDate(1-first.getDay());const today=iso(new Date());
