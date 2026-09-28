@@ -155,6 +155,8 @@ function nextId(){return Date.now()*1000+Math.floor(Math.random()*1000)}
 function titleCase(s){return String(s||'').replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b.toUpperCase())}
 function statusText(s){return s==='done'?t('completedStatus'):s==='progress'?t('inProgress'):t('notStarted')}
 function statusClass(s){return s==='done'?'done-status':s==='progress'?'progress':'ready'}
+function deptText(d){return d==='prod'?t('productionRole'):d==='batch'?t('batchMakerRole'):d==='all'?t('allWork'):String(d||'')}
+function eventTypeText(v){const s=String(v||'');return s==='done'?t('completed'):s==='progress'?t('inProgress').replace(/^●\s*/,''):s==='package'?t('actualQuantity'):s.toUpperCase()}
 function setSync(state,label){const el=$('syncStatus');el.className='sync '+state;const k={LIVE:'syncLive',SYNCING:'syncSyncing',SAVING:'syncSaving',OFFLINE:'syncOffline',RETRYING:'syncRetrying',RECONNECTING:'syncReconnecting',IMPORTING:'syncImporting'}[label||state.toUpperCase()];el.textContent=k?t(k):(label||state.toUpperCase())}
 let toastTimer=null;function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
 function cache(){localStorage.setItem(CACHE_KEY,JSON.stringify(orders))}
@@ -541,30 +543,37 @@ function renderMonth(){
   $('calendar').innerHTML=html;
   document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{selected=new Date(el.dataset.day+'T12:00:00');hideModal('monthModal');render()})
 }
-function renderFeedHTML(){return logs.length?logs.slice(0,80).map(e=>'<div class="event '+(e.type==='progress'?'start':e.type==='done'?'done':e.type==='package'?'package':'')+'"><b>'+esc(e.product)+' — '+esc(e.dept||'')+'</b><small>'+new Date(e.ts).toLocaleString()+' • '+esc(String(e.type||'').toUpperCase())+(e.actor?' • BY '+esc(e.actor):'')+(e.extra?' • '+esc(e.extra):'')+'</small></div>').join(''):'<div class="event">No activity yet.</div>'}
-function renderQueueHTML(){const today=iso(new Date()),q=orders.filter(o=>!o.holdLine&&o.date&&o.date<today&&(o.batchStatus!=='done'||o.prodStatus!=='done'));return q.length?q.map(o=>'<div class="queueitem"><b>'+esc(o.product)+(o.batch?' • '+esc(o.batch):'')+'</b><small>From '+o.date+' • '+(o.batchStatus!=='done'?'Batch unfinished ':'')+(o.prodStatus!=='done'?'Production unfinished':'')+'</small><input type="date" data-resdate="'+o.id+'" value="'+iso(selected)+'"><button data-reschedule="'+o.id+'">Schedule on selected date</button></div>').join(''):'<div class="queueitem">Nothing unfinished.</div>'}
+function renderFeedHTML(){
+  return logs.length?logs.slice(0,80).map(e=>'<div class="event '+(e.type==='progress'?'start':e.type==='done'?'done':e.type==='package'?'package':'')+'"><b>'+esc(e.product)+' — '+esc(deptText(e.dept))+'</b><small>'+new Date(e.ts).toLocaleString(locale())+' • '+esc(eventTypeText(e.type))+(e.actor?' • '+esc(t('by'))+' '+esc(e.actor):'')+(e.extra?' • '+esc(e.extra):'')+'</small></div>').join(''):'<div class="event">'+esc(t('noActivity'))+'</div>'
+}
+function renderQueueHTML(){
+  const today=iso(new Date()),q=orders.filter(o=>!o.holdLine&&o.date&&o.date<today&&(o.batchStatus!=='done'||o.prodStatus!=='done'));
+  return q.length?q.map(o=>'<div class="queueitem"><b>'+esc(o.product)+(o.batch?' • '+esc(o.batch):'')+'</b><small>'+esc(t('from'))+' '+esc(o.date)+' • '+(o.batchStatus!=='done'?esc(t('batchUnfinished'))+' ':'')+(o.prodStatus!=='done'?esc(t('productionUnfinished')):'')+'</small><input type="date" data-resdate="'+o.id+'" value="'+iso(selected)+'"><button data-reschedule="'+o.id+'">'+esc(t('scheduleSelected'))+'</button></div>').join(''):'<div class="queueitem">'+esc(t('nothingUnfinished'))+'</div>'
+}
 function renderHoldHTML(){
   const q=orders.filter(o=>o.holdLine);
   if(!isManager){
     return q.length?q.map(o=>
-      '<div class="holditem holdreadonly"><b>'+esc(o.product)+(o.batch?' • BATCH # '+esc(o.batch):'')+'</b>'+
-      '<small>'+(o.tank?esc(o.tank)+' gal • ':'')+esc(o.batchNote||o.prodNote||'Waiting for schedule')+'</small>'+
-      '<div class="readonlytag">READ ONLY</div></div>'
-    ).join(''):'<div class="holditem">Hold Line is empty.</div>'
+      '<div class="holditem holdreadonly"><b>'+esc(o.product)+(o.batch?' • '+esc(t('batchNumber'))+' '+esc(o.batch):'')+'</b>'+
+      '<small>'+(o.tank?esc(o.tank)+' gal • ':'')+esc(o.batchNote||o.prodNote||t('waitingSchedule'))+'</small>'+
+      '<div class="readonlytag">'+esc(t('readOnly'))+'</div></div>'
+    ).join(''):'<div class="holditem">'+esc(t('holdEmpty'))+'</div>'
   }
-  return '<div style="padding:8px"><button class="draweraction" id="addHold">+ Add Hold Line Item</button></div>'+
-    (q.length?q.map(o=>'<div class="holditem"><b>'+esc(o.product)+(o.batch?' • '+esc(o.batch):'')+'</b><small>'+(o.tank?o.tank+' gal • ':'')+esc(o.batchNote||'No date assigned yet')+'</small><input type="date" data-holddate="'+o.id+'" value="'+iso(selected)+'"><div class="holdactions"><button data-schedulehold="'+o.id+'">Schedule</button><button class="secondary" data-edithold="'+o.id+'">Edit</button><button class="secondary" data-delhold="'+o.id+'">Delete</button></div></div>').join(''):'<div class="holditem">Hold Line is empty.</div>')
+  return '<div style="padding:8px"><button class="draweraction" id="addHold">'+esc(t('addHoldItem'))+'</button></div>'+
+    (q.length?q.map(o=>'<div class="holditem"><b>'+esc(o.product)+(o.batch?' • '+esc(o.batch):'')+'</b><small>'+(o.tank?o.tank+' gal • ':'')+esc(o.batchNote||t('noDateAssigned'))+'</small><input type="date" data-holddate="'+o.id+'" value="'+iso(selected)+'"><div class="holdactions"><button data-schedulehold="'+o.id+'">'+esc(t('schedule'))+'</button><button class="secondary" data-edithold="'+o.id+'">'+esc(t('edit'))+'</button><button class="secondary" data-delhold="'+o.id+'">'+esc(t('delete'))+'</button></div></div>').join(''):'<div class="holditem">'+esc(t('holdEmpty'))+'</div>')
 }
 function openDrawer(type){
-  if(!isManager&&type!=='holdline')return;$('drawerBackdrop').classList.add('show');$('drawerBackdrop').dataset.type=type;$('drawerTitle').textContent=type==='activity'?'LIVE ACTIVITY':type==='queue'?'UNFINISHED QUEUE':type==='holdline'?'HOLD LINE':'PRINT / SAVE PDF';
+  if(!isManager&&type!=='holdline')return;
+  $('drawerBackdrop').classList.add('show');$('drawerBackdrop').dataset.type=type;
+  $('drawerTitle').textContent=type==='activity'?t('liveActivity').replace(/^●\s*/,''):type==='queue'?t('unfinishedQueue').replace(/^☰\s*/,''):type==='holdline'?t('holdLine').replace(/^▣\s*/,''):t('printSavePdf');
   if(type==='activity')$('drawerBody').innerHTML=renderFeedHTML();
   if(type==='queue'){$('drawerBody').innerHTML=renderQueueHTML();document.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>reschedule(Number(b.dataset.reschedule),document.querySelector('[data-resdate="'+b.dataset.reschedule+'"]').value))}
   if(type==='holdline'){$('drawerBody').innerHTML=renderHoldHTML();if(isManager){$('addHold').onclick=()=>{closeDrawer();openEditor(null,true)};document.querySelectorAll('[data-schedulehold]').forEach(b=>b.onclick=()=>scheduleHold(Number(b.dataset.schedulehold),document.querySelector('[data-holddate="'+b.dataset.schedulehold+'"]').value));document.querySelectorAll('[data-edithold]').forEach(b=>b.onclick=()=>{closeDrawer();openEditor(Number(b.dataset.edithold),true)});document.querySelectorAll('[data-delhold]').forEach(b=>b.onclick=()=>softDelete(Number(b.dataset.delhold)))}}
-  if(type==='print'){$('drawerBody').innerHTML='<div style="padding:8px"><button class="draweraction" data-print="all">Full Day — Batch + Production</button><button class="draweraction" data-print="batch">Batch Maker</button><button class="draweraction" data-print="prod">Production / Filling</button></div>';document.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>{closeDrawer();printSheet(b.dataset.print)})}
+  if(type==='print'){$('drawerBody').innerHTML='<div style="padding:8px"><button class="draweraction" data-print="all">'+esc(t('fullDayPrint'))+'</button><button class="draweraction" data-print="batch">'+esc(t('printBatch'))+'</button><button class="draweraction" data-print="prod">'+esc(t('printProduction'))+'</button></div>';document.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>{closeDrawer();printSheet(b.dataset.print)})}
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260928a':'batch-maker.html?build=20260928a'),title=dept==='prod'?'Production Work Board':'Batch Maker Work Board';try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' link copied')}catch{prompt('Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260928a':'batch-maker.html?build=20260928a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
