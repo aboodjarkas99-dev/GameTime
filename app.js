@@ -665,7 +665,7 @@ function ensureIdentity(){refreshUserLabel();if(!deviceName)openIdentity()}
 
 function tick(){$('clock').textContent=new Date().toLocaleTimeString(locale(),{hour:'numeric',minute:'2-digit'})}
 
-$('langToggle').onclick=()=>setLanguage(lang==='en'?'es':'en');
+if($('langToggle'))$('langToggle').onclick=()=>setLanguage(lang==='en'?'es':'en');
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
 $('dateLabel').onclick=openMonth;$('search').oninput=render;$('addBtn').onclick=()=>openEditor(null,false);$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);$('holdLineBtn').onclick=()=>openDrawer('holdline');
