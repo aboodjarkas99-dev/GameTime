@@ -7,13 +7,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20260925h">
+<link rel="stylesheet" href="styles.css?v=20260928a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
 <header class="topbar">
   <div><div class="brand">GAMETIME FACTORY WORK BOARD</div><div class="subtitle" id="viewLabel">ALL WORK</div></div>
-  <div class="topright"><button id="currentUser" class="userbtn" type="button">👤 Set Your Name</button><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
+  <div class="topright"><button id="langToggle" class="langbtn" type="button">Español</button><button id="currentUser" class="userbtn" type="button">👤 Set Your Name</button><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
 </header>
 
 <main class="wrap">
@@ -73,7 +73,7 @@
       </div>
       <label>Batch Number<input id="batchNumber"></label>
       <label>Total Batch Gallons<input id="tank" inputmode="decimal"></label>
-      <label>Priority<select id="priority"><option>Normal</option><option>Rush</option><option>First Thing Morning</option></select></label>
+      <label>Priority<select id="priority"><option value="Normal">Normal</option><option value="Rush">Rush</option><option value="First Thing Morning">First Thing Morning</option></select></label>
       <div class="full auto">
         <b>Auto-fill Remaining Gallons Into</b>
         <div class="autobtns"><button type="button" data-auto="five">5 Gallon</button><button type="button" data-auto="gallon">1 Gallon</button><button type="button" data-auto="quart">Quarts</button><button id="jerryAutoBtn" type="button" data-auto="jerry" style="display:none">Jerry Can 1.25G</button></div>
@@ -147,9 +147,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20260925h"></script>
+<script src="app.js?v=20260928a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260925h').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20260928a').catch(()=>{});}
 </script>
 </body>
 </html>
