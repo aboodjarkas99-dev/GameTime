@@ -601,27 +601,27 @@ function printSheet(mode){
     const note=dept==='prod'?o.prodNote:o.batchNote;
     const st=statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'').trim();
     return '<article class="ps-card">'+
-      '<div class="ps-top"><div class="ps-main"><small>'+dept.toUpperCase()+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3>'+
-      (bn?'<span class="ps-batch">BATCH # '+esc(bn)+'</span>':'')+
-      (dept==='prod'&&o.batchMadeDate?'<span class="ps-made">Made '+esc(usDate(o.batchMadeDate))+'</span>':'')+
-      '</div><div class="ps-tank"><b>'+esc(o.tank||'—')+'</b><span>TANK GAL</span></div></div>'+
+      '<div class="ps-top"><div class="ps-main"><small>'+esc(dept==='prod'?t('productionRole'):t('batchMakerRole'))+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3>'+
+      (bn?'<span class="ps-batch">'+esc(t('batchNumber'))+' '+esc(bn)+'</span>':'')+
+      '</div><div class="ps-tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div></div>'+
       (dept==='prod'
         ?'<div class="ps-pkgs '+(o.jerryEnabled?'four':'three')+'">'+
-          '<div><b>'+esc(o.quart)+'</b><small>QUARTS</small></div>'+
-          '<div><b>'+esc(o.gallon)+'</b><small>1 GAL</small></div>'+
-          '<div><b>'+esc(o.five)+'</b><small>5 GAL</small></div>'+
-          (o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>JERRY 1.25G</small></div>':'')+
+          '<div><b>'+esc(o.quart)+'</b><small>'+esc(t('quarts'))+'</small></div>'+
+          '<div><b>'+esc(o.gallon)+'</b><small>'+esc(t('oneGallon'))+'</small></div>'+
+          '<div><b>'+esc(o.five)+'</b><small>'+esc(t('fiveGallon'))+'</small></div>'+
+          (o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>'+esc(t('jerryCan'))+'</small></div>':'')+
           '</div>'
         :'')+
-      '<div class="ps-note">'+esc(note||(dept==='batch'?'Prepare batch for production.':''))+'</div>'+
-      '<div class="ps-bottom"><span>'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' PRE-CHECK</span><b>'+esc(st)+'</b></div>'+
+      '<div class="ps-note">'+esc(note||(dept==='batch'?t('prepareBatch'):''))+'</div>'+
+      '<div class="ps-bottom"><span>'+((dept==='batch'?o.batchChecked:o.prodChecked)?'✓':'□')+' '+esc(t('precheck'))+'</span><b>'+esc(st)+'</b></div>'+
+      (dept==='prod'&&o.batchMadeDate?'<div class="ps-made-bottom">'+esc(t('batchMadeOn'))+' '+esc(usDate(o.batchMadeDate))+'</div>':'')+
       '</article>'
   }
 
   function section(title,list,dept,cols){
-    return '<section class="ps-section"><div class="ps-section-title">'+esc(title)+' <span>'+list.length+' TASK'+(list.length===1?'':'S')+'</span></div>'+
+    return '<section class="ps-section"><div class="ps-section-title">'+esc(title)+' <span>'+list.length+' '+esc(list.length===1?t('task'):t('taskPlural'))+'</span></div>'+
       '<div class="ps-cards" style="--ps-cols:'+cols+'">'+
-      (list.length?list.map((o,i)=>printCard(o,dept,i)).join(''):'<div class="ps-empty">No work scheduled.</div>')+
+      (list.length?list.map((o,i)=>printCard(o,dept,i)).join(''):'<div class="ps-empty">'+esc(t('noWorkScheduled'))+'</div>')+
       '</div></section>'
   }
 
@@ -629,12 +629,12 @@ function printSheet(mode){
   stage.className='print-stage ps-'+density+' '+(singleDept?'ps-single':'ps-all');
   stage.innerHTML=
     '<div class="ps-sheet">'+
-      '<header class="ps-head"><div><h1>GAMETIME FACTORY DAILY WORK SHEET</h1><p>'+esc(pretty())+'</p></div><strong>'+
-      (mode==='all'?'ALL WORK':mode==='prod'?'PRODUCTION / FILLING':'BATCH MAKER')+
+      '<header class="ps-head"><div><h1>'+esc(t('factorySheet'))+'</h1><p>'+esc(pretty())+'</p></div><strong>'+
+      esc(mode==='all'?t('allWork'):mode==='prod'?t('productionFilling'):t('batchMaker'))+
       '</strong></header>'+
       '<div class="ps-layout">'+
-        (showBatch?section('BATCH MAKER',batch,'batch',bCols):'')+
-        (showProd?section('PRODUCTION / FILLING',prod,'prod',pCols):'')+
+        (showBatch?section(t('batchMaker'),batch,'batch',bCols):'')+
+        (showProd?section(t('productionFilling'),prod,'prod',pCols):'')+
       '</div>'+
     '</div>';
 
@@ -644,7 +644,7 @@ function printSheet(mode){
     window.print();
   }catch(e){
     console.error(e);
-    toast('Print could not open on this device. Try the browser Share / Print option.')
+    toast(t('printError'))
   }
 }
 function showModal(id){$(id).classList.add('show')}function hideModal(id){$(id).classList.remove('show')}
