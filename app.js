@@ -122,7 +122,6 @@ function applyLanguage(){
   staticText('.optional-package span b','addJerry');staticText('.optional-package span small','onlyShowPackage');
   const opts=$('priority')?.options;if(opts&&opts.length>=3){opts[0].textContent=t('normal');opts[1].textContent=t('rush');opts[2].textContent=t('firstThingMorning')}
   document.querySelectorAll('.dialogactions button[data-close]').forEach(b=>{if(b.textContent.trim()!=='✕')b.textContent=t('cancel')});
-  staticText('#qtyModal .qtylabel','actualFilled'); // repaired below because input must remain
   directLabel('qtyInput','actualFilled');
   staticText('#identityModal h2','whoUsing');staticText('#identityModal p','identityHelp');directLabel('deviceNameInput','yourName');if($('deviceNameInput'))$('deviceNameInput').placeholder=t('exampleName');
   staticText('#carryModal .dialoghead h2','moveRemainderNext');staticText('#carryModal .carryhelp','carryHelp');directLabel('carryDate','moveRemainderTo');directLabel('carryQuart','quartsFilled');directLabel('carryGallon','oneFilled');directLabel('carryFive','fiveFilled');directLabel('carryJerry','jerryFilled');
@@ -280,44 +279,52 @@ function currentDay(dept){
 }
 function actual(o,k){return k==='quart'?o.actualQuart:k==='gallon'?o.actualGallon:k==='five'?o.actualFive:o.actualJerry}
 function pkgClass(o,k){const a=actual(o,k),p=num(o[k]);if(a==null)return'';return a>=p?'done':'partial'}
-function pkgCard(o,k,label){
-  const a=actual(o,k),p=num(o[k]),mark=a==null?'':(a>=p?'✓':'◐');
-  return '<div class="pkg '+pkgClass(o,k)+'" data-qty="'+o.id+'" data-key="'+k+'"><span class="pkgmark">'+mark+'</span><b>'+esc(o[k])+'</b><span>'+label+'</span><small>'+(a==null?((k==='five'||k==='jerry')?'Tap when filled':boxes(o[k])+' BOXES • Tap when filled'):'ACTUAL '+a+' / '+p)+'</small></div>';
+function pkgCard(o,k,labelKey){
+  const a=actual(o,k),p=num(o[k]),mark=a==null?'':(a>=p?'✓':'◐'),label=t(labelKey);
+  const extra=a==null?((k==='five'||k==='jerry')?t('tapWhenFilled'):boxes(o[k])+' '+t('boxes')+' • '+t('tapWhenFilled')):t('actual')+' '+a+' / '+p;
+  return '<div class="pkg '+pkgClass(o,k)+'" data-qty="'+o.id+'" data-key="'+k+'"><span class="pkgmark">'+mark+'</span><b>'+esc(o[k])+'</b><span>'+esc(label)+'</span><small>'+esc(extra)+'</small></div>';
 }
 function card(o,dept,i){
-  const checked=dept==='batch'?o.batchChecked:o.prodChecked,st=dept==='batch'?o.batchStatus:o.prodStatus,bn=dept==='prod'?prodBatch(o.batch):o.batch,note=dept==='prod'?o.prodNote:o.batchNote;
-  const prodWaiting=dept==='prod'&&o.batchStatus!=='done';
-  const drag=isManager?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
-  return '<article class="card '+(prodWaiting?'prod-waiting':'')+'"'+drag+'>'+
-    (isManager?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">☰ DRAG TO REORDER</div>':'')+
-    '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>TANK GAL</span></div>'+
-    '<div class="order">'+(dept==='prod'?'FILLING':'BATCH')+' PRIORITY #'+(i+1)+'</div>'+
-    '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(bn?'<span class="batch">BATCH # '+esc(bn)+'</span>':'')+'</div>'+
-    (prodWaiting?'<div class="batchwait">⏳ WAITING FOR BATCH MAKER — Production locked until WORK DONE</div>':'')+
-    (dept==='prod'&&o.batchMadeDate?'<div class="rollinfo">Batch made on '+esc(usDate(o.batchMadeDate))+'</div>':'')+
-    (o.held?'<div class="note"><b>ON HOLD</b></div>':'')+
-    (dept==='prod'?'<div class="qty '+(o.jerryEnabled?'four':'')+'">'+pkgCard(o,'quart','QUARTS')+pkgCard(o,'gallon','1 GALLON')+pkgCard(o,'five','5 GALLON')+(o.jerryEnabled?pkgCard(o,'jerry','JERRY CAN 1.25G'):'')+'</div>'+(note?'<div class="note"><b>Production Note:</b> '+esc(note)+'</div>':''):'<div class="note">'+esc(note||'Prepare batch for production.')+'</div>')+
-    '<label class="precheck '+(checked?'ok ':'')+(prodWaiting?'locked-wait':'')+'" data-check="'+o.id+'" data-dept="'+dept+'" data-waiting="'+(prodWaiting?'1':'0')+'"><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>PRE-CHECK</b><small>'+(dept==='prod'?'Labels • Pallets • Containers / Cans':'All raw materials are available and ready')+'</small></span></label>'+
-    '<div class="status '+statusClass(st)+'">'+statusText(st)+'</div>'+
-    '<div class="actions"><button class="start '+(checked&&!prodWaiting?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>▶ START WORK</button><button class="finish '+(checked&&!prodWaiting?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>✓ WORK DONE</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+(o.held?'RESUME WORK':'PUT ON HOLD')+'</button></div>'+
-    (isManager?'<div class="manage"><button data-edit="'+o.id+'">Edit</button><button data-tohold="'+o.id+'">Move to Hold Line</button><button data-delete="'+o.id+'">Delete</button></div>':'')+
+  const checked=dept==='batch'?o.batchChecked:o.prodChecked,
+        st=dept==='batch'?o.batchStatus:o.prodStatus,
+        bn=dept==='prod'?prodBatch(o.batch):o.batch,
+        note=dept==='prod'?o.prodNote:o.batchNote,
+        prodWaiting=dept==='prod'&&o.batchStatus!=='done',
+        hasMade=dept==='prod'&&!!o.batchMadeDate,
+        drag=isManager?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
+  return '<article class="card '+(prodWaiting?'prod-waiting ':'')+(hasMade?'has-batch-made':'')+'"'+drag+'>'+
+    (isManager?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
+    '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div>'+
+    '<div class="order">'+esc(dept==='prod'?t('filling'):t('batchWord'))+' '+esc(t('priority'))+' #'+(i+1)+'</div>'+
+    '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(bn?'<span class="batch">'+esc(t('batchNumber'))+' '+esc(bn)+'</span>':'')+'</div>'+
+    (prodWaiting?'<div class="batchwait">'+esc(t('waitingBatch'))+'</div>':'')+
+    (o.held?'<div class="note"><b>'+esc(t('onHold'))+'</b></div>':'')+
+    (dept==='prod'
+      ?'<div class="qty '+(o.jerryEnabled?'four':'')+'">'+pkgCard(o,'quart','quarts')+pkgCard(o,'gallon','oneGallon')+pkgCard(o,'five','fiveGallon')+(o.jerryEnabled?pkgCard(o,'jerry','jerryCan'):'')+'</div>'+
+        (note?'<div class="note work-note"><b>'+esc(t('productionNote'))+'</b> '+esc(note)+'</div>':'')
+      :(note?'<div class="note work-note"><b>'+esc(t('batchNote'))+'</b> '+esc(note)+'</div>':'<div class="note">'+esc(t('prepareBatch'))+'</div>'))+
+    '<label class="precheck '+(checked?'ok ':'')+(prodWaiting?'locked-wait':'')+'" data-check="'+o.id+'" data-dept="'+dept+'" data-waiting="'+(prodWaiting?'1':'0')+'"><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>'+esc(t('precheck'))+'</b><small>'+esc(dept==='prod'?t('prodCheckHint'):t('batchCheckHint'))+'</small></span></label>'+
+    '<div class="status '+statusClass(st)+'">'+esc(statusText(st))+'</div>'+
+    '<div class="actions"><button class="start '+(checked&&!prodWaiting?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('startWork'))+'</button><button class="finish '+(checked&&!prodWaiting?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('workDone'))+'</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+esc(o.held?t('resumeWork'):t('putOnHold'))+'</button></div>'+
+    (isManager?'<div class="manage"><button data-edit="'+o.id+'">'+esc(t('edit'))+'</button><button data-tohold="'+o.id+'">'+esc(t('moveToHold'))+'</button><button data-delete="'+o.id+'">'+esc(t('delete'))+'</button></div>':'')+
+    (hasMade?'<div class="batchmade-corner">'+esc(t('batchMadeOn'))+' <b>'+esc(usDate(o.batchMadeDate))+'</b></div>':'')+
     '</article>';
 }
 function render(){
-  $('viewLabel').textContent=isManager?'ALL WORK':view==='prod'?'PRODUCTION / FILLING':'BATCH MAKER';
+  $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):t('batchMaker');
   $('dateLabel').textContent=pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   const batch=currentDay('batch').sort((a,b)=>a.batchOrder-b.batchOrder),prod=currentDay('prod').sort((a,b)=>a.prodOrder-b.prodOrder);
   const visibleIds=new Set((view==='batch'?batch:view==='prod'?prod:[...batch,...prod]).map(o=>o.id));
   $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=isManager?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
-  $('batchCount').textContent=batch.length+' tasks';$('prodCount').textContent=prod.length+' tasks';
-  $('batchList').innerHTML=batch.length?batch.map((o,i)=>card(o,'batch',i)).join(''):'<div class="empty">No Batch Maker work.</div>';
-  $('prodList').innerHTML=prod.length?prod.map((o,i)=>card(o,'prod',i)).join(''):'<div class="empty">No Production work.</div>';
+  $('batchCount').textContent=batch.length+' '+t('tasks');$('prodCount').textContent=prod.length+' '+t('tasks');
+  $('batchList').innerHTML=batch.length?batch.map((o,i)=>card(o,'batch',i)).join(''):'<div class="empty">'+esc(t('noBatchWork'))+'</div>';
+  $('prodList').innerHTML=prod.length?prod.map((o,i)=>card(o,'prod',i)).join(''):'<div class="empty">'+esc(t('noProductionWork'))+'</div>';
   $('batchPanel').style.display=view==='prod'?'none':'';$('prodPanel').style.display=view==='batch'?'none':'';$('board').style.gridTemplateColumns=isManager?'1fr 1fr':'1fr';
   bindDynamic();
 }
 function bindDynamic(){
-  document.querySelectorAll('[data-check]').forEach(el=>el.onclick=async()=>{const o=orders.find(x=>x.id===Number(el.dataset.check)),dept=el.dataset.dept;if(!o)return;if(dept==='prod'&&o.batchStatus!=='done'){toast('Waiting for Batch Maker to complete this batch');return}try{await patchOrder(o.id,{[dept==='batch'?'batch_checked':'prod_checked']:!(dept==='batch'?o.batchChecked:o.prodChecked)})}catch(e){fail(e)}});
+  document.querySelectorAll('[data-check]').forEach(el=>el.onclick=async()=>{const o=orders.find(x=>x.id===Number(el.dataset.check)),dept=el.dataset.dept;if(!o)return;if(dept==='prod'&&o.batchStatus!=='done'){toast(t('waitingBatchToast'));return}try{await patchOrder(o.id,{[dept==='batch'?'batch_checked':'prod_checked']:!(dept==='batch'?o.batchChecked:o.prodChecked)})}catch(e){fail(e)}});
   document.querySelectorAll('[data-action]').forEach(btn=>btn.onclick=()=>handleAction(btn));
   document.querySelectorAll('[data-qty]').forEach(el=>el.onclick=()=>openQty(Number(el.dataset.qty),el.dataset.key));
   if(isManager){
@@ -331,22 +338,22 @@ async function handleAction(btn){
   const id=Number(btn.dataset.id),o=orders.find(x=>x.id===id);if(!o)return;
   try{
     if(btn.dataset.action==='hold'){await patchOrder(id,{held:!o.held});return}
-    const dept=btn.dataset.dept;if(dept==='prod'&&o.batchStatus!=='done'){toast('Waiting for Batch Maker — Production is locked until WORK DONE');return}const checked=dept==='batch'?o.batchChecked:o.prodChecked;if(!checked){toast('Complete PRE-CHECK first');return}
+    const dept=btn.dataset.dept;if(dept==='prod'&&o.batchStatus!=='done'){toast(t('productionLocked'));return}const checked=dept==='batch'?o.batchChecked:o.prodChecked;if(!checked){toast(t('completePrecheck'));return}
     if(btn.dataset.action==='done'&&dept==='prod'){
-      const needed=['quart','gallon','five'].filter(k=>num(o[k])>0);if(o.jerryEnabled&&num(o.jerry)>0)needed.push('jerry');const ok=needed.every(k=>actual(o,k)!=null);if(!ok){toast('Enter actual filled quantity for each planned package first');return}
+      const needed=['quart','gallon','five'].filter(k=>num(o[k])>0);if(o.jerryEnabled&&num(o.jerry)>0)needed.push('jerry');const ok=needed.every(k=>actual(o,k)!=null);if(!ok){toast(t('enterActualFirst'));return}
     }
     await patchOrder(id,{[dept==='batch'?'batch_status':'prod_status']:btn.dataset.action==='start'?'progress':'done'});
   }catch(e){fail(e)}
 }
 function openQty(id,key){
-  if(view!=='prod'&&!isManager)return;const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus!=='done'){toast('Waiting for Batch Maker — quantities are locked');return}qtyState={id,key};
+  if(view!=='prod'&&!isManager)return;const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus!=='done'){toast(t('quantitiesLocked'));return}qtyState={id,key};
   const label=key==='quart'?'Quarts':key==='gallon'?'1 Gallon':key==='five'?'5 Gallon':'Jerry Can 1.25 Gallon',a=actual(o,key),p=num(o[key]);
   $('qtyTitle').textContent=label+' — Actual Filled';$('qtyPlanned').innerHTML='Planned amount: <b>'+p+'</b><br><small>You may enter any number 0 or higher.</small>';$('qtyInput').value=a==null?String(p):String(a);showModal('qtyModal');setTimeout(()=>$('qtyInput').select(),50)
 }
 async function saveQty(){
-  if(!qtyState)return;const raw=$('qtyInput').value.trim(),v=Number(raw);if(raw===''||!Number.isFinite(v)||v<0){toast('Enter a valid number 0 or higher');return}
+  if(!qtyState)return;const raw=$('qtyInput').value.trim(),v=Number(raw);if(raw===''||!Number.isFinite(v)||v<0){toast(t('enterValidNumber'));return}
   const field=qtyState.key==='quart'?'actual_quart':qtyState.key==='gallon'?'actual_gallon':qtyState.key==='five'?'actual_five':'actual_jerry';
-  try{$('saveQtyBtn').disabled=true;await patchOrder(qtyState.id,{[field]:v});hideModal('qtyModal');toast('Actual quantity saved')}catch(e){fail(e)}finally{$('saveQtyBtn').disabled=false}
+  try{$('saveQtyBtn').disabled=true;await patchOrder(qtyState.id,{[field]:v});hideModal('qtyModal');toast(t('actualSaved'))}catch(e){fail(e)}finally{$('saveQtyBtn').disabled=false}
 }
 function carryTomorrow(dateStr){return nextBusinessDateStr(dateStr||iso(selected))}
 function carryValue(id){const raw=$(id).value.trim(),v=Number(raw);return raw!==''&&Number.isFinite(v)&&v>=0?v:null}
