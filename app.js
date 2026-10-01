@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20260928a';
+const BUILD='20261001a';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -35,7 +35,7 @@ const STRINGS={
     addHoldLineItem:'Add Hold Line Item',editHoldLineItem:'Edit Hold Line Item',editWorkOrder:'Edit Work Order',
     productName:'Product Name',batchMakerDate:'Batch Maker Date',productionDate:'Production Date',totalBatchGallons:'Total Batch Gallons',
     normal:'Normal',rush:'Rush',firstThingMorning:'First Thing Morning',autoFillRemaining:'Auto-fill Remaining Gallons Into',
-    addJerry:'Add Jerry Can 1.25 Gallon',onlyShowPackage:'Only show this package on the work order when selected.',
+    addJerry:'Add Jerry Can 1.25 Gallon',onlyShowPackage:'Only show this package on the work order when selected.',catalystOption:'Catalyst — Part 1 + Part 2',catalystHelp:'Show a clear Catalyst warning to Production for this order.',catalystBadge:'⚠ CATALYST — PART 1 + PART 2',
     cancel:'Cancel',saveWorkOrder:'Save Work Order',saving:'Saving…',
     actualQuantity:'Actual Quantity',actualFilled:'Actual amount filled',saveActualQuantity:'Save Actual Quantity',
     whoUsing:'Who is using this device?',identityHelp:'Enter your name once. GameTime will remember it on this browser and automatically attach it to your changes.',
@@ -76,7 +76,7 @@ const STRINGS={
     addHoldLineItem:'Agregar a Línea de Espera',editHoldLineItem:'Editar Línea de Espera',editWorkOrder:'Editar orden',
     productName:'Nombre del producto',batchMakerDate:'Fecha de Preparación',productionDate:'Fecha de Producción',totalBatchGallons:'Galones totales del lote',
     normal:'Normal',rush:'Urgente',firstThingMorning:'Primero en la mañana',autoFillRemaining:'Completar galones restantes en',
-    addJerry:'Agregar Jerry Can de 1.25 galones',onlyShowPackage:'Mostrar este envase solo cuando esté seleccionado.',
+    addJerry:'Agregar Jerry Can de 1.25 galones',onlyShowPackage:'Mostrar este envase solo cuando esté seleccionado.',catalystOption:'Catalizador — Parte 1 + Parte 2',catalystHelp:'Mostrar una advertencia clara de catalizador a Producción para esta orden.',catalystBadge:'⚠ CATALIZADOR — PARTE 1 + PARTE 2',
     cancel:'Cancelar',saveWorkOrder:'Guardar orden',saving:'Guardando…',
     actualQuantity:'Cantidad real',actualFilled:'Cantidad realmente llenada',saveActualQuantity:'Guardar cantidad real',
     whoUsing:'¿Quién está usando este dispositivo?',identityHelp:'Escribe tu nombre una vez. GameTime lo recordará en este navegador y lo agregará automáticamente a tus cambios.',
@@ -120,6 +120,8 @@ function applyLanguage(){
   staticText('.auto > b','autoFillRemaining');
   const ab={five:'fiveGallon',gallon:'oneGallon',quart:'quarts',jerry:'jerryCan'};document.querySelectorAll('[data-auto]').forEach(b=>{if(ab[b.dataset.auto])b.textContent=t(ab[b.dataset.auto])});
   staticText('.optional-package span b','addJerry');staticText('.optional-package span small','onlyShowPackage');
+  if($('catalystOptionTitle'))$('catalystOptionTitle').textContent=t('catalystOption');
+  if($('catalystOptionHelp'))$('catalystOptionHelp').textContent=t('catalystHelp');
   const opts=$('priority')?.options;if(opts&&opts.length>=3){opts[0].textContent=t('normal');opts[1].textContent=t('rush');opts[2].textContent=t('firstThingMorning')}
   if($('editorTitle')){const eo=editingId?orders.find(x=>x.id===editingId):null;$('editorTitle').textContent=editorMode==='hold'?(eo?t('editHoldLineItem'):t('addHoldLineItem')):(eo?t('editWorkOrder'):t('addWorkOrder'))}
   document.querySelectorAll('.dialogactions button[data-close]').forEach(b=>{if(b.textContent.trim()!=='✕')b.textContent=t('cancel')});
@@ -171,7 +173,7 @@ function normalizeLegacy(raw){
       quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),batchNote:o.batchNote||'',prodNote:o.prodNote||'',
       priority:o.priority||'Normal',autoTarget:o.autoTarget||null,batchChecked:!!o.batchChecked,prodChecked:!!o.prodChecked,
       batchStatus:o.batchStatus||'ready',prodStatus:o.prodStatus||'ready',held:!!o.held,
-      actualQuart:o.actual?.quart??null,actualGallon:o.actual?.gallon??null,actualFive:o.actual?.five??null,actualJerry:null,jerryEnabled:false,jerry:'0',
+      actualQuart:o.actual?.quart??null,actualGallon:o.actual?.gallon??null,actualFive:o.actual?.five??null,actualJerry:null,jerryEnabled:false,jerry:'0',catalyst:!!o.catalyst,
       batchOrder:Number(o.batchOrder)||999,prodOrder:Number(o.prodOrder)||999,holdLine:!!o.holdLine,productionOnly:false,carryoverFrom:null,version:1
     });
   }
@@ -179,7 +181,7 @@ function normalizeLegacy(raw){
 }
 function fromRow(r){return{
   id:Number(r.id),date:r.work_date||'',batchDate:r.batch_work_date||r.work_date||'',prodDate:r.prod_work_date||r.work_date||'',batchMadeDate:r.batch_made_date||null,product:r.product||'',batch:r.batch||'',tank:Number(r.tank)||0,
-  quart:String(r.quart??'0'),gallon:String(r.gallon??'0'),five:String(r.five??'0'),jerryEnabled:!!r.jerry_enabled,jerry:String(r.jerry??'0'),batchNote:r.batch_note||'',prodNote:r.prod_note||'',
+  quart:String(r.quart??'0'),gallon:String(r.gallon??'0'),five:String(r.five??'0'),jerryEnabled:!!r.jerry_enabled,jerry:String(r.jerry??'0'),catalyst:!!r.catalyst,batchNote:r.batch_note||'',prodNote:r.prod_note||'',
   priority:r.priority||'Normal',autoTarget:r.auto_target||null,batchChecked:!!r.batch_checked,prodChecked:!!r.prod_checked,
   batchStatus:r.batch_status||'ready',prodStatus:r.prod_status||'ready',held:!!r.held,
   actualQuart:r.actual_quart==null?null:Number(r.actual_quart),actualGallon:r.actual_gallon==null?null:Number(r.actual_gallon),actualFive:r.actual_five==null?null:Number(r.actual_five),actualJerry:r.actual_jerry==null?null:Number(r.actual_jerry),
@@ -188,7 +190,7 @@ function fromRow(r){return{
 }}
 function toRow(o){return{
   id:Number(o.id),work_date:o.holdLine?null:(o.date||o.prodDate||o.batchDate||null),batch_work_date:o.holdLine?null:(o.batchDate||o.date||null),prod_work_date:o.holdLine?null:(o.prodDate||o.date||null),batch_made_date:o.batchMadeDate||null,product:o.product||'',batch:o.batch||'',tank:Number(o.tank)||0,
-  quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),jerry_enabled:!!o.jerryEnabled,jerry:String(o.jerry??'0'),batch_note:o.batchNote||'',prod_note:o.prodNote||'',
+  quart:String(o.quart??'0'),gallon:String(o.gallon??'0'),five:String(o.five??'0'),jerry_enabled:!!o.jerryEnabled,jerry:String(o.jerry??'0'),catalyst:!!o.catalyst,batch_note:o.batchNote||'',prod_note:o.prodNote||'',
   priority:o.priority||'Normal',auto_target:o.autoTarget||null,batch_checked:!!o.batchChecked,prod_checked:!!o.prodChecked,
   batch_status:o.batchStatus||'ready',prod_status:o.prodStatus||'ready',held:!!o.held,
   actual_quart:o.actualQuart==null?null:Number(o.actualQuart),actual_gallon:o.actualGallon==null?null:Number(o.actualGallon),actual_five:o.actualFive==null?null:Number(o.actualFive),actual_jerry:o.actualJerry==null?null:Number(o.actualJerry),
@@ -197,7 +199,7 @@ function toRow(o){return{
   updated_by:actor(),updated_from:isManager?'manager':view
 }}
 function mergeOrder(o){const i=orders.findIndex(x=>x.id===o.id);if(o.deletedAt){if(i>=0)orders.splice(i,1)}else if(i>=0)orders[i]=o;else orders.push(o);cache()}
-function orderSig(list){return JSON.stringify(list.map(o=>[o.id,o.version,o.batchStatus,o.prodStatus,o.batchChecked,o.prodChecked,o.held,o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry,o.jerryEnabled,o.jerry,o.batchOrder,o.prodOrder,o.holdLine,o.productionOnly,o.carryoverFrom,o.batchDate,o.prodDate,o.batchMadeDate,o.date,o.deletedAt]))}
+function orderSig(list){return JSON.stringify(list.map(o=>[o.id,o.version,o.batchStatus,o.prodStatus,o.batchChecked,o.prodChecked,o.held,o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry,o.jerryEnabled,o.jerry,o.catalyst,o.batchOrder,o.prodOrder,o.holdLine,o.productionOnly,o.carryoverFrom,o.batchDate,o.prodDate,o.batchMadeDate,o.date,o.deletedAt]))}
 
 async function fetchOrders(){
   const {data,error}=await db.from('work_orders').select('*').is('deleted_at',null);
@@ -299,7 +301,7 @@ function card(o,dept,i){
     (isManager?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
     '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div>'+
     '<div class="order">'+esc(dept==='prod'?t('filling'):t('batchWord'))+' '+esc(t('priority'))+' #'+(i+1)+'</div>'+
-    '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(bn?'<span class="batch">'+esc(t('batchNumber'))+' '+esc(bn)+'</span>':'')+'</div>'+
+    '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(dept==='prod'&&o.catalyst?'<span class="catalyst-badge">'+esc(t('catalystBadge'))+'</span>':'')+(bn?'<span class="batch">'+esc(t('batchNumber'))+' '+esc(bn)+'</span>':'')+'</div>'+
     (prodWaiting?'<div class="batchwait">'+esc(t('waitingBatch'))+'</div>':'')+
     (o.held?'<div class="note"><b>'+esc(t('onHold'))+'</b></div>':'')+
     (dept==='prod'
@@ -407,7 +409,7 @@ function openEditor(id=null,hold=false){
   $('workDate').value=editorMode==='hold'?'':(o?.batchDate||o?.date||defaultDate);
   $('prodWorkDate').value=editorMode==='hold'?'':(o?.prodDate||o?.date||defaultDate);
   $('dateField').style.display=editorMode==='hold'?'none':'';
-  $('batchNumber').value=o?.batch||'';$('tank').value=o?.tank||'';$('priority').value=o?.priority||'Normal';$('quart').value=o?.quart??'0';$('gallon').value=o?.gallon??'0';$('five').value=o?.five??'0';$('jerryEnabled').checked=!!o?.jerryEnabled;$('jerry').value=o?.jerry??'0';toggleJerryField(false);$('batchNote').value=o?.batchNote||'';$('prodNote').value=o?.prodNote||'';setAuto(o?.autoTarget||null);showModal('editorModal')
+  $('batchNumber').value=o?.batch||'';$('tank').value=o?.tank||'';$('priority').value=o?.priority||'Normal';$('quart').value=o?.quart??'0';$('gallon').value=o?.gallon??'0';$('five').value=o?.five??'0';$('jerryEnabled').checked=!!o?.jerryEnabled;$('catalystEnabled').checked=!!o?.catalyst;$('jerry').value=o?.jerry??'0';toggleJerryField(false);$('batchNote').value=o?.batchNote||'';$('prodNote').value=o?.prodNote||'';setAuto(o?.autoTarget||null);showModal('editorModal')
 }
 function setAuto(t){
   if(t==='jerry'&&!$('jerryEnabled').checked)t=null;
@@ -464,14 +466,14 @@ async function saveEditor(){
   }
   saveBusy=true;$('saveOrderBtn').disabled=true;$('saveOrderBtn').textContent=t('saving');
   try{
-    const plan={work_date:editorMode==='hold'?null:batchDate,batch_work_date:editorMode==='hold'?null:batchDate,prod_work_date:editorMode==='hold'?null:prodDate,hold_line:editorMode==='hold',product,batch:batchNo,tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
+    const plan={work_date:editorMode==='hold'?null:batchDate,batch_work_date:editorMode==='hold'?null:batchDate,prod_work_date:editorMode==='hold'?null:prodDate,hold_line:editorMode==='hold',product,batch:batchNo,tank:num($('tank').value),priority:$('priority').value,quart:$('quart').value.trim()||'0',gallon:$('gallon').value.trim()||'0',five:$('five').value.trim()||'0',jerry_enabled:$('jerryEnabled').checked,jerry:$('jerryEnabled').checked?($('jerry').value.trim()||'0'):'0',catalyst:$('catalystEnabled').checked,batch_note:$('batchNote').value.trim(),prod_note:$('prodNote').value.trim(),auto_target:autoTarget};
     if(editingId){
       const res=await patchOrder(editingId,plan,editingVersion);
       if(res.conflict){await reconcile();hideModal('editorModal');toast('This order changed on another manager screen. Latest version loaded.');return}
     }else{
       const sameBatchDate=orders.filter(o=>!o.holdLine&&o.batchDate===batchDate),
             sameProdDate=orders.filter(o=>!o.holdLine&&o.prodDate===prodDate),
-            o={id:nextId(),date:batchDate,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate,prodDate,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameBatchDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameProdDate.map(x=>x.prodOrder))+1};
+            o={id:nextId(),date:batchDate,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,catalyst:plan.catalyst,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate,prodDate,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameBatchDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameProdDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
     hideModal('editorModal');if(editorMode!=='hold')selected=new Date(batchDate+'T12:00:00');render();toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
@@ -574,7 +576,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20260928a':'batch-maker.html?build=20260928a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261001a':'batch-maker.html?build=20261001a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
@@ -602,7 +604,7 @@ function printSheet(mode){
     const note=dept==='prod'?o.prodNote:o.batchNote;
     const st=statusText(dept==='batch'?o.batchStatus:o.prodStatus).replace(/[✓●○]/g,'').trim();
     return '<article class="ps-card">'+
-      '<div class="ps-top"><div class="ps-main"><small>'+esc(dept==='prod'?t('productionRole'):t('batchMakerRole'))+' #'+(i+1)+'</small><h3>'+esc(o.product)+'</h3>'+
+      '<div class="ps-top"><div class="ps-main"><small>'+esc(dept==='prod'?t('productionRole'):t('batchMakerRole'))+' #'+(i+1)+'</small><h3>'+esc(o.product)+(dept==='prod'&&o.catalyst?' <span class="ps-catalyst">'+esc(t('catalystBadge'))+'</span>':'')+'</h3>'+
       (bn?'<span class="ps-batch">'+esc(t('batchNumber'))+' '+esc(bn)+'</span>':'')+
       '</div><div class="ps-tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div></div>'+
       (dept==='prod'
