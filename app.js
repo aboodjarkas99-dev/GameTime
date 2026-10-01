@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20261001a';
+const BUILD='20261001b';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -35,7 +35,7 @@ const STRINGS={
     addHoldLineItem:'Add Hold Line Item',editHoldLineItem:'Edit Hold Line Item',editWorkOrder:'Edit Work Order',
     productName:'Product Name',batchMakerDate:'Batch Maker Date',productionDate:'Production Date',totalBatchGallons:'Total Batch Gallons',
     normal:'Normal',rush:'Rush',firstThingMorning:'First Thing Morning',autoFillRemaining:'Auto-fill Remaining Gallons Into',
-    addJerry:'Add Jerry Can 1.25 Gallon',onlyShowPackage:'Only show this package on the work order when selected.',catalystOption:'Catalyst — Part 1 + Part 2',catalystHelp:'Show a clear Catalyst warning to Production for this order.',catalystBadge:'⚠ CATALYST — PART 1 + PART 2',
+    addJerry:'Add Jerry Can 1.25 Gallon',onlyShowPackage:'Only show this package on the work order when selected.',catalystOption:'Catalyst',catalystHelp:'Mark this Production order as containing Catalyst.',catalystBadge:'CATALYST',
     cancel:'Cancel',saveWorkOrder:'Save Work Order',saving:'Saving…',
     actualQuantity:'Actual Quantity',actualFilled:'Actual amount filled',saveActualQuantity:'Save Actual Quantity',
     whoUsing:'Who is using this device?',identityHelp:'Enter your name once. GameTime will remember it on this browser and automatically attach it to your changes.',
@@ -76,7 +76,7 @@ const STRINGS={
     addHoldLineItem:'Agregar a Línea de Espera',editHoldLineItem:'Editar Línea de Espera',editWorkOrder:'Editar orden',
     productName:'Nombre del producto',batchMakerDate:'Fecha de Preparación',productionDate:'Fecha de Producción',totalBatchGallons:'Galones totales del lote',
     normal:'Normal',rush:'Urgente',firstThingMorning:'Primero en la mañana',autoFillRemaining:'Completar galones restantes en',
-    addJerry:'Agregar Jerry Can de 1.25 galones',onlyShowPackage:'Mostrar este envase solo cuando esté seleccionado.',catalystOption:'Catalizador — Parte 1 + Parte 2',catalystHelp:'Mostrar una advertencia clara de catalizador a Producción para esta orden.',catalystBadge:'⚠ CATALIZADOR — PARTE 1 + PARTE 2',
+    addJerry:'Agregar Jerry Can de 1.25 galones',onlyShowPackage:'Mostrar este envase solo cuando esté seleccionado.',catalystOption:'Catalizador',catalystHelp:'Marcar esta orden de Producción como que contiene catalizador.',catalystBadge:'CATALIZADOR',
     cancel:'Cancelar',saveWorkOrder:'Guardar orden',saving:'Guardando…',
     actualQuantity:'Cantidad real',actualFilled:'Cantidad realmente llenada',saveActualQuantity:'Guardar cantidad real',
     whoUsing:'¿Quién está usando este dispositivo?',identityHelp:'Escribe tu nombre una vez. GameTime lo recordará en este navegador y lo agregará automáticamente a tus cambios.',
@@ -576,7 +576,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261001a':'batch-maker.html?build=20261001a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261001b':'batch-maker.html?build=20261001b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
