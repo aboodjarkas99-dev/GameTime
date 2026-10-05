@@ -354,10 +354,10 @@ async function initialLoad(){
     setSync('syncing','SYNCING');
     const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(cached))orders=cached;
     render();
-    let cloud=await fetchOrders();cloud=await importLegacyIfNeeded(cloud);orders=cloud;cache();
+    const cloud=await fetchOrders();orders=cloud;cache();
     logs=await fetchLogs();render();subscribeLive();setSync('live','LIVE');
     reconcileTimer=setInterval(reconcile,4000);
-  }catch(e){console.error(e);setSync('offline','OFFLINE');toast('Cloud connection problem — retrying');setTimeout(initialLoad,3500)}
+  }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
 }
 async function reconcile(){
   if(!navigator.onLine){setSync('offline','OFFLINE');return}
@@ -443,6 +443,7 @@ function card(o,dept,i){
         prodWaiting=dept==='prod'&&o.batchStatus!=='done',
         hasMade=dept==='prod'&&!!o.batchMadeDate,
         resultDate=dept==='batch'?o.batchDate:o.prodDate,
+        canAct=isManager||(profile?.role==='batch'&&dept==='batch')||(profile?.role==='prod'&&dept==='prod'),
         drag=isManager&&!isGlobalSearch()?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
   return '<article class="card '+(prodWaiting?'prod-waiting ':'')+(hasMade?'has-batch-made':'')+'"'+drag+'>'+
     (isManager&&!isGlobalSearch()?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
@@ -455,20 +456,20 @@ function card(o,dept,i){
       ?'<div class="qty '+(o.jerryEnabled?'four':'')+'">'+pkgCard(o,'quart','quarts')+pkgCard(o,'gallon','oneGallon')+pkgCard(o,'five','fiveGallon')+(o.jerryEnabled?pkgCard(o,'jerry','jerryCan'):'')+'</div>'+
         (note?'<div class="note work-note"><b>'+esc(t('productionNote'))+'</b> '+esc(note)+'</div>':'')
       :(note?'<div class="note work-note"><b>'+esc(t('batchNote'))+'</b> '+esc(note)+'</div>':'<div class="note">'+esc(t('prepareBatch'))+'</div>'))+
-    '<label class="precheck '+(checked?'ok ':'')+(prodWaiting?'locked-wait':'')+'" data-check="'+o.id+'" data-dept="'+dept+'" data-waiting="'+(prodWaiting?'1':'0')+'"><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>'+esc(t('precheck'))+'</b><small>'+esc(dept==='prod'?t('prodCheckHint'):t('batchCheckHint'))+'</small></span></label>'+
+    '<label class="precheck '+(checked?'ok ':'')+(prodWaiting?'locked-wait ':'')+(!canAct?'readonly-control':'')+'" '+(canAct?'data-check="'+o.id+'" data-dept="'+dept+'" data-waiting="'+(prodWaiting?'1':'0')+'"':'')+'><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>'+esc(t('precheck'))+'</b><small>'+esc(dept==='prod'?t('prodCheckHint'):t('batchCheckHint'))+'</small></span></label>'+
     '<div class="status '+statusClass(st)+'">'+esc(statusText(st))+'</div>'+
-    '<div class="actions"><button class="start '+(checked&&!prodWaiting?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('startWork'))+'</button><button class="finish '+(checked&&!prodWaiting?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('workDone'))+'</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+esc(o.held?t('resumeWork'):t('putOnHold'))+'</button></div>'+
+    (canAct?'<div class="actions"><button class="start '+(checked&&!prodWaiting?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('startWork'))+'</button><button class="finish '+(checked&&!prodWaiting?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('workDone'))+'</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+esc(o.held?t('resumeWork'):t('putOnHold'))+'</button></div>':'<div class="readonlytag inline-readonly">'+esc(t('readOnly'))+'</div>')+
     (isManager?'<div class="manage"><button data-edit="'+o.id+'">'+esc(t('edit'))+'</button><button data-tohold="'+o.id+'">'+esc(t('moveToHold'))+'</button><button data-delete="'+o.id+'">'+esc(t('delete'))+'</button></div>':'')+
     (hasMade?'<div class="batchmade-corner">'+esc(t('batchMadeOn'))+' <b>'+esc(usDate(o.batchMadeDate))+'</b></div>':'')+
     '</article>';
 }
 function render(){
-  $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):t('batchMaker');
+  $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):t('readOnly');
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   const batch=departmentList('batch'),prod=departmentList('prod');
   const visibleIds=new Set((view==='batch'?batch:view==='prod'?prod:[...batch,...prod]).map(o=>o.id));
-  $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=isManager?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
+  $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=(isManager||view==='all')?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
   $('batchCount').textContent=batch.length+' '+t('tasks');$('prodCount').textContent=prod.length+' '+t('tasks');
   $('batchList').innerHTML=batch.length?batch.map((o,i)=>card(o,'batch',i)).join(''):'<div class="empty">'+esc(t('noBatchWork'))+'</div>';
   $('prodList').innerHTML=prod.length?prod.map((o,i)=>card(o,'prod',i)).join(''):'<div class="empty">'+esc(t('noProductionWork'))+'</div>';
