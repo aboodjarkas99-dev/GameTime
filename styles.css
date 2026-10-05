@@ -475,3 +475,46 @@
   .analytics-values{grid-column:3;grid-row:1;text-align:right}
   .analytics-product{grid-column:2;grid-row:1}
 }
+
+/* SECURE V2 AUTH */
+.authscreen{
+  position:fixed;inset:0;z-index:9999;background:#0f172a;
+  display:flex;align-items:center;justify-content:center;padding:18px
+}
+.authscreen.hidden{display:none}
+.authcard{
+  width:min(430px,100%);background:#fff;border-radius:16px;padding:22px;
+  box-shadow:0 24px 70px rgba(0,0,0,.35)
+}
+.authbrand{font-size:10px;font-weight:1000;letter-spacing:.12em;color:#475569}
+.authcard h1{margin:5px 0 3px;font-size:25px;color:#111827}
+.authsub{margin:0 0 16px;color:#64748b;font-size:11px;line-height:1.4}
+.authtabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#e2e8f0;border-radius:9px;padding:4px;margin-bottom:12px}
+.authtabs button{border:0;background:transparent;border-radius:7px;padding:9px;font-weight:900;font-size:10px;color:#475569}
+.authtabs button.active{background:#fff;color:#111827;box-shadow:0 1px 4px rgba(15,23,42,.12)}
+.authpane{display:grid;gap:9px}
+.authpane label,.staffcreate label{font-size:8px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:.04em}
+.authpane input,.staffcreate input,.staffcreate select{
+  width:100%;box-sizing:border-box;margin-top:4px;border:1px solid #cbd5e1;border-radius:8px;
+  min-height:42px;padding:9px 10px;background:#fff;color:#111827;font-size:13px
+}
+.authprimary{min-height:43px;border-radius:8px;border:0;font-weight:900}
+.authlink{border:0;background:transparent;color:#2563eb;padding:5px;font-size:9px;font-weight:900}
+.setup-pane{border-top:1px solid #e2e8f0;padding-top:10px}
+.setupnote{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;font-size:9px;font-weight:800}
+.authmessage{min-height:18px;margin-top:8px;font-size:9px;font-weight:800;color:#166534}
+.authmessage.bad{color:#b91c1c}
+.staffdialog{width:min(760px,100%)}
+.staffcreate{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr auto;gap:7px;align-items:end;padding:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:8px}
+.staffcreate button{min-height:42px;border:0;border-radius:8px;padding:8px 12px;font-weight:900}
+.stafflist{display:grid;gap:6px;max-height:55vh;overflow:auto}
+.staffrow{display:flex;justify-content:space-between;align-items:center;border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;background:#fff}
+.staffrow b{display:block;font-size:11px}
+.staffrow small{display:block;margin-top:2px;font-size:8px;color:#64748b;font-weight:800}
+.readonly-control{opacity:.72;cursor:not-allowed}
+.inline-readonly{position:static;display:inline-block;margin-top:6px}
+@media(max-width:720px){
+  .authcard{padding:17px;border-radius:12px}
+  .staffcreate{grid-template-columns:1fr}
+  .staffcreate button{width:100%}
+}
