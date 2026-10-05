@@ -1,13 +1,15 @@
-const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
-const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20261005b';
+const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
+const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
+const BUILD='SECURE_V2_20261005a';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
-const params=new URLSearchParams(location.search);
-const view=params.get('view')||'all';
-const isManager=view==='all';
-const CACHE_KEY='gametime_cloud_cache_v1';
+let view='all';
+let isManager=false;
+let authUser=null;
+let profile=null;
+let authStarting=false;
+const CACHE_KEY='gametime_secure_v2_cache';
 const LEGACY_KEY='gametime_factory_orders_v2';
 const DEVICE_KEY='gametime_device_id';
 const NAME_KEY='gametime_device_name';
@@ -605,7 +607,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261005b':'batch-maker.html?build=20261005b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261005a':'batch-maker.html?build=SECURE_V2_20261005a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
