@@ -356,7 +356,7 @@ async function initialLoad(){
     render();
     const cloud=await fetchOrders();orders=cloud;cache();
     logs=await fetchLogs();render();subscribeLive();setSync('live','LIVE');
-    reconcileTimer=setInterval(reconcile,4000);
+    if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
 }
 async function reconcile(){
@@ -897,18 +897,50 @@ function tick(){$('clock').textContent=new Date().toLocaleTimeString(locale(),{h
 if($('langToggle'))$('langToggle').onclick=()=>setLanguage(lang==='en'?'es':'en');
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
-$('dateLabel').onclick=openMonth;$('search').oninput=render;$('addBtn').onclick=()=>openEditor(null,false);if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=openMonthlyAnalytics;if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);$('holdLineBtn').onclick=()=>openDrawer('holdline');
-$('shareProd').onclick=()=>shareDept('prod');$('shareBatch').onclick=()=>shareDept('batch');$('currentUser').onclick=openIdentity;$('saveDeviceName').onclick=saveIdentity;document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>openDrawer(b.dataset.drawer));
-$('closeDrawer').onclick=closeDrawer;$('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
-$('saveQtyBtn').onclick=saveQty;$('saveCarryBtn').onclick=saveCarry;$('saveOrderBtn').onclick=saveEditor;document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTarget===b.dataset.auto?null:b.dataset.auto));
-for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;$('jerryEnabled').onchange=()=>toggleJerryField(true);
-$('workDate').onchange=()=>{
-  if(isWeekendDateStr($('workDate').value))toast(t('weekendOff'));
-};
+$('dateLabel').onclick=openMonth;
+$('search').oninput=render;
+$('addBtn').onclick=()=>openEditor(null,false);
+if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=openMonthlyAnalytics;
+if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
+if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;
+if($('staffBtn'))$('staffBtn').onclick=openStaff;
+if($('createStaffBtn'))$('createStaffBtn').onclick=createStaff;
+$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);
+$('holdLineBtn').onclick=()=>openDrawer('holdline');
+$('shareProd').onclick=()=>shareDept('prod');
+$('shareBatch').onclick=()=>shareDept('batch');
+$('currentUser').onclick=signOutSecure;
+
+if($('authManagerTab'))$('authManagerTab').onclick=()=>switchAuthPane('manager');
+if($('authEmployeeTab'))$('authEmployeeTab').onclick=()=>switchAuthPane('employee');
+if($('showSetupBtn'))$('showSetupBtn').onclick=()=>switchAuthPane('setup');
+if($('backToLoginBtn'))$('backToLoginBtn').onclick=()=>switchAuthPane('manager');
+if($('managerLoginBtn'))$('managerLoginBtn').onclick=managerLogin;
+if($('employeeLoginBtn'))$('employeeLoginBtn').onclick=employeeLogin;
+if($('createManagerBtn'))$('createManagerBtn').onclick=createFirstManager;
+if($('loginPassword'))$('loginPassword').onkeydown=e=>{if(e.key==='Enter')managerLogin()};
+if($('employeePinLogin'))$('employeePinLogin').onkeydown=e=>{if(e.key==='Enter')employeeLogin()};
+
+document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>openDrawer(b.dataset.drawer));
+$('closeDrawer').onclick=closeDrawer;
+$('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));
+$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};
+$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
+$('saveQtyBtn').onclick=saveQty;
+$('saveCarryBtn').onclick=saveCarry;
+$('saveOrderBtn').onclick=saveEditor;
+document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTarget===b.dataset.auto?null:b.dataset.auto));
+for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;
+for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;
+$('jerryEnabled').onchange=()=>toggleJerryField(true);
+$('workDate').onchange=()=>{if(isWeekendDateStr($('workDate').value))toast(t('weekendOff'))};
 $('prodWorkDate').onchange=()=>{if(isWeekendDateStr($('prodWorkDate').value))toast(t('weekendOff'))};
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}};
-window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
-window.addEventListener('online',()=>{setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});window.addEventListener('offline',()=>setSync('offline','OFFLINE'));document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcile()});
 
-applyLanguage();tick();setInterval(tick,30000);render();ensureIdentity();initialLoad();
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
+window.addEventListener('online',()=>{if(!authUser)return;setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});
+window.addEventListener('offline',()=>{if(authUser)setSync('offline','OFFLINE')});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authUser)reconcile()});
+
+tick();setInterval(tick,30000);secureStart();
