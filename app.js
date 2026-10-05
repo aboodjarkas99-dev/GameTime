@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20261005a';
+const BUILD='20261005b';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -16,7 +16,7 @@ const STRINGS={
   en:{
     setYourName:'Set Your Name',manager:'Manager',productionRole:'Production',batchMakerRole:'Batch Maker',
     allWork:'ALL WORK',productionFilling:'PRODUCTION / FILLING',batchMaker:'BATCH MAKER',
-    previous:'← Previous',next:'Next →',searchPlaceholder:'Search ALL dates — Product or Batch #',allDates:'ALL DATES',searchResults:'Search Results',holdMatches:'Hold Line Matches',printSavePdf:'Print / Save PDF',holdLine:'▣ HOLD LINE',addWorkOrder:'+ Add Work Order',
+    previous:'← Previous',next:'Next →',searchPlaceholder:'Search ALL dates — Product or Batch #',allDates:'ALL DATES',searchResults:'Search Results',holdMatches:'Hold Line Matches',monthlyChart:'▥ Monthly Chart',monthlyChartTitle:'Monthly Production Chart',month:'Month',showChart:'Show Chart',chartLoading:'Loading monthly production…',chartNoData:'No production recorded for this month.',totalGallons:'Total Gallons',products:'Products',batches:'Batches',ofMonth:'of month',gallons:'gal',printSavePdf:'Print / Save PDF',holdLine:'▣ HOLD LINE',addWorkOrder:'+ Add Work Order',
     sendBoard:'Send work board to employees',sendProduction:'↗ Send to Production',sendBatchMaker:'↗ Send to Batch Maker',liveActivity:'● Live Activity',unfinishedQueue:'☰ Unfinished Queue',
     workOrders:'Work Orders',batchTasks:'Batch Tasks',productionTasks:'Production Tasks',completed:'Completed',tasks:'tasks',
     noBatchWork:'No Batch Maker work.',noProductionWork:'No Production work.',
@@ -57,7 +57,7 @@ const STRINGS={
   es:{
     setYourName:'Pon tu nombre',manager:'Gerente',productionRole:'Producción',batchMakerRole:'Preparación',
     allWork:'TODO EL TRABAJO',productionFilling:'PRODUCCIÓN / LLENADO',batchMaker:'PREPARACIÓN DE LOTES',
-    previous:'← Anterior',next:'Siguiente →',searchPlaceholder:'Buscar en TODAS las fechas — Producto o lote #',allDates:'TODAS LAS FECHAS',searchResults:'Resultados de búsqueda',holdMatches:'Coincidencias en Línea de Espera',printSavePdf:'Imprimir / Guardar PDF',holdLine:'▣ LÍNEA DE ESPERA',addWorkOrder:'+ Agregar orden',
+    previous:'← Anterior',next:'Siguiente →',searchPlaceholder:'Buscar en TODAS las fechas — Producto o lote #',allDates:'TODAS LAS FECHAS',searchResults:'Resultados de búsqueda',holdMatches:'Coincidencias en Línea de Espera',monthlyChart:'▥ Gráfica mensual',monthlyChartTitle:'Gráfica mensual de producción',month:'Mes',showChart:'Mostrar gráfica',chartLoading:'Cargando producción mensual…',chartNoData:'No hay producción registrada para este mes.',totalGallons:'Galones totales',products:'Productos',batches:'Lotes',ofMonth:'del mes',gallons:'gal',printSavePdf:'Imprimir / Guardar PDF',holdLine:'▣ LÍNEA DE ESPERA',addWorkOrder:'+ Agregar orden',
     sendBoard:'Enviar tablero a empleados',sendProduction:'↗ Enviar a Producción',sendBatchMaker:'↗ Enviar a Preparación',liveActivity:'● Actividad en vivo',unfinishedQueue:'☰ Trabajo pendiente',
     workOrders:'Órdenes',batchTasks:'Tareas de lotes',productionTasks:'Tareas de producción',completed:'Completadas',tasks:'tareas',
     noBatchWork:'No hay trabajo de preparación.',noProductionWork:'No hay trabajo de producción.',
@@ -122,6 +122,10 @@ function applyLanguage(){
   staticText('.optional-package span b','addJerry');staticText('.optional-package span small','onlyShowPackage');
   if($('catalystOptionTitle'))$('catalystOptionTitle').textContent=t('catalystOption');
   if($('catalystOptionHelp'))$('catalystOptionHelp').textContent=t('catalystHelp');
+  if($('monthlyChartBtn'))$('monthlyChartBtn').textContent=t('monthlyChart');
+  if($('analyticsTitle'))$('analyticsTitle').textContent=t('monthlyChartTitle');
+  directLabel('analyticsMonth','month');
+  if($('analyticsLoadBtn'))$('analyticsLoadBtn').textContent=t('showChart');
   const opts=$('priority')?.options;if(opts&&opts.length>=3){opts[0].textContent=t('normal');opts[1].textContent=t('rush');opts[2].textContent=t('firstThingMorning')}
   if($('editorTitle')){const eo=editingId?orders.find(x=>x.id===editingId):null;$('editorTitle').textContent=editorMode==='hold'?(eo?t('editHoldLineItem'):t('addHoldLineItem')):(eo?t('editWorkOrder'):t('addWorkOrder'))}
   document.querySelectorAll('.dialogactions button[data-close]').forEach(b=>{if(b.textContent.trim()!=='✕')b.textContent=t('cancel')});
@@ -133,6 +137,7 @@ function setLanguage(next){
   lang=next==='es'?'es':'en';localStorage.setItem(LANG_KEY,lang);applyLanguage();render();
   if($('monthModal')?.classList.contains('show'))renderMonth();
   if($('drawerBackdrop')?.classList.contains('show'))openDrawer($('drawerBackdrop').dataset.type);
+  if($('analyticsModal')?.classList.contains('show'))loadMonthlyAnalytics();
 }
 let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
@@ -600,7 +605,84 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261005a':'batch-maker.html?build=20261005a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261005b':'batch-maker.html?build=20261005b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+
+function monthBounds(monthValue){
+  const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
+  if(!m)return null;
+  const y=Number(m[1]),mo=Number(m[2]),start=m[1]+'-'+m[2]+'-01';
+  const next=new Date(y,mo,1);
+  return {start,next:iso(next)}
+}
+function actualGallons(q,g,f,j){
+  return (Number(q)||0)*.25+(Number(g)||0)+(Number(f)||0)*5+(Number(j)||0)*1.25
+}
+function addAnalyticsRow(map,product,gallons,orderId){
+  if(!(gallons>0))return;
+  const name=(product||'').trim()||'Unnamed';
+  const key=name.toLowerCase();
+  if(!map.has(key))map.set(key,{product:name,gallons:0,batches:new Set()});
+  const row=map.get(key);row.gallons+=gallons;if(orderId!=null)row.batches.add(String(orderId))
+}
+async function loadMonthlyAnalytics(){
+  if(!isManager)return;
+  const monthValue=$('analyticsMonth').value,bounds=monthBounds(monthValue);if(!bounds)return;
+  const body=$('analyticsBody');body.innerHTML='<div class="analytics-empty">'+esc(t('chartLoading'))+'</div>';
+  try{
+    const {data:progress,error}=await db.from('work_order_daily_progress')
+      .select('order_id,work_date,product,actual_quart,actual_gallon,actual_five,actual_jerry')
+      .gte('work_date',bounds.start).lt('work_date',bounds.next);
+    if(error)throw error;
+
+    const grouped=new Map();
+    for(const r of progress||[]){
+      addAnalyticsRow(grouped,r.product,actualGallons(r.actual_quart,r.actual_gallon,r.actual_five,r.actual_jerry),r.order_id)
+    }
+
+    for(const o of orders){
+      if(o.holdLine||!o.prodDate||o.prodDate<bounds.start||o.prodDate>=bounds.next)continue;
+      const hasActual=[o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry].some(v=>v!=null);
+      let gal=0;
+      if(hasActual)gal=actualGallons(o.actualQuart,o.actualGallon,o.actualFive,o.actualJerry);
+      else if(o.prodStatus==='done')gal=Number(o.tank)||0;
+      addAnalyticsRow(grouped,o.product,gal,o.id)
+    }
+
+    const rows=[...grouped.values()].sort((a,b)=>b.gallons-a.gallons||a.product.localeCompare(b.product));
+    const total=rows.reduce((s,r)=>s+r.gallons,0);
+    const batchIds=new Set();rows.forEach(r=>r.batches.forEach(id=>batchIds.add(id)));
+    if(!rows.length||total<=0){body.innerHTML='<div class="analytics-empty">'+esc(t('chartNoData'))+'</div>';return}
+
+    const max=Math.max(...rows.map(r=>r.gallons),1);
+    body.innerHTML=
+      '<div class="analytics-summary">'+
+        '<div><span>'+esc(t('totalGallons'))+'</span><b>'+total.toLocaleString(locale(),{maximumFractionDigits:2})+'</b></div>'+
+        '<div><span>'+esc(t('products'))+'</span><b>'+rows.length+'</b></div>'+
+        '<div><span>'+esc(t('batches'))+'</span><b>'+batchIds.size+'</b></div>'+
+      '</div>'+
+      '<div class="analytics-chart">'+rows.map((r,i)=>{
+        const pct=total?100*r.gallons/total:0,bar=100*r.gallons/max;
+        return '<div class="analytics-row">'+
+          '<div class="analytics-rank">'+(i+1)+'</div>'+
+          '<div class="analytics-product"><b>'+esc(r.product)+'</b><small>'+r.batches.size+' '+esc(t('batches'))+'</small></div>'+
+          '<div class="analytics-barwrap"><div class="analytics-bar" style="width:'+bar.toFixed(2)+'%"></div></div>'+
+          '<div class="analytics-values"><b>'+r.gallons.toLocaleString(locale(),{maximumFractionDigits:2})+' '+esc(t('gallons'))+'</b><strong>'+pct.toFixed(1)+'%</strong><small>'+esc(t('ofMonth'))+'</small></div>'+
+        '</div>'
+      }).join('')+'</div>'+
+      '<div class="analytics-table"><table><thead><tr><th>#</th><th>'+esc(t('products'))+'</th><th>'+esc(t('totalGallons'))+'</th><th>'+esc(t('batches'))+'</th><th>%</th></tr></thead><tbody>'+
+      rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(r.product)+'</td><td>'+r.gallons.toLocaleString(locale(),{maximumFractionDigits:2})+'</td><td>'+r.batches.size+'</td><td>'+((100*r.gallons/total).toFixed(1))+'%</td></tr>').join('')+
+      '</tbody></table></div>';
+  }catch(e){
+    console.error(e);body.innerHTML='<div class="analytics-empty">'+esc(lang==='es'?'No se pudo cargar la gráfica.':'Could not load the chart.')+'</div>'
+  }
+}
+function openMonthlyAnalytics(){
+  if(!isManager)return;
+  const base=iso(selected).slice(0,7);
+  $('analyticsMonth').value=base;
+  showModal('analyticsModal');
+  loadMonthlyAnalytics()
+}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
@@ -694,7 +776,7 @@ function tick(){$('clock').textContent=new Date().toLocaleTimeString(locale(),{h
 if($('langToggle'))$('langToggle').onclick=()=>setLanguage(lang==='en'?'es':'en');
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
-$('dateLabel').onclick=openMonth;$('search').oninput=render;$('addBtn').onclick=()=>openEditor(null,false);$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);$('holdLineBtn').onclick=()=>openDrawer('holdline');
+$('dateLabel').onclick=openMonth;$('search').oninput=render;$('addBtn').onclick=()=>openEditor(null,false);if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=openMonthlyAnalytics;if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);$('holdLineBtn').onclick=()=>openDrawer('holdline');
 $('shareProd').onclick=()=>shareDept('prod');$('shareBatch').onclick=()=>shareDept('batch');$('currentUser').onclick=openIdentity;$('saveDeviceName').onclick=saveIdentity;document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>openDrawer(b.dataset.drawer));
 $('closeDrawer').onclick=closeDrawer;$('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
