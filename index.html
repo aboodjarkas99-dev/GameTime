@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20261005a">
+<link rel="stylesheet" href="styles.css?v=20261005b">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -36,6 +36,7 @@
       </div>
     </div>
     <div class="quickactions">
+      <button id="monthlyChartBtn">▥ Monthly Chart</button>
       <button data-drawer="activity">● Live Activity</button>
       <button data-drawer="queue">☰ Unfinished Queue</button>
       <button data-drawer="holdline">▣ HOLD LINE</button>
@@ -91,6 +92,17 @@
       <label class="full">Production Note<input id="prodNote"></label>
     </div>
     <div class="dialogactions"><button data-close="editorModal">Cancel</button><button id="saveOrderBtn" class="primary">Save Work Order</button></div>
+  </div>
+</div>
+
+<div class="modal" id="analyticsModal">
+  <div class="dialog analyticsdialog">
+    <div class="dialoghead"><h2 id="analyticsTitle">Monthly Production Chart</h2><button data-close="analyticsModal">✕</button></div>
+    <div class="analyticscontrols">
+      <label id="analyticsMonthLabel">Month<input id="analyticsMonth" type="month"></label>
+      <button id="analyticsLoadBtn" class="primary">Show Chart</button>
+    </div>
+    <div id="analyticsBody" class="analyticsbody"></div>
   </div>
 </div>
 
@@ -150,9 +162,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20261005a"></script>
+<script src="app.js?v=20261005b"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20261005a').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20261005b').catch(()=>{});}
 </script>
 </body>
 </html>
