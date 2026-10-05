@@ -7,10 +7,47 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20261005b">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261005a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
+<div id="authScreen" class="authscreen">
+  <div class="authcard">
+    <div class="authbrand">GAMETIME SECURE V2</div>
+    <h1>Factory Sign In</h1>
+    <p class="authsub">Secure company access. Your role controls what you can change.</p>
+
+    <div class="authtabs">
+      <button id="authManagerTab" class="active" type="button">Manager</button>
+      <button id="authEmployeeTab" type="button">Employee PIN</button>
+    </div>
+
+    <div id="managerLoginPane" class="authpane">
+      <label>Email<input id="loginEmail" type="email" autocomplete="username"></label>
+      <label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label>
+      <button id="managerLoginBtn" class="primary authprimary" type="button">Sign In</button>
+      <button id="showSetupBtn" class="authlink" type="button">First-time Manager Setup</button>
+    </div>
+
+    <div id="employeeLoginPane" class="authpane" style="display:none">
+      <label>Employee Code<input id="employeeCodeLogin" autocomplete="username" autocapitalize="none"></label>
+      <label>PIN<input id="employeePinLogin" type="password" inputmode="numeric" autocomplete="current-password"></label>
+      <button id="employeeLoginBtn" class="primary authprimary" type="button">Sign In</button>
+    </div>
+
+    <div id="managerSetupPane" class="authpane setup-pane" style="display:none">
+      <div class="setupnote">One-time setup for the first Manager only.</div>
+      <label>Your Name<input id="setupName" autocomplete="name"></label>
+      <label>Email<input id="setupEmail" type="email" autocomplete="username"></label>
+      <label>Password<input id="setupPassword" type="password" autocomplete="new-password"></label>
+      <label>Setup Code<input id="setupCode" type="password" autocomplete="one-time-code"></label>
+      <button id="createManagerBtn" class="primary authprimary" type="button">Create Manager</button>
+      <button id="backToLoginBtn" class="authlink" type="button">Back to Sign In</button>
+    </div>
+
+    <div id="authMessage" class="authmessage"></div>
+  </div>
+</div>
 <header class="topbar">
   <div><div class="brand">GAMETIME FACTORY WORK BOARD</div><div class="subtitle" id="viewLabel">ALL WORK</div></div>
   <div class="topright"><button id="langToggle" class="langbtn" type="button">Español</button><button id="currentUser" class="userbtn" type="button">👤 Set Your Name</button><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
@@ -36,6 +73,7 @@
       </div>
     </div>
     <div class="quickactions">
+      <button id="staffBtn">👥 Staff</button>
       <button id="monthlyChartBtn">▥ Monthly Chart</button>
       <button data-drawer="activity">● Live Activity</button>
       <button data-drawer="queue">☰ Unfinished Queue</button>
@@ -92,6 +130,21 @@
       <label class="full">Production Note<input id="prodNote"></label>
     </div>
     <div class="dialogactions"><button data-close="editorModal">Cancel</button><button id="saveOrderBtn" class="primary">Save Work Order</button></div>
+  </div>
+</div>
+
+<div class="modal" id="staffModal">
+  <div class="dialog staffdialog">
+    <div class="dialoghead"><h2>Staff Accounts</h2><button data-close="staffModal">✕</button></div>
+    <div class="staffcreate">
+      <label>Name<input id="staffName" autocomplete="off"></label>
+      <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
+      <label>Role<select id="staffRole"><option value="batch">Batch Maker</option><option value="prod">Production</option><option value="viewer">View Only</option></select></label>
+      <label>PIN (6–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
+      <button id="createStaffBtn" class="primary">Create Employee</button>
+    </div>
+    <div id="staffMessage" class="authmessage"></div>
+    <div id="staffList" class="stafflist"></div>
   </div>
 </div>
 
@@ -162,9 +215,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20261005b"></script>
+<script src="app.js?v=SECURE_V2_20261005a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20261005b').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261005a').catch(()=>{});}
 </script>
 </body>
 </html>
