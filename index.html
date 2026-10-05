@@ -2,222 +2,162 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111827">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="GameTime">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261005a">
-<title>GameTime Factory Work Board</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>GameTime — UI Concept</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18181b;background:#fff}
+button,input{font:inherit}.app{min-height:100vh;display:grid;grid-template-columns:238px 1fr}
+.sidebar{border-right:1px solid #eaeaea;background:#fafafa;padding:18px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:10px;padding:2px 8px 22px;font-weight:750;letter-spacing:-.02em}
+.mark{width:24px;height:24px;border-radius:7px;background:#111;color:#fff;display:grid;place-items:center;font-size:12px}
+.workspace{font-size:11px;color:#71717a;margin:0 8px 8px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.nav{display:grid;gap:3px}.nav button{border:0;background:transparent;text-align:left;border-radius:7px;padding:9px 10px;color:#52525b;font-size:13px;display:flex;align-items:center;gap:9px;cursor:pointer}
+.nav button:hover{background:#f1f1f1;color:#111}.nav button.active{background:#ededed;color:#111;font-weight:650}.icon{width:18px;text-align:center;color:#71717a}
+.side-section{margin-top:20px}.sidebar-bottom{margin-top:auto;border-top:1px solid #e5e5e5;padding-top:13px}
+.user{display:flex;align-items:center;gap:9px;padding:7px 8px}.avatar{width:28px;height:28px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:700}.user b{display:block;font-size:12px}.user small{font-size:10px;color:#71717a}
+.main{min-width:0}.top{height:58px;border-bottom:1px solid #ededed;display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);z-index:5}
+.breadcrumb{font-size:12px;color:#71717a}.breadcrumb b{color:#18181b}.top-actions{display:flex;align-items:center;gap:8px}.pill{border:1px solid #e5e5e5;background:#fff;border-radius:7px;padding:7px 10px;font-size:11px;color:#3f3f46}.live{display:flex;align-items:center;gap:6px}.dot{width:7px;height:7px;background:#22c55e;border-radius:50%}
+.content{padding:28px 30px 50px;max-width:1500px;margin:auto}.page-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.eyebrow{font-size:11px;color:#71717a;margin-bottom:5px}.page-head h1{font-size:25px;letter-spacing:-.035em;margin:0}.page-head p{margin:6px 0 0;color:#71717a;font-size:12px}.head-actions{display:flex;gap:8px}
+.btn{border:1px solid #dedede;background:#fff;color:#18181b;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:600;cursor:pointer}.btn.dark{background:#111;color:#fff;border-color:#111}
+.commandbar{margin-top:23px;border:1px solid #e8e8e8;border-radius:10px;padding:9px;display:flex;align-items:center;gap:7px;background:#fff}.date-nav{display:flex;align-items:center;gap:5px}.square{width:34px;height:34px;border:1px solid #e5e5e5;background:#fff;border-radius:7px}.date-main{height:34px;border:1px solid #e5e5e5;background:#fff;border-radius:7px;padding:0 12px;font-size:11px;font-weight:650}.search{flex:1;position:relative}.search input{width:100%;height:34px;border:0;background:#f7f7f7;border-radius:7px;padding:0 12px 0 32px;outline:none;font-size:11px}.search span{position:absolute;left:11px;top:8px;font-size:13px;color:#a1a1aa}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.metric{border:1px solid #e8e8e8;border-radius:10px;padding:14px 15px;background:#fff}.metric small{display:block;color:#71717a;font-size:10px;margin-bottom:7px}.metric b{font-size:23px;letter-spacing:-.04em}.metric em{display:inline-block;margin-left:6px;font-style:normal;font-size:9px;color:#16a34a;background:#f0fdf4;border-radius:999px;padding:3px 6px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:25px 0 9px}.section-title h2{font-size:13px;margin:0}.section-title small{font-size:10px;color:#71717a}
+.board{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lane{border:1px solid #e8e8e8;border-radius:11px;background:#fafafa;min-width:0}.lanehead{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid #e8e8e8;background:#fff;border-radius:11px 11px 0 0}.lanehead h3{font-size:12px;margin:0}.count{font-size:9px;color:#71717a;background:#f3f3f3;border-radius:999px;padding:4px 7px}.cards{padding:7px}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:9px;padding:12px;margin:6px 0;box-shadow:0 1px 1px rgba(0,0,0,.015)}.card-top{display:flex;justify-content:space-between;gap:10px}.order-no{font-size:9px;color:#a1a1aa;font-weight:700}.product{font-size:14px;font-weight:700;margin-top:4px;letter-spacing:-.02em}.batch{font-size:10px;color:#52525b;margin-top:2px}.gallons{text-align:right}.gallons b{display:block;font-size:15px}.gallons small{font-size:9px;color:#71717a}.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}.tag{font-size:9px;border:1px solid #e5e5e5;border-radius:5px;padding:4px 6px;color:#52525b;background:#fafafa}.tag.rush{color:#b45309;background:#fffbeb;border-color:#fde68a}.tag.done{color:#15803d;background:#f0fdf4;border-color:#bbf7d0}.tag.wait{color:#64748b;background:#f8fafc}.note{margin-top:9px;padding:8px 9px;border-radius:6px;background:#f7f7f7;color:#52525b;font-size:10px;line-height:1.4}.progress-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:10px}.track{height:5px;background:#ededed;border-radius:999px;overflow:hidden}.fill{height:100%;background:#111;border-radius:999px}.percent{font-size:9px;color:#71717a}.card-actions{display:flex;gap:6px;margin-top:10px}.mini{border:1px solid #e5e5e5;background:#fff;border-radius:6px;padding:6px 8px;font-size:9px;font-weight:650}.mini.primary{background:#111;color:#fff;border-color:#111}
+.insight{margin-top:14px;border:1px solid #e8e8e8;border-radius:10px;padding:15px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}.insight h4{font-size:10px;color:#71717a;margin:0 0 8px;font-weight:600}.insight b{font-size:18px}.barrow{height:6px;background:#eee;border-radius:999px;margin-top:8px;overflow:hidden}.barrow i{display:block;height:100%;background:#111;border-radius:999px}
+.demo-banner{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;border-radius:9px;padding:9px 12px;font-size:10px;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+@media(max-width:900px){.app{grid-template-columns:76px 1fr}.sidebar{padding:16px 10px}.logo span,.workspace,.nav .label,.user div{display:none}.logo{justify-content:center;padding-left:0;padding-right:0}.nav button{justify-content:center;padding:10px}.icon{font-size:15px}.metrics{grid-template-columns:1fr 1fr}.board{grid-template-columns:1fr}.insight{grid-template-columns:1fr}.content{padding:20px 16px}.top{padding:0 16px}.head-actions{display:none}}
+@media(max-width:560px){.app{display:block}.sidebar{position:sticky;height:auto;z-index:9;top:0;border-right:0;border-bottom:1px solid #e5e5e5;padding:7px 8px;display:flex;flex-direction:row;align-items:center;overflow-x:auto}.logo{padding:0 8px 0 0}.nav{display:flex}.nav button{min-width:42px}.side-section,.sidebar-bottom{margin:0;border:0;padding:0}.side-section .workspace,.sidebar-bottom{display:none}.main{width:100%}.top{top:48px;height:50px}.breadcrumb{font-size:10px}.content{padding:16px 11px 40px}.page-head h1{font-size:21px}.commandbar{flex-wrap:wrap}.search{order:3;flex-basis:100%}.metrics{gap:7px}.metric{padding:11px}.metric b{font-size:20px}.board{gap:9px}}
+</style>
 </head>
 <body>
-<div id="authScreen" class="authscreen">
-  <div class="authcard">
-    <div class="authbrand">GAMETIME SECURE V2</div>
-    <h1>Factory Sign In</h1>
-    <p class="authsub">Secure company access. Your role controls what you can change.</p>
-
-    <div class="authtabs">
-      <button id="authManagerTab" class="active" type="button">Manager</button>
-      <button id="authEmployeeTab" type="button">Employee PIN</button>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="mark">G</div><span>GameTime</span></div>
+    <div class="workspace">Workspace</div>
+    <nav class="nav">
+      <button class="active" data-page="Overview"><span class="icon">⌂</span><span class="label">Overview</span></button>
+      <button data-page="Schedule"><span class="icon">▦</span><span class="label">Schedule</span></button>
+      <button data-page="Hold Line"><span class="icon">◫</span><span class="label">Hold Line</span></button>
+      <button data-page="Monthly Report"><span class="icon">▥</span><span class="label">Monthly Report</span></button>
+      <button data-page="Activity"><span class="icon">◉</span><span class="label">Live Activity</span></button>
+    </nav>
+    <div class="side-section">
+      <div class="workspace">Manage</div>
+      <nav class="nav">
+        <button data-page="Staff"><span class="icon">♙</span><span class="label">Staff</span></button>
+        <button data-page="Print"><span class="icon">▤</span><span class="label">Print / PDF</span></button>
+        <button data-page="Settings"><span class="icon">⚙</span><span class="label">Settings</span></button>
+      </nav>
     </div>
-
-    <div id="managerLoginPane" class="authpane">
-      <label>Email<input id="loginEmail" type="email" autocomplete="username"></label>
-      <label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label>
-      <button id="managerLoginBtn" class="primary authprimary" type="button">Sign In</button>
-      <button id="showSetupBtn" class="authlink" type="button">First-time Manager Setup</button>
+    <div class="sidebar-bottom">
+      <div class="user"><div class="avatar">AJ</div><div><b>Manager</b><small>Secure V2</small></div></div>
     </div>
-
-    <div id="employeeLoginPane" class="authpane" style="display:none">
-      <label>Employee Code<input id="employeeCodeLogin" autocomplete="username" autocapitalize="none"></label>
-      <label>PIN<input id="employeePinLogin" type="password" inputmode="numeric" autocomplete="current-password"></label>
-      <button id="employeeLoginBtn" class="primary authprimary" type="button">Sign In</button>
-    </div>
-
-    <div id="managerSetupPane" class="authpane setup-pane" style="display:none">
-      <div class="setupnote">One-time setup for the first Manager only.</div>
-      <label>Your Name<input id="setupName" autocomplete="name"></label>
-      <label>Email<input id="setupEmail" type="email" autocomplete="username"></label>
-      <label>Password<input id="setupPassword" type="password" autocomplete="new-password"></label>
-      <label>Setup Code<input id="setupCode" type="password" autocomplete="one-time-code"></label>
-      <button id="createManagerBtn" class="primary authprimary" type="button">Create Manager</button>
-      <button id="backToLoginBtn" class="authlink" type="button">Back to Sign In</button>
-    </div>
-
-    <div id="authMessage" class="authmessage"></div>
-  </div>
-</div>
-<header class="topbar">
-  <div><div class="brand">GAMETIME FACTORY WORK BOARD</div><div class="subtitle" id="viewLabel">ALL WORK</div></div>
-  <div class="topright"><button id="langToggle" class="langbtn" type="button">Español</button><button id="currentUser" class="userbtn" type="button">👤 Set Your Name</button><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
-</header>
-
-<main class="wrap">
-  <section class="toolbar">
-    <button id="prevBtn">← Previous</button>
-    <button class="datebox dateclick" id="dateLabel" title="Open Calendar"></button>
-    <button id="nextBtn">Next →</button>
-    <input id="search" class="grow" placeholder="Search Product or Batch #">
-    <button id="printBtn">Print / Save PDF</button>
-    <button id="holdLineBtn">▣ HOLD LINE</button>
-    <button id="addBtn" class="primary">+ Add Work Order</button>
-  </section>
-
-  <section id="managerTools" class="manager-tools">
-    <div class="sendbox">
-      <b>Send work board to employees</b>
-      <div class="sendactions">
-        <button id="shareProd" class="dark">↗ Send to Production</button>
-        <button id="shareBatch">↗ Send to Batch Maker</button>
-      </div>
-    </div>
-    <div class="quickactions">
-      <button id="staffBtn">👥 Staff</button>
-      <button id="monthlyChartBtn">▥ Monthly Chart</button>
-      <button data-drawer="activity">● Live Activity</button>
-      <button data-drawer="queue">☰ Unfinished Queue</button>
-      <button data-drawer="holdline">▣ HOLD LINE</button>
-    </div>
-  </section>
-
-  <section class="stats">
-    <div class="stat"><span>Work Orders</span><b id="sOrders">0</b></div>
-    <div class="stat"><span>Batch Tasks</span><b id="sBatch">0</b></div>
-    <div class="stat"><span>Production Tasks</span><b id="sProd">0</b></div>
-    <div class="stat"><span>Completed</span><b id="sDone">0</b></div>
-  </section>
-
-  <section id="searchHoldPanel" class="search-hold-panel" style="display:none"></section>
-
-  <section class="board" id="board">
-    <section class="panel" id="batchPanel">
-      <div class="panelhead"><h2>Batch Maker</h2><small id="batchCount"></small></div>
-      <div id="batchList"></div>
-    </section>
-    <section class="panel" id="prodPanel">
-      <div class="panelhead"><h2>Production / Filling</h2><small id="prodCount"></small></div>
-      <div id="prodList"></div>
-    </section>
-  </section>
-</main>
-
-<div class="modal" id="editorModal">
-  <div class="dialog">
-    <div class="dialoghead"><h2 id="editorTitle">Add Work Order</h2><button data-close="editorModal">✕</button></div>
-    <input type="hidden" id="editId"><input type="hidden" id="editVersion">
-    <div class="grid">
-      <label class="full">Product Name<input id="product" autocomplete="off"></label>
-      <div id="dateField" class="schedule-dates">
-        <label>Batch Maker Date<input id="workDate" type="date"></label>
-        <label>Production Date<input id="prodWorkDate" type="date"></label>
-      </div>
-      <label>Batch Number<input id="batchNumber"></label>
-      <label>Total Batch Gallons<input id="tank" inputmode="decimal"></label>
-      <label>Priority<select id="priority"><option value="Normal">Normal</option><option value="Rush">Rush</option><option value="First Thing Morning">First Thing Morning</option></select></label>
-      <div class="full auto">
-        <b>Auto-fill Remaining Gallons Into</b>
-        <div class="autobtns"><button type="button" data-auto="five">5 Gallon</button><button type="button" data-auto="gallon">1 Gallon</button><button type="button" data-auto="quart">Quarts</button><button id="jerryAutoBtn" type="button" data-auto="jerry" style="display:none">Jerry Can 1.25G</button></div>
-      </div>
-      <label>Quarts<input id="quart"><small id="qBoxes"></small></label>
-      <label>1 Gallon<input id="gallon"><small id="gBoxes"></small></label>
-      <label>5 Gallon<input id="five"></label>
-      <label class="full optional-package"><input id="jerryEnabled" type="checkbox"> <span><b>Add Jerry Can 1.25 Gallon</b><small>Only show this package on the work order when selected.</small></span></label>
-      <label class="full optional-package catalyst-option"><input id="catalystEnabled" type="checkbox"> <span><b id="catalystOptionTitle">Catalyst</b><small id="catalystOptionHelp">Mark this Production order as containing Catalyst.</small></span></label>
-      <label id="jerryField" style="display:none">Jerry Can 1.25 Gallon<input id="jerry" value="0" inputmode="decimal"></label>
-      <div class="full summary" id="calc"></div>
-      <label class="full">Batch Maker Note<input id="batchNote"></label>
-      <label class="full">Production Note<input id="prodNote"></label>
-    </div>
-    <div class="dialogactions"><button data-close="editorModal">Cancel</button><button id="saveOrderBtn" class="primary">Save Work Order</button></div>
-  </div>
-</div>
-
-<div class="modal" id="staffModal">
-  <div class="dialog staffdialog">
-    <div class="dialoghead"><h2>Staff Accounts</h2><button data-close="staffModal">✕</button></div>
-    <div class="staffcreate">
-      <label>Name<input id="staffName" autocomplete="off"></label>
-      <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
-      <label>Role<select id="staffRole"><option value="batch">Batch Maker</option><option value="prod">Production</option><option value="viewer">View Only</option></select></label>
-      <label>PIN (6–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
-      <button id="createStaffBtn" class="primary">Create Employee</button>
-    </div>
-    <div id="staffMessage" class="authmessage"></div>
-    <div id="staffList" class="stafflist"></div>
-  </div>
-</div>
-
-<div class="modal" id="analyticsModal">
-  <div class="dialog analyticsdialog">
-    <div class="dialoghead"><h2 id="analyticsTitle">Monthly Production Chart</h2><button data-close="analyticsModal">✕</button></div>
-    <div class="analyticscontrols">
-      <label id="analyticsMonthLabel">Month<input id="analyticsMonth" type="month"></label>
-      <button id="analyticsLoadBtn" class="primary">Show Chart</button>
-    </div>
-    <div id="analyticsBody" class="analyticsbody"></div>
-  </div>
-</div>
-
-<div class="modal" id="monthModal">
-  <div class="dialog monthdialog">
-    <div class="dialoghead"><button id="monthPrev">←</button><h2 id="monthTitle"></h2><button id="monthNext">→</button><button data-close="monthModal">✕</button></div>
-    <div class="calendar" id="calendar"></div>
-  </div>
-</div>
-
-<div class="modal" id="qtyModal">
-  <div class="dialog qtydialog">
-    <div class="dialoghead"><h2 id="qtyTitle">Actual Quantity</h2><button data-close="qtyModal">✕</button></div>
-    <div class="planned" id="qtyPlanned"></div>
-    <label class="qtylabel">Actual amount filled<input id="qtyInput" inputmode="decimal"></label>
-    <div class="dialogactions"><button data-close="qtyModal">Cancel</button><button id="saveQtyBtn" class="primary">Save Actual Quantity</button></div>
-  </div>
-</div>
-
-<div class="modal" id="carryModal">
-  <div class="dialog carrydialog">
-    <div class="dialoghead"><h2>Move Remainder to Next Day</h2><button data-close="carryModal">✕</button></div>
-    <p class="carryhelp">Enter what Production actually filled today. GameTime will calculate the remaining quantities and create a Production-only carryover for the next day.</p>
-    <div id="carryProduct" class="planned"></div>
-    <div class="carrygrid">
-      <label>Move remainder to<input id="carryDate" type="date"></label>
-      <label id="carryQuartWrap">Quarts filled today<input id="carryQuart" inputmode="decimal"></label>
-      <label id="carryGallonWrap">1 Gallon filled today<input id="carryGallon" inputmode="decimal"></label>
-      <label id="carryFiveWrap">5 Gallon filled today<input id="carryFive" inputmode="decimal"></label>
-      <label id="carryJerryWrap">Jerry Can 1.25G filled today<input id="carryJerry" inputmode="decimal"></label>
-    </div>
-    <div id="carryPreview" class="summary carrypreview"></div>
-    <div class="dialogactions"><button data-close="carryModal">Cancel</button><button id="saveCarryBtn" class="primary">Move Remainder</button></div>
-  </div>
-</div>
-
-<div class="drawerbackdrop" id="drawerBackdrop">
-  <aside class="drawer">
-    <div class="drawerhead"><h3 id="drawerTitle"></h3><button id="closeDrawer">✕</button></div>
-    <div class="drawerbody" id="drawerBody"></div>
   </aside>
-</div>
 
+  <div class="main">
+    <header class="top">
+      <div class="breadcrumb">GameTime / <b id="crumb">Overview</b></div>
+      <div class="top-actions">
+        <button class="pill">Español</button>
+        <div class="pill live"><span class="dot"></span> LIVE</div>
+        <button class="pill">Abood ▾</button>
+      </div>
+    </header>
 
-<div class="modal" id="identityModal">
-  <div class="dialog identitydialog">
-    <div class="identityicon">👤</div>
-    <h2>Who is using this device?</h2>
-    <p>Enter your name once. GameTime will remember it on this browser and automatically attach it to your changes.</p>
-    <label class="qtylabel">Your Name<input id="deviceNameInput" autocomplete="name" placeholder="Example: Abood"></label>
-    <button id="saveDeviceName" class="primary identitysave">Save Name on This Device</button>
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Factory Work Board</div>
+          <h1>Production Overview</h1>
+          <p>Monday, October 5 · Batch Maker + Production</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn">Share Board</button>
+          <button class="btn dark">+ Add Work Order</button>
+        </div>
+      </div>
+
+      <div class="commandbar">
+        <div class="date-nav"><button class="square">←</button><button class="date-main">Oct 5, 2026</button><button class="square">→</button></div>
+        <div class="search"><span>⌕</span><input placeholder="Search all products, batches, notes…"></div>
+        <button class="btn">Calendar</button>
+        <button class="btn dark">+ Add</button>
+      </div>
+
+      <section class="metrics">
+        <div class="metric"><small>Work Orders</small><b>8</b><em>Today</em></div>
+        <div class="metric"><small>Batch Tasks</small><b>5</b></div>
+        <div class="metric"><small>Production Tasks</small><b>6</b></div>
+        <div class="metric"><small>Completed</small><b>4</b><em>50%</em></div>
+      </section>
+
+      <div class="section-title"><h2>Today’s Work</h2><small>Live updates enabled</small></div>
+      <section class="board">
+        <div class="lane">
+          <div class="lanehead"><h3>Batch Maker</h3><span class="count">5 TASKS</span></div>
+          <div class="cards">
+            <article class="card">
+              <div class="card-top"><div><div class="order-no">#01</div><div class="product">Alpha Satin</div><div class="batch">Batch # AS-1048</div></div><div class="gallons"><b>600</b><small>GALLONS</small></div></div>
+              <div class="tags"><span class="tag rush">Rush</span><span class="tag">Materials checked</span></div>
+              <div class="note">Batch Maker Note · Use Tank 4. Check viscosity before transfer.</div>
+              <div class="progress-row"><div class="track"><div class="fill" style="width:72%"></div></div><div class="percent">72%</div></div>
+              <div class="card-actions"><button class="mini">Hold</button><button class="mini primary">Work Done</button></div>
+            </article>
+            <article class="card">
+              <div class="card-top"><div><div class="order-no">#02</div><div class="product">Phoenix</div><div class="batch">Batch # PH-2081</div></div><div class="gallons"><b>300</b><small>GALLONS</small></div></div>
+              <div class="tags"><span class="tag done">Cooked</span><span class="tag">Normal</span></div>
+              <div class="note">Batch complete. Ready for Production.</div>
+              <div class="progress-row"><div class="track"><div class="fill" style="width:100%"></div></div><div class="percent">100%</div></div>
+            </article>
+            <article class="card">
+              <div class="card-top"><div><div class="order-no">#03</div><div class="product">Omega</div><div class="batch">Batch # OM-7734</div></div><div class="gallons"><b>510</b><small>GALLONS</small></div></div>
+              <div class="tags"><span class="tag wait">Ready</span><span class="tag">Normal</span></div>
+              <div class="card-actions"><button class="mini primary">Start Work</button></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lanehead"><h3>Production / Filling</h3><span class="count">6 TASKS</span></div>
+          <div class="cards">
+            <article class="card">
+              <div class="card-top"><div><div class="order-no">#01</div><div class="product">Alpha Satin</div><div class="batch">Batch # AS-1048</div></div><div class="gallons"><b>600</b><small>PLANNED</small></div></div>
+              <div class="tags"><span class="tag">88 × 5 Gal</span><span class="tag">38 × 1 Gal</span><span class="tag">400 Quarts</span></div>
+              <div class="note">Production Note · Labels and pallets ready.</div>
+              <div class="progress-row"><div class="track"><div class="fill" style="width:46%"></div></div><div class="percent">46%</div></div>
+              <div class="card-actions"><button class="mini">Hold</button><button class="mini primary">Update Actuals</button></div>
+            </article>
+            <article class="card">
+              <div class="card-top"><div><div class="order-no">#02</div><div class="product">Catalyst Clear</div><div class="batch">Batch # CT-1902</div></div><div class="gallons"><b>120</b><small>PLANNED</small></div></div>
+              <div class="tags"><span class="tag rush">CATALYST</span><span class="tag">24 × 5 Gal</span></div>
+              <div class="note">Production Note · Keep catalyst boxes together.</div>
+              <div class="card-actions"><button class="mini primary">Start Work</button></div>
+            </article>
+            <article class="card">
+              <div class="card-top"><div><div class="order-no">#03</div><div class="product">Xcel A</div><div class="batch">Batch # XC-4410</div></div><div class="gallons"><b>450</b><small>PLANNED</small></div></div>
+              <div class="tags"><span class="tag wait">Waiting for Batch</span></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="insight">
+        <div><h4>This Month</h4><b>12,840 gal</b><div class="barrow"><i style="width:74%"></i></div></div>
+        <div><h4>Top Product</h4><b>Alpha Satin</b><div style="font-size:10px;color:#71717a;margin-top:5px">28.4% of monthly production</div></div>
+        <div><h4>Completion Rate</h4><b>91.7%</b><div class="barrow"><i style="width:91.7%"></i></div></div>
+      </section>
+    </main>
   </div>
 </div>
-
-<div id="printStage" class="print-stage" aria-hidden="true"></div>
-
-<div id="toast" class="toast"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261005a"></script>
+<div class="demo-banner">UI CONCEPT · No live factory data</div>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261005a').catch(()=>{});}
+document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('crumb').textContent=btn.dataset.page||'Overview';
+}));
 </script>
 </body>
 </html>
