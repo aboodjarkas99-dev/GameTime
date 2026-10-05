@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=20261001b">
+<link rel="stylesheet" href="styles.css?v=20261005a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -48,6 +48,8 @@
     <div class="stat"><span>Production Tasks</span><b id="sProd">0</b></div>
     <div class="stat"><span>Completed</span><b id="sDone">0</b></div>
   </section>
+
+  <section id="searchHoldPanel" class="search-hold-panel" style="display:none"></section>
 
   <section class="board" id="board">
     <section class="panel" id="batchPanel">
@@ -148,9 +150,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=20261001b"></script>
+<script src="app.js?v=20261005a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20261001b').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=20261005a').catch(()=>{});}
 </script>
 </body>
 </html>
