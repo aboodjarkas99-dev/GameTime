@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://usbcryjzesfitoddojit.supabase.co';
 const SUPABASE_KEY='sb_publishable_9HRzmDByZwIRKG_18w9XIw_TOkk9bJV';
-const BUILD='20261001b';
+const BUILD='20261005a';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -16,7 +16,7 @@ const STRINGS={
   en:{
     setYourName:'Set Your Name',manager:'Manager',productionRole:'Production',batchMakerRole:'Batch Maker',
     allWork:'ALL WORK',productionFilling:'PRODUCTION / FILLING',batchMaker:'BATCH MAKER',
-    previous:'← Previous',next:'Next →',searchPlaceholder:'Search Product or Batch #',printSavePdf:'Print / Save PDF',holdLine:'▣ HOLD LINE',addWorkOrder:'+ Add Work Order',
+    previous:'← Previous',next:'Next →',searchPlaceholder:'Search ALL dates — Product or Batch #',allDates:'ALL DATES',searchResults:'Search Results',holdMatches:'Hold Line Matches',printSavePdf:'Print / Save PDF',holdLine:'▣ HOLD LINE',addWorkOrder:'+ Add Work Order',
     sendBoard:'Send work board to employees',sendProduction:'↗ Send to Production',sendBatchMaker:'↗ Send to Batch Maker',liveActivity:'● Live Activity',unfinishedQueue:'☰ Unfinished Queue',
     workOrders:'Work Orders',batchTasks:'Batch Tasks',productionTasks:'Production Tasks',completed:'Completed',tasks:'tasks',
     noBatchWork:'No Batch Maker work.',noProductionWork:'No Production work.',
@@ -57,7 +57,7 @@ const STRINGS={
   es:{
     setYourName:'Pon tu nombre',manager:'Gerente',productionRole:'Producción',batchMakerRole:'Preparación',
     allWork:'TODO EL TRABAJO',productionFilling:'PRODUCCIÓN / LLENADO',batchMaker:'PREPARACIÓN DE LOTES',
-    previous:'← Anterior',next:'Siguiente →',searchPlaceholder:'Buscar producto o lote #',printSavePdf:'Imprimir / Guardar PDF',holdLine:'▣ LÍNEA DE ESPERA',addWorkOrder:'+ Agregar orden',
+    previous:'← Anterior',next:'Siguiente →',searchPlaceholder:'Buscar en TODAS las fechas — Producto o lote #',allDates:'TODAS LAS FECHAS',searchResults:'Resultados de búsqueda',holdMatches:'Coincidencias en Línea de Espera',printSavePdf:'Imprimir / Guardar PDF',holdLine:'▣ LÍNEA DE ESPERA',addWorkOrder:'+ Agregar orden',
     sendBoard:'Enviar tablero a empleados',sendProduction:'↗ Enviar a Producción',sendBatchMaker:'↗ Enviar a Preparación',liveActivity:'● Actividad en vivo',unfinishedQueue:'☰ Trabajo pendiente',
     workOrders:'Órdenes',batchTasks:'Tareas de lotes',productionTasks:'Tareas de producción',completed:'Completadas',tasks:'tareas',
     noBatchWork:'No hay trabajo de preparación.',noProductionWork:'No hay trabajo de producción.',
@@ -272,15 +272,36 @@ async function insertOrder(o){
   if(error)throw error;mergeOrder(fromRow(data));render();setSync('live','LIVE');return data
 }
 
+function searchQuery(){return $('search').value.trim().toLowerCase()}
+function isGlobalSearch(){return !!searchQuery()}
 function matchSearch(o){
-  const q=$('search').value.trim().toLowerCase();
-  return !q||(o.product+' '+o.batch+' '+prodBatch(o.batch)).toLowerCase().includes(q)
+  const q=searchQuery();
+  return !q||(o.product+' '+o.batch+' '+prodBatch(o.batch)+' '+(o.batchNote||'')+' '+(o.prodNote||'')).toLowerCase().includes(q)
 }
 function currentDay(dept){
   const d=iso(selected);
-  if(dept==='batch')return orders.filter(o=>!o.holdLine&&!o.productionOnly&&o.batchDate===d&&matchSearch(o));
-  if(dept==='prod')return orders.filter(o=>!o.holdLine&&o.prodDate===d&&matchSearch(o));
-  return orders.filter(o=>!o.holdLine&&(o.batchDate===d||o.prodDate===d)&&matchSearch(o));
+  if(dept==='batch')return orders.filter(o=>!o.holdLine&&!o.productionOnly&&o.batchDate===d);
+  if(dept==='prod')return orders.filter(o=>!o.holdLine&&o.prodDate===d);
+  return orders.filter(o=>!o.holdLine&&(o.batchDate===d||o.prodDate===d));
+}
+function departmentList(dept){
+  if(!isGlobalSearch())return currentDay(dept);
+  const list=orders.filter(o=>!o.holdLine&&matchSearch(o)&&(
+    dept==='batch'?(!o.productionOnly&&!!o.batchDate):!!o.prodDate
+  ));
+  return list.sort((a,b)=>{
+    const ad=dept==='batch'?a.batchDate:a.prodDate,bd=dept==='batch'?b.batchDate:b.prodDate;
+    return String(bd||'').localeCompare(String(ad||''))||((dept==='batch'?a.batchOrder:a.prodOrder)-(dept==='batch'?b.batchOrder:b.prodOrder));
+  })
+}
+function holdSearchMatches(){return isGlobalSearch()?orders.filter(o=>o.holdLine&&matchSearch(o)):[]}
+function renderHoldSearch(){
+  const panel=$('searchHoldPanel');if(!panel)return;
+  const q=holdSearchMatches();
+  if(!isGlobalSearch()||!q.length){panel.style.display='none';panel.innerHTML='';return}
+  panel.style.display='';
+  panel.innerHTML='<div class="searchhold-head"><b>'+esc(t('holdMatches'))+'</b><span>'+q.length+'</span></div>'+
+    '<div class="searchhold-grid">'+q.map(o=>'<div class="searchhold-item"><div><b>'+esc(o.product)+'</b>'+(o.batch?' <span>'+esc(t('batchNumber'))+' '+esc(o.batch)+'</span>':'')+'</div><small>'+(o.tank?esc(o.tank)+' gal • ':'')+esc(o.batchNote||o.prodNote||t('waitingSchedule'))+'</small></div>').join('')+'</div>';
 }
 function actual(o,k){return k==='quart'?o.actualQuart:k==='gallon'?o.actualGallon:k==='five'?o.actualFive:o.actualJerry}
 function pkgClass(o,k){const a=actual(o,k),p=num(o[k]);if(a==null)return'';return a>=p?'done':'partial'}
@@ -296,11 +317,12 @@ function card(o,dept,i){
         note=dept==='prod'?o.prodNote:o.batchNote,
         prodWaiting=dept==='prod'&&o.batchStatus!=='done',
         hasMade=dept==='prod'&&!!o.batchMadeDate,
-        drag=isManager?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
+        resultDate=dept==='batch'?o.batchDate:o.prodDate,
+        drag=isManager&&!isGlobalSearch()?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
   return '<article class="card '+(prodWaiting?'prod-waiting ':'')+(hasMade?'has-batch-made':'')+'"'+drag+'>'+
-    (isManager?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
+    (isManager&&!isGlobalSearch()?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
     '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div>'+
-    '<div class="order">'+esc(dept==='prod'?t('filling'):t('batchWord'))+' '+esc(t('priority'))+' #'+(i+1)+'</div>'+
+    '<div class="order">'+esc(dept==='prod'?t('filling'):t('batchWord'))+' '+esc(t('priority'))+' #'+(i+1)+(isGlobalSearch()&&resultDate?' <button type="button" class="result-date" data-search-date="'+esc(resultDate)+'">'+esc(usDate(resultDate))+'</button>':'')+'</div>'+
     '<div class="productrow"><h3>'+esc(o.product)+'</h3>'+(dept==='prod'&&o.catalyst?'<span class="catalyst-badge">'+esc(t('catalystBadge'))+'</span>':'')+(bn?'<span class="batch">'+esc(t('batchNumber'))+' '+esc(bn)+'</span>':'')+'</div>'+
     (prodWaiting?'<div class="batchwait">'+esc(t('waitingBatch'))+'</div>':'')+
     (o.held?'<div class="note"><b>'+esc(t('onHold'))+'</b></div>':'')+
@@ -317,18 +339,20 @@ function card(o,dept,i){
 }
 function render(){
   $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):t('batchMaker');
-  $('dateLabel').textContent=pretty();
+  $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
-  const batch=currentDay('batch').sort((a,b)=>a.batchOrder-b.batchOrder),prod=currentDay('prod').sort((a,b)=>a.prodOrder-b.prodOrder);
+  const batch=departmentList('batch'),prod=departmentList('prod');
   const visibleIds=new Set((view==='batch'?batch:view==='prod'?prod:[...batch,...prod]).map(o=>o.id));
   $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=isManager?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
   $('batchCount').textContent=batch.length+' '+t('tasks');$('prodCount').textContent=prod.length+' '+t('tasks');
   $('batchList').innerHTML=batch.length?batch.map((o,i)=>card(o,'batch',i)).join(''):'<div class="empty">'+esc(t('noBatchWork'))+'</div>';
   $('prodList').innerHTML=prod.length?prod.map((o,i)=>card(o,'prod',i)).join(''):'<div class="empty">'+esc(t('noProductionWork'))+'</div>';
   $('batchPanel').style.display=view==='prod'?'none':'';$('prodPanel').style.display=view==='batch'?'none':'';$('board').style.gridTemplateColumns=isManager?'1fr 1fr':'1fr';
+  renderHoldSearch();
   bindDynamic();
 }
 function bindDynamic(){
+  document.querySelectorAll('[data-search-date]').forEach(b=>b.onclick=e=>{e.stopPropagation();const d=b.dataset.searchDate;if(!d)return;$('search').value='';selected=new Date(d+'T12:00:00');render()});
   document.querySelectorAll('[data-check]').forEach(el=>el.onclick=async()=>{const o=orders.find(x=>x.id===Number(el.dataset.check)),dept=el.dataset.dept;if(!o)return;if(dept==='prod'&&o.batchStatus!=='done'){toast(t('waitingBatchToast'));return}try{await patchOrder(o.id,{[dept==='batch'?'batch_checked':'prod_checked']:!(dept==='batch'?o.batchChecked:o.prodChecked)})}catch(e){fail(e)}});
   document.querySelectorAll('[data-action]').forEach(btn=>btn.onclick=()=>handleAction(btn));
   document.querySelectorAll('[data-qty]').forEach(el=>el.onclick=()=>openQty(Number(el.dataset.qty),el.dataset.key));
@@ -576,7 +600,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261001b':'batch-maker.html?build=20261001b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=20261005a':'batch-maker.html?build=20261005a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function printSheet(mode){
   const batch=currentDay('batch').slice().sort((a,b)=>a.batchOrder-b.batchOrder);
