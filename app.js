@@ -143,11 +143,129 @@ function setLanguage(next){
 }
 let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
-let deviceName=(localStorage.getItem(NAME_KEY)||'').trim();
-function roleLabel(){return isManager?t('manager'):view==='prod'?t('productionRole'):t('batchMakerRole')}
-function actor(){return deviceName?deviceName:roleLabel()+'-'+deviceId.slice(-5)}
-function refreshUserLabel(){const el=$('currentUser');if(el)el.textContent='👤 '+(deviceName||t('setYourName'))}
+let deviceName='';
+function roleLabel(){
+  const r=profile?.role;
+  return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='viewer'?t('readOnly'):'';
+}
+function actor(){return profile?.display_name||'Authenticated User'}
+function refreshUserLabel(){
+  const el=$('currentUser');if(!el)return;
+  el.textContent=profile?'👤 '+profile.display_name+' • '+roleLabel():'👤 Sign In';
+}
 let orders=[],logs=[],selected=new Date(),monthCursor=new Date(),editorMode='order',editingId=null,editingVersion=null,autoTarget=null,qtyState=null,carryState=null,saveBusy=false,dragState=null,channel=null,reconcileTimer=null,logPollTick=0;
+
+function authMessage(msg,bad=false){
+  const el=$('authMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
+}
+function staffMessage(msg,bad=false){
+  const el=$('staffMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
+}
+function switchAuthPane(which){
+  $('managerLoginPane').style.display=which==='manager'?'':'none';
+  $('employeeLoginPane').style.display=which==='employee'?'':'none';
+  $('managerSetupPane').style.display=which==='setup'?'':'none';
+  $('authManagerTab').classList.toggle('active',which==='manager');
+  $('authEmployeeTab').classList.toggle('active',which==='employee');
+  authMessage('');
+}
+function showAuthScreen(){if($('authScreen'))$('authScreen').classList.remove('hidden')}
+function hideAuthScreen(){if($('authScreen'))$('authScreen').classList.add('hidden')}
+function stopSecureSession(){
+  if(reconcileTimer){clearInterval(reconcileTimer);reconcileTimer=null}
+  if(channel){db.removeChannel(channel);channel=null}
+  orders=[];logs=[];profile=null;authUser=null;isManager=false;view='all';
+  localStorage.removeItem(CACHE_KEY);
+  refreshUserLabel();
+}
+function applyProfile(p){
+  profile=p;
+  isManager=p?.role==='manager';
+  view=p?.role==='prod'?'prod':p?.role==='batch'?'batch':'all';
+  refreshUserLabel();
+}
+async function fetchMyProfile(userId){
+  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,active').eq('id',userId).maybeSingle();
+  if(error)throw error;
+  if(!data||!data.active)throw new Error('This account does not have active GameTime access.');
+  return data;
+}
+async function activateSession(user){
+  authUser=user;
+  const p=await fetchMyProfile(user.id);
+  applyProfile(p);
+  hideAuthScreen();
+  await initialLoad();
+}
+async function managerLogin(){
+  const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
+  if(!email||!password){authMessage('Enter email and password.',true);return}
+  authMessage('Signing in…');
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  if(error){authMessage(error.message,true);return}
+  try{await activateSession(data.user)}catch(e){await db.auth.signOut();authMessage(e.message||String(e),true)}
+}
+async function employeeLogin(){
+  const code=$('employeeCodeLogin').value.trim().toLowerCase(),pin=$('employeePinLogin').value.trim();
+  if(!/^[a-z0-9._-]{2,30}$/.test(code)||!/^\d{6,12}$/.test(pin)){authMessage('Enter your Employee Code and 6–12 digit PIN.',true);return}
+  authMessage('Signing in…');
+  const {data,error}=await db.auth.signInWithPassword({email:code+'@gametime.local',password:pin});
+  if(error){authMessage('Invalid Employee Code or PIN.',true);return}
+  try{await activateSession(data.user)}catch(e){await db.auth.signOut();authMessage(e.message||String(e),true)}
+}
+async function createFirstManager(){
+  const display_name=$('setupName').value.trim(),email=$('setupEmail').value.trim(),password=$('setupPassword').value,setup_code=$('setupCode').value.trim();
+  if(!display_name||!email||password.length<8||!setup_code){authMessage('Enter name, email, password (8+ characters), and Setup Code.',true);return}
+  authMessage('Creating secure Manager…');
+  const {data,error}=await db.functions.invoke('bootstrap-manager',{body:{display_name,email,password,setup_code}});
+  if(error||data?.error){authMessage(data?.error||error?.message||'Manager setup failed.',true);return}
+  $('loginEmail').value=email;$('loginPassword').value=password;
+  switchAuthPane('manager');
+  authMessage('Manager created. Signing in…');
+  await managerLogin();
+}
+async function signOutSecure(){
+  await db.auth.signOut();
+  stopSecureSession();
+  showAuthScreen();
+  switchAuthPane('manager');
+  authMessage('Signed out.');
+}
+async function loadStaff(){
+  if(!isManager)return;
+  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,active,created_at').order('display_name');
+  if(error){staffMessage(error.message,true);return}
+  $('staffList').innerHTML=(data||[]).map(p=>'<div class="staffrow"><div><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Manager')+' • '+esc(p.role)+(p.active?'':' • INACTIVE')+'</small></div></div>').join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
+}
+async function openStaff(){
+  if(!isManager)return;
+  staffMessage('');
+  showModal('staffModal');
+  await loadStaff();
+}
+async function createStaff(){
+  if(!isManager)return;
+  const display_name=$('staffName').value.trim(),employee_code=$('staffCode').value.trim().toLowerCase(),role=$('staffRole').value,pin=$('staffPin').value.trim();
+  if(!display_name||!employee_code||!/^\d{6,12}$/.test(pin)){staffMessage('Enter name, employee code, and a 6–12 digit PIN.',true);return}
+  $('createStaffBtn').disabled=true;staffMessage('Creating employee…');
+  try{
+    const {data,error}=await db.functions.invoke('create-employee',{body:{display_name,employee_code,role,pin}});
+    if(error||data?.error)throw new Error(data?.error||error?.message||'Could not create employee');
+    $('staffName').value='';$('staffCode').value='';$('staffPin').value='';
+    staffMessage('Employee created.');
+    await loadStaff();
+  }catch(e){staffMessage(e.message||String(e),true)}
+  finally{$('createStaffBtn').disabled=false}
+}
+async function secureStart(){
+  if(authStarting)return;authStarting=true;
+  applyLanguage();tick();
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){showAuthScreen();switchAuthPane('manager');authStarting=false;return}
+  try{await activateSession(session.user)}
+  catch(e){await db.auth.signOut();stopSecureSession();showAuthScreen();switchAuthPane('manager');authMessage(e.message||String(e),true)}
+  finally{authStarting=false}
+}
 selected.setHours(12,0,0,0);
 
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
