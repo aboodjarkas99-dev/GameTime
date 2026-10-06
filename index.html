@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006e">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006f">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -74,21 +74,35 @@
       <nav class="sidenav">
         <button id="overviewNav" class="active" type="button"><span>⌂</span><b>Overview</b></button>
         <button id="scheduleNav" type="button"><span>▦</span><b>Schedule</b></button>
-        <button id="holdLineBtn" type="button"><span>◫</span><b>Hold Line</b></button>
+        <div class="sideaccordion" id="holdAccordion">
+          <button id="holdLineBtn" class="accordion-toggle" type="button" aria-expanded="false"><span>◫</span><b>Hold Line</b><i>⌄</i></button>
+          <div id="holdMenu" class="sidesubmenu">
+            <button type="button" data-hold-option="open">View Hold Line</button>
+            <button type="button" data-hold-option="add">+ Add Hold Line Item</button>
+          </div>
+        </div>
         <div class="sideaccordion" id="printAccordion">
-          <button id="printBtn" type="button" aria-expanded="false"><span>▤</span><b>Print / Save PDF</b><i>⌄</i></button>
+          <button id="printBtn" class="accordion-toggle" type="button" aria-expanded="false"><span>▤</span><b>Print / Save PDF</b><i>⌄</i></button>
           <div id="printMenu" class="sidesubmenu">
             <button type="button" data-print-option="all">Full Day — Batch + Production</button>
             <button type="button" data-print-option="batch">Batch Maker</button>
             <button type="button" data-print-option="prod">Production / Filling</button>
           </div>
         </div>
-        <button id="settingsBtn" type="button"><span>⚙</span><b>Settings</b></button>
+        <div class="sideaccordion" id="settingsAccordion">
+          <button id="settingsBtn" class="accordion-toggle" type="button" aria-expanded="false"><span>⚙</span><b>Settings</b><i>⌄</i></button>
+          <div id="settingsMenu" class="sidesubmenu">
+            <button type="button" data-settings-option="account">My Account</button>
+            <button type="button" data-settings-option="security">Password & Security</button>
+            <button type="button" data-settings-option="about">About The App</button>
+            <button type="button" data-settings-option="install">Install on This Device</button>
+          </div>
+        </div>
       </nav>
     </div>
 
     <div id="managerTools" class="manager-tools sidebar-manager">
-      <div class="sidelabel">Manager</div>
+      <div class="sidelabel">Full Access</div>
       <nav class="sidenav">
         <button id="monthlyChartBtn" type="button"><span>▥</span><b>Monthly Chart</b></button>
         <button data-drawer="activity" type="button"><span>◉</span><b>Live Activity</b></button>
@@ -333,6 +347,8 @@
 <div class="modal" id="staffModal">
   <div class="dialog staffdialog">
     <div class="dialoghead"><h2>Staff Accounts</h2><button data-close="staffModal">✕</button></div>
+
+    <div class="staffsectiontitle"><b>Employee Accounts</b><span>Employee Code + PIN</span></div>
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
@@ -341,6 +357,18 @@
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
     <div id="staffMessage" class="authmessage"></div>
+
+    <div class="staffsectiontitle management-title"><b>Management Accounts</b><span>Email + Password</span></div>
+    <div class="managementcreate">
+      <label>Name<input id="managementName" autocomplete="off"></label>
+      <label>Position<select id="managementTitle"><option value="Manager">Manager</option><option value="Assistant Manager">Assistant Manager</option></select></label>
+      <label>Email<input id="managementEmail" type="email" autocomplete="off"></label>
+      <label>Temporary Password<input id="managementPassword" type="password" autocomplete="new-password"></label>
+      <button id="createManagementBtn" class="primary">Create Management Account</button>
+    </div>
+    <div id="managementMessage" class="authmessage"></div>
+
+    <div class="staffsectiontitle existing-title"><b>Existing Accounts</b><span>Active GameTime users</span></div>
     <div id="staffList" class="stafflist"></div>
   </div>
 </div>
@@ -412,9 +440,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006e"></script>
+<script src="app.js?v=SECURE_V2_20261006f"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006e').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006f').catch(()=>{});}
 </script>
 </body>
 </html>
