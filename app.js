@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006c';
+const BUILD='SECURE_V2_20261006d';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -857,7 +857,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006c':'batch-maker.html?build=SECURE_V2_20261006c'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006d':'batch-maker.html?build=SECURE_V2_20261006d'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1032,6 +1032,22 @@ function setShellNavActive(id){
   document.querySelectorAll('.sidenav button').forEach(b=>b.classList.remove('active'));
   const el=$(id);if(el)el.classList.add('active');
 }
+function openMobileSidebar(){
+  if(!window.matchMedia('(max-width:700px)').matches)return;
+  $('mainSidebar')?.classList.add('open');
+  $('mobileSidebarBackdrop')?.classList.add('show');
+  document.body.classList.add('mobile-nav-open');
+  $('mobileMenuBtn')?.setAttribute('aria-expanded','true');
+}
+function closeMobileSidebar(){
+  $('mainSidebar')?.classList.remove('open');
+  $('mobileSidebarBackdrop')?.classList.remove('show');
+  document.body.classList.remove('mobile-nav-open');
+  $('mobileMenuBtn')?.setAttribute('aria-expanded','false');
+}
+if($('mobileMenuBtn'))$('mobileMenuBtn').onclick=openMobileSidebar;
+if($('sidebarCloseBtn'))$('sidebarCloseBtn').onclick=closeMobileSidebar;
+if($('mobileSidebarBackdrop'))$('mobileSidebarBackdrop').onclick=closeMobileSidebar;
 if($('overviewNav'))$('overviewNav').onclick=()=>{setShellNavActive('overviewNav');$('overviewSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
 if($('scheduleNav'))$('scheduleNav').onclick=()=>{setShellNavActive('scheduleNav');$('scheduleSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
@@ -1106,6 +1122,13 @@ document.addEventListener('click',e=>{
   const acc=$('printAccordion');
   if(acc&&!acc.contains(e.target)){$('printMenu')?.classList.remove('show');$('printBtn')?.setAttribute('aria-expanded','false')}
 });
+$('mainSidebar')?.addEventListener('click',e=>{
+  const btn=e.target.closest('button');
+  if(!btn||btn.id==='printBtn'||btn.id==='sidebarCloseBtn')return;
+  if(window.matchMedia('(max-width:700px)').matches)setTimeout(closeMobileSidebar,60);
+});
+window.addEventListener('resize',()=>{if(!window.matchMedia('(max-width:700px)').matches)closeMobileSidebar()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileSidebar()});
 
 db.auth.onAuthStateChange((event,session)=>{
   if(event==='PASSWORD_RECOVERY'){
