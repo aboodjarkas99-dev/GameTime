@@ -1,7 +1,10 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006b';
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
+const BUILD='SECURE_V2_20261006c';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
+  realtime:{params:{eventsPerSecond:20}}
+});
 
 const $=id=>document.getElementById(id);
 let view='all';
@@ -15,6 +18,8 @@ const LEGACY_KEY='gametime_factory_orders_v2';
 const DEVICE_KEY='gametime_device_id';
 const NAME_KEY='gametime_device_name';
 const LANG_KEY='gametime_language';
+const INSTALL_HELP_PREFIX='gametime_install_help_seen_v1:';
+let deferredInstallPrompt=null;
 const STRINGS={
   en:{
     setYourName:'Set Your Name',manager:'Manager',assistantManager:'Assistant Manager',settings:'Settings',productionRole:'Production',batchMakerRole:'Batch Maker',
@@ -118,6 +123,10 @@ function applyLanguage(){
   for(const [sel,key] of [['[data-drawer="activity"]','liveActivity'],['[data-drawer="queue"]','unfinishedQueue'],['[data-drawer="holdline"]','holdLine']]){
     const el=document.querySelector(sel);if(el){const label=el.querySelector?.('b');if(label)label.textContent=t(key);else el.textContent=t(key)}
   }
+  document.querySelectorAll('[data-print-option]').forEach(b=>{
+    const key=b.dataset.printOption==='all'?'fullDayPrint':b.dataset.printOption==='batch'?'printBatch':'printProduction';
+    b.textContent=t(key);
+  });
   staticText('.stats .stat:nth-child(1) span','workOrders');staticText('.stats .stat:nth-child(2) span','batchTasks');staticText('.stats .stat:nth-child(3) span','productionTasks');staticText('.stats .stat:nth-child(4) span','completed');
   staticText('#batchPanel .panelhead h2','batchMaker');staticText('#prodPanel .panelhead h2','productionFilling');
   directLabel('product','productName');directLabel('workDate','batchMakerDate');directLabel('prodWorkDate','productionDate');directLabel('batchNumber','batchNumber');directLabel('tank','totalBatchGallons');directLabel('priority','priority');
@@ -196,12 +205,57 @@ async function fetchMyProfile(userId){
   if(!data||!data.active)throw new Error('This account does not have active GameTime access.');
   return data;
 }
+function isStandaloneApp(){
+  return window.matchMedia?.('(display-mode: standalone)').matches||window.navigator.standalone===true;
+}
+function installHelpKey(){return profile?.id?INSTALL_HELP_PREFIX+profile.id:null}
+function detectInstallDevice(){
+  const ua=navigator.userAgent||'';
+  if(/iPad|iPhone|iPod/.test(ua))return 'ios';
+  if(/Android/i.test(ua))return 'android';
+  return 'desktop';
+}
+function updateInstallHelpUI(){
+  const type=detectInstallDevice();
+  document.querySelectorAll('[data-install-device]').forEach(el=>el.classList.toggle('recommended',el.dataset.installDevice===type));
+  if($('installAppBtn'))$('installAppBtn').style.display=deferredInstallPrompt?'':'none';
+}
+function openInstallHelp(force=false){
+  if(isStandaloneApp()&&!force)return;
+  updateInstallHelpUI();
+  showModal('installHelpModal');
+}
+function maybeShowEmployeeInstallHelp(){
+  if(!profile||profile.role==='manager'||isStandaloneApp())return;
+  const key=installHelpKey();if(!key||localStorage.getItem(key)==='1')return;
+  setTimeout(()=>openInstallHelp(),350);
+}
+function finishInstallHelp(){
+  const key=installHelpKey();if(key)localStorage.setItem(key,'1');
+  hideModal('installHelpModal');
+}
+async function promptInstallApp(){
+  if(!deferredInstallPrompt){updateInstallHelpUI();return}
+  deferredInstallPrompt.prompt();
+  try{await deferredInstallPrompt.userChoice}catch{}
+  deferredInstallPrompt=null;
+  updateInstallHelpUI();
+  const key=installHelpKey();if(key)localStorage.setItem(key,'1');
+}
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredInstallPrompt=e;updateInstallHelpUI();
+});
+window.addEventListener('appinstalled',()=>{
+  deferredInstallPrompt=null;const key=installHelpKey();if(key)localStorage.setItem(key,'1');hideModal('installHelpModal');
+});
+
 async function activateSession(user){
   authUser=user;
   const p=await fetchMyProfile(user.id);
   applyProfile(p);
   hideAuthScreen();
   await initialLoad();
+  maybeShowEmployeeInstallHelp();
 }
 async function managerLogin(){
   const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
@@ -222,12 +276,12 @@ async function employeeLogin(){
 async function createFirstManager(){
   const display_name=$('setupName').value.trim(),job_title=$('setupJobTitle')?.value||'Assistant Manager',email=$('setupEmail').value.trim(),password=$('setupPassword').value,setup_code=$('setupCode').value.trim();
   if(!display_name||!email||password.length<8||!setup_code){authMessage('Enter name, email, password (8+ characters), and Setup Code.',true);return}
-  authMessage('Creating secure Manager…');
+  authMessage('Creating secure management account…');
   const {data,error}=await db.functions.invoke('bootstrap-manager',{body:{display_name,job_title,email,password,setup_code}});
   if(error||data?.error){authMessage(data?.error||error?.message||'Manager setup failed.',true);return}
   $('loginEmail').value=email;$('loginPassword').value=password;
   switchAuthPane('manager');
-  authMessage('Manager created. Signing in…');
+  authMessage('Management account created. Signing in…');
   await managerLogin();
 }
 async function requestPasswordReset(){
@@ -540,6 +594,10 @@ function render(){
   $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):t('readOnly');
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
+  document.querySelectorAll('[data-print-option]').forEach(b=>{
+    const mode=b.dataset.printOption;
+    b.style.display=isManager||mode===view?'':'none';
+  });
   const batch=departmentList('batch'),prod=departmentList('prod');
   const visibleIds=new Set((view==='batch'?batch:view==='prod'?prod:[...batch,...prod]).map(o=>o.id));
   $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=(isManager||view==='all')?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
@@ -799,7 +857,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006b':'batch-maker.html?build=SECURE_V2_20261006b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006c':'batch-maker.html?build=SECURE_V2_20261006c'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -856,7 +914,9 @@ async function loadMonthlyAnalytics(){
       '</div>'+
       '<div class="analytics-chart">'+rows.map((r,i)=>{
         const pct=total?100*r.gallons/total:0,bar=100*r.gallons/max;
-        return '<div class="analytics-row">'+
+        const ratio=rows.length<=1?0:i/(rows.length-1);
+        const level=ratio<0.34?'green':ratio<0.67?'orange':'red';
+        return '<div class="analytics-row analytics-level-'+level+'">'+
           '<div class="analytics-rank">'+(i+1)+'</div>'+
           '<div class="analytics-product"><b>'+esc(r.product)+'</b><small>'+r.batches.size+' '+esc(t('batches'))+'</small></div>'+
           '<div class="analytics-barwrap"><div class="analytics-bar" style="width:'+bar.toFixed(2)+'%"></div></div>'+
@@ -986,8 +1046,22 @@ if($('staffBtn'))$('staffBtn').onclick=()=>{setShellNavActive('staffBtn');openSt
 if($('settingsBtn'))$('settingsBtn').onclick=()=>{setShellNavActive('settingsBtn');openSettings('account')};
 if($('changePasswordBtn'))$('changePasswordBtn').onclick=changeMyPassword;
 document.querySelectorAll('[data-settings-tab]').forEach(b=>b.onclick=()=>switchSettingsTab(b.dataset.settingsTab));
+if($('openInstallHelpBtn'))$('openInstallHelpBtn').onclick=()=>openInstallHelp(true);
+if($('installHelpDoneBtn'))$('installHelpDoneBtn').onclick=finishInstallHelp;
+if($('installAppBtn'))$('installAppBtn').onclick=promptInstallApp;
 if($('createStaffBtn'))$('createStaffBtn').onclick=createStaff;
-$('printBtn').onclick=()=>{setShellNavActive('printBtn');isManager?openDrawer('print'):printSheet(view)};
+$('printBtn').onclick=()=>{
+  setShellNavActive('printBtn');
+  const menu=$('printMenu'),open=menu?.classList.toggle('show');
+  $('printBtn').setAttribute('aria-expanded',open?'true':'false');
+};
+document.querySelectorAll('[data-print-option]').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  const mode=b.dataset.printOption;
+  if(!isManager&&mode!==view)return;
+  $('printMenu')?.classList.remove('show');$('printBtn')?.setAttribute('aria-expanded','false');
+  printSheet(mode);
+});
 $('holdLineBtn').onclick=()=>{setShellNavActive('holdLineBtn');openDrawer('holdline')};
 $('shareProd').onclick=()=>shareDept('prod');
 $('shareBatch').onclick=()=>shareDept('batch');
@@ -1028,6 +1102,10 @@ window.addEventListener('afterprint',()=>document.body.classList.remove('printin
 window.addEventListener('online',()=>{if(!authUser)return;setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});
 window.addEventListener('offline',()=>{if(authUser)setSync('offline','OFFLINE')});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authUser)reconcile()});
+document.addEventListener('click',e=>{
+  const acc=$('printAccordion');
+  if(acc&&!acc.contains(e.target)){$('printMenu')?.classList.remove('show');$('printBtn')?.setAttribute('aria-expanded','false')}
+});
 
 db.auth.onAuthStateChange((event,session)=>{
   if(event==='PASSWORD_RECOVERY'){
