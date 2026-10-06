@@ -305,9 +305,9 @@ async function signOutSecure(){
 }
 async function loadStaff(){
   if(!isManager)return;
-  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,active,created_at').order('display_name');
+  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active,created_at').order('display_name');
   if(error){staffMessage(error.message,true);return}
-  $('staffList').innerHTML=(data||[]).map(p=>'<div class="staffrow"><div><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Manager')+' • '+esc(p.role)+(p.active?'':' • INACTIVE')+'</small></div></div>').join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
+  $('staffList').innerHTML=(data||[]).map(p=>'<div class="staffrow"><div><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(p.job_title||p.role)+(p.active?'':' • INACTIVE')+'</small></div></div>').join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
 }
 async function openStaff(){
   if(!isManager)return;
