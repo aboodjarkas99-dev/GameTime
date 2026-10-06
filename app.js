@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006e';
+const BUILD='SECURE_V2_20261006f';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -127,6 +127,16 @@ function applyLanguage(){
     const key=b.dataset.printOption==='all'?'fullDayPrint':b.dataset.printOption==='batch'?'printBatch':'printProduction';
     b.textContent=t(key);
   });
+  const holdOpen=document.querySelector('[data-hold-option="open"]');if(holdOpen)holdOpen.textContent=lang==='es'?'Ver Línea de Espera':'View Hold Line';
+  const holdAdd=document.querySelector('[data-hold-option="add"]');if(holdAdd)holdAdd.textContent=lang==='es'?'+ Agregar a Línea de Espera':'+ Add Hold Line Item';
+  document.querySelectorAll('[data-settings-option]').forEach(b=>{
+    const labels={
+      account:lang==='es'?'Mi Cuenta':'My Account',
+      security:lang==='es'?'Contraseña y Seguridad':'Password & Security',
+      about:lang==='es'?'Acerca de la App':'About The App',
+      install:lang==='es'?'Instalar en Este Dispositivo':'Install on This Device'
+    };b.textContent=labels[b.dataset.settingsOption]||b.textContent;
+  });
   staticText('.stats .stat:nth-child(1) span','workOrders');staticText('.stats .stat:nth-child(2) span','batchTasks');staticText('.stats .stat:nth-child(3) span','productionTasks');staticText('.stats .stat:nth-child(4) span','completed');
   staticText('#batchPanel .panelhead h2','batchMaker');staticText('#prodPanel .panelhead h2','productionFilling');
   directLabel('product','productName');directLabel('workDate','batchMakerDate');directLabel('prodWorkDate','productionDate');directLabel('batchNumber','batchNumber');directLabel('tank','totalBatchGallons');directLabel('priority','priority');
@@ -195,7 +205,7 @@ function stopSecureSession(){
 }
 function applyProfile(p){
   profile=p;
-  isManager=p?.role==='manager';
+  isManager=p?.role==='manager'||p?.role==='chemist';
   view=p?.role==='prod'?'prod':p?.role==='batch'?'batch':'all';
   refreshUserLabel();
 }
@@ -365,7 +375,7 @@ async function loadStaff(){
 }
 async function openStaff(){
   if(!isManager)return;
-  staffMessage('');
+  staffMessage('');managementMessage('');
   showModal('staffModal');
   await loadStaff();
 }
@@ -382,6 +392,26 @@ async function createStaff(){
     await loadStaff();
   }catch(e){staffMessage(e.message||String(e),true)}
   finally{$('createStaffBtn').disabled=false}
+}
+function managementMessage(msg,bad=false){
+  const el=$('managementMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
+}
+async function createManagementAccount(){
+  if(!isManager)return;
+  const display_name=$('managementName')?.value.trim()||'';
+  const job_title=$('managementTitle')?.value||'Manager';
+  const email=$('managementEmail')?.value.trim().toLowerCase()||'';
+  const password=$('managementPassword')?.value||'';
+  if(!display_name||!email||password.length<8){managementMessage('Enter name, email, and a temporary password of at least 8 characters.',true);return}
+  $('createManagementBtn').disabled=true;managementMessage('Creating management account…');
+  try{
+    const {data,error}=await db.functions.invoke('create-management-account',{body:{display_name,job_title,email,password}});
+    if(error||data?.error)throw new Error(data?.error||error?.message||'Could not create management account');
+    $('managementName').value='';$('managementEmail').value='';$('managementPassword').value='';
+    managementMessage('Management account created. They can sign in from the Manager tab with this email and password.');
+    await loadStaff();
+  }catch(e){managementMessage(e.message||String(e),true)}
+  finally{$('createManagementBtn').disabled=false}
 }
 async function secureStart(){
   if(authStarting)return;authStarting=true;
@@ -598,6 +628,8 @@ function render(){
     const mode=b.dataset.printOption;
     b.style.display=isManager||mode===view?'':'none';
   });
+  const addHoldOption=document.querySelector('[data-hold-option="add"]');
+  if(addHoldOption)addHoldOption.style.display=isManager?'':'none';
   const batch=departmentList('batch'),prod=departmentList('prod');
   const visibleIds=new Set((view==='batch'?batch:view==='prod'?prod:[...batch,...prod]).map(o=>o.id));
   $('sOrders').textContent=visibleIds.size;$('sBatch').textContent=batch.length;$('sProd').textContent=prod.length;$('sDone').textContent=(isManager||view==='all')?batch.filter(o=>o.batchStatus==='done').length+prod.filter(o=>o.prodStatus==='done').length:view==='batch'?batch.filter(o=>o.batchStatus==='done').length:prod.filter(o=>o.prodStatus==='done').length;
@@ -857,7 +889,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006e':'batch-maker.html?build=SECURE_V2_20261006e'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006f':'batch-maker.html?build=SECURE_V2_20261006f'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1032,6 +1064,20 @@ function setShellNavActive(id){
   document.querySelectorAll('.sidenav button').forEach(b=>b.classList.remove('active'));
   const el=$(id);if(el)el.classList.add('active');
 }
+function closeSidebarSubmenus(exceptMenu=''){
+  [['printMenu','printBtn'],['holdMenu','holdLineBtn'],['settingsMenu','settingsBtn']].forEach(([menuId,btnId])=>{
+    if(menuId===exceptMenu)return;
+    $(menuId)?.classList.remove('show');$(btnId)?.setAttribute('aria-expanded','false');
+  });
+}
+function toggleSidebarSubmenu(menuId,btnId){
+  const menu=$(menuId);if(!menu)return false;
+  const willOpen=!menu.classList.contains('show');
+  closeSidebarSubmenus(menuId);
+  menu.classList.toggle('show',willOpen);
+  $(btnId)?.setAttribute('aria-expanded',willOpen?'true':'false');
+  return willOpen;
+}
 function openMobileSidebar(){
   if(!window.matchMedia('(max-width:700px)').matches)return;
   $('mainSidebar')?.classList.add('open');
@@ -1059,17 +1105,24 @@ if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('mon
 if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
 if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;
 if($('staffBtn'))$('staffBtn').onclick=()=>{setShellNavActive('staffBtn');openStaff()};
-if($('settingsBtn'))$('settingsBtn').onclick=()=>{setShellNavActive('settingsBtn');openSettings('account')};
+if($('settingsBtn'))$('settingsBtn').onclick=()=>{
+  setShellNavActive('settingsBtn');toggleSidebarSubmenu('settingsMenu','settingsBtn');
+};
+document.querySelectorAll('[data-settings-option]').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  const opt=b.dataset.settingsOption;
+  $('settingsMenu')?.classList.remove('show');$('settingsBtn')?.setAttribute('aria-expanded','false');
+  if(opt==='install')openInstallHelp(true);else openSettings(opt);
+});
 if($('changePasswordBtn'))$('changePasswordBtn').onclick=changeMyPassword;
 document.querySelectorAll('[data-settings-tab]').forEach(b=>b.onclick=()=>switchSettingsTab(b.dataset.settingsTab));
 if($('openInstallHelpBtn'))$('openInstallHelpBtn').onclick=()=>openInstallHelp(true);
 if($('installHelpDoneBtn'))$('installHelpDoneBtn').onclick=finishInstallHelp;
 if($('installAppBtn'))$('installAppBtn').onclick=promptInstallApp;
 if($('createStaffBtn'))$('createStaffBtn').onclick=createStaff;
+if($('createManagementBtn'))$('createManagementBtn').onclick=createManagementAccount;
 $('printBtn').onclick=()=>{
-  setShellNavActive('printBtn');
-  const menu=$('printMenu'),open=menu?.classList.toggle('show');
-  $('printBtn').setAttribute('aria-expanded',open?'true':'false');
+  setShellNavActive('printBtn');toggleSidebarSubmenu('printMenu','printBtn');
 };
 document.querySelectorAll('[data-print-option]').forEach(b=>b.onclick=e=>{
   e.stopPropagation();
@@ -1078,7 +1131,16 @@ document.querySelectorAll('[data-print-option]').forEach(b=>b.onclick=e=>{
   $('printMenu')?.classList.remove('show');$('printBtn')?.setAttribute('aria-expanded','false');
   printSheet(mode);
 });
-$('holdLineBtn').onclick=()=>{setShellNavActive('holdLineBtn');openDrawer('holdline')};
+$('holdLineBtn').onclick=()=>{
+  setShellNavActive('holdLineBtn');toggleSidebarSubmenu('holdMenu','holdLineBtn');
+};
+document.querySelectorAll('[data-hold-option]').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  const opt=b.dataset.holdOption;
+  $('holdMenu')?.classList.remove('show');$('holdLineBtn')?.setAttribute('aria-expanded','false');
+  if(opt==='add'){if(isManager)openEditor(null,true);return}
+  openDrawer('holdline');
+});
 $('shareProd').onclick=()=>shareDept('prod');
 $('shareBatch').onclick=()=>shareDept('batch');
 $('currentUser').onclick=signOutSecure;
@@ -1119,12 +1181,12 @@ window.addEventListener('online',()=>{if(!authUser)return;setSync('syncing','REC
 window.addEventListener('offline',()=>{if(authUser)setSync('offline','OFFLINE')});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authUser)reconcile()});
 document.addEventListener('click',e=>{
-  const acc=$('printAccordion');
-  if(acc&&!acc.contains(e.target)){$('printMenu')?.classList.remove('show');$('printBtn')?.setAttribute('aria-expanded','false')}
+  const inAccordion=e.target.closest?.('.sideaccordion');
+  if(!inAccordion)closeSidebarSubmenus('');
 });
 $('mainSidebar')?.addEventListener('click',e=>{
   const btn=e.target.closest('button');
-  if(!btn||btn.id==='printBtn'||btn.id==='sidebarCloseBtn')return;
+  if(!btn||['printBtn','holdLineBtn','settingsBtn','sidebarCloseBtn'].includes(btn.id))return;
   if(window.matchMedia('(max-width:700px)').matches)setTimeout(closeMobileSidebar,60);
 });
 window.addEventListener('resize',()=>{if(!window.matchMedia('(max-width:700px)').matches)closeMobileSidebar()});
