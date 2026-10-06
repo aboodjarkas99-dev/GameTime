@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006i';
+const BUILD='SECURE_V2_20261006j';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -278,12 +278,19 @@ async function managerLogin(){
   try{await activateSession(data.user)}catch(e){await db.auth.signOut();authMessage(e.message||String(e),true)}
 }
 async function employeeLogin(){
-  const code=$('employeeCodeLogin').value.trim().toLowerCase(),pin=$('employeePinLogin').value.trim();
-  if(!/^[a-z0-9._-]{1,30}$/.test(code)||!/^\d{4,12}$/.test(pin)){authMessage('Enter your Employee Code and 4–12 digit PIN. Codes like 1, 2, or 3 are allowed.',true);return}
+  const name=$('employeeCodeLogin').value.trim().replace(/\s+/g,' '),pin=$('employeePinLogin').value.trim();
+  if(!name||!/^\d{4,12}$/.test(pin)){authMessage('Enter your name and 4–12 digit PIN.',true);return}
   authMessage('Signing in…');
-  const {data,error}=await db.auth.signInWithPassword({email:code+'@gametime.local',password:pin});
-  if(error){authMessage('Invalid Employee Code or PIN.',true);return}
-  try{await activateSession(data.user)}catch(e){await db.auth.signOut();authMessage(e.message||String(e),true)}
+  const {data,error}=await db.functions.invoke('employee-login',{body:{name,pin}});
+  if(error||data?.error||!data?.session?.access_token||!data?.session?.refresh_token){
+    authMessage('Invalid employee name or PIN.',true);return
+  }
+  const {data:sessionData,error:setError}=await db.auth.setSession({
+    access_token:data.session.access_token,
+    refresh_token:data.session.refresh_token
+  });
+  if(setError||!sessionData?.user){authMessage('Could not start employee session.',true);return}
+  try{await activateSession(sessionData.user)}catch(e){await db.auth.signOut();authMessage(e.message||String(e),true)}
 }
 async function createFirstManager(){
   const display_name=$('setupName').value.trim(),job_title=$('setupJobTitle')?.value||'Assistant Manager',email=$('setupEmail').value.trim(),password=$('setupPassword').value,setup_code=$('setupCode').value.trim();
@@ -960,7 +967,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006i':'batch-maker.html?build=SECURE_V2_20261006i'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006j':'batch-maker.html?build=SECURE_V2_20261006j'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
