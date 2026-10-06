@@ -632,3 +632,80 @@ body{background:#fff;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-sys
   .settingsdialog{padding:11px!important}.settingstabs{margin-top:9px}.accountgrid,.passwordgrid,.aboutgrid{grid-template-columns:1fr}
   .settingssection{padding:11px}.aboutlist{font-size:8px}
 }
+
+/* SIDEBAR PRINT + FULL ANALYTICS + INSTALL GUIDE 20261006 */
+.sideaccordion{position:relative}
+.sideaccordion>#printBtn i{margin-left:auto;font-style:normal;color:#a1a1aa;transition:transform .16s ease}
+.sideaccordion>#printBtn[aria-expanded="true"] i{transform:rotate(180deg)}
+.sidesubmenu{display:none;margin:2px 0 4px 29px;padding-left:7px;border-left:1px solid #dedede}
+.sidesubmenu.show{display:grid;gap:2px}
+.sidenav .sidesubmenu button{
+  min-height:30px;padding:6px 8px;border-radius:6px;font-size:8px;color:#71717a;
+  justify-content:flex-start;background:transparent
+}
+.sidenav .sidesubmenu button:hover{background:#ededed;color:#111}
+
+/* Full-screen monthly analytics */
+#analyticsModal{padding:0!important}
+#analyticsModal.show{align-items:stretch!important;justify-content:stretch!important}
+#analyticsModal .analyticsdialog{
+  margin:0!important;width:100%!important;max-width:none!important;min-height:100vh;
+  border-radius:0!important;padding:0!important;display:flex;flex-direction:column;background:#fafafa
+}
+#analyticsModal .dialoghead{
+  position:sticky;top:0;z-index:4;min-height:58px;padding:0 24px;background:#fff;border-bottom:1px solid #e7e7e7
+}
+#analyticsModal .dialoghead h2{font-size:18px;letter-spacing:-.03em}
+#analyticsModal .dialoghead button{border:1px solid #e5e5e5!important;border-radius:7px!important}
+#analyticsModal .analyticscontrols{
+  margin:20px 24px 10px;padding:10px 12px;background:#fff;border-color:#e7e7e7
+}
+#analyticsModal .analyticsbody{
+  flex:1;padding:0 24px 28px;overflow:auto;min-height:0
+}
+#analyticsModal .analytics-summary{margin:0 0 12px}
+#analyticsModal .analytics-summary>div{background:#fff;border-color:#e7e7e7}
+#analyticsModal .analytics-chart{gap:8px}
+#analyticsModal .analytics-row{
+  grid-template-columns:34px minmax(170px,260px) minmax(220px,1fr) 155px;
+  min-height:58px;padding:9px 11px;border-color:#e7e7e7
+}
+.analytics-level-green .analytics-rank{background:#15803d!important}
+.analytics-level-green .analytics-bar{background:#22c55e!important}
+.analytics-level-green{border-left:3px solid #22c55e!important}
+.analytics-level-orange .analytics-rank{background:#b45309!important}
+.analytics-level-orange .analytics-bar{background:#f59e0b!important}
+.analytics-level-orange{border-left:3px solid #f59e0b!important}
+.analytics-level-red .analytics-rank{background:#b91c1c!important}
+.analytics-level-red .analytics-bar{background:#ef4444!important}
+.analytics-level-red{border-left:3px solid #ef4444!important}
+#analyticsModal .analytics-barwrap{height:20px;background:#efefef}
+#analyticsModal .analytics-table{background:#fff}
+
+/* Install / Add to Home Screen onboarding */
+.installdialog{width:min(860px,100%)}
+.installintro{display:flex;gap:11px;align-items:center;padding:13px 2px 15px;border-bottom:1px solid #ededed}
+.installmark{width:38px;height:38px;border-radius:10px;background:#111;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:900;flex:none}
+.installintro b{font-size:13px}.installintro p{margin:4px 0 0;color:#71717a;font-size:9px;line-height:1.45}
+.installgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}
+.installgrid section{border:1px solid #e7e7e7;border-radius:9px;padding:11px;background:#fafafa}
+.installgrid section.recommended{border-color:#111;background:#fff;box-shadow:0 0 0 1px #111}
+.installgrid section.recommended:before{content:"Recommended for this device";display:inline-block;margin-bottom:7px;background:#111;color:#fff;border-radius:999px;padding:3px 6px;font-size:7px;font-weight:850}
+.installgrid h3{margin:0 0 8px;font-size:10px}
+.installgrid ol{margin:0;padding-left:17px;color:#52525b;font-size:8px;line-height:1.65}
+.installactions{display:flex;justify-content:flex-end;gap:7px;margin-top:13px}
+.installactions button,.settingssecondary{border:1px solid #dedede;background:#fff;border-radius:7px;padding:8px 10px;font-size:9px;font-weight:800}
+.installactions .primary{background:#111!important;color:#fff!important;border-color:#111!important}
+.settingssecondary{margin-top:10px}
+
+/* Better full-screen analytics on phones */
+@media(max-width:720px){
+  .sidesubmenu{position:fixed;top:49px;left:8px;margin:0;width:min(260px,calc(100vw - 16px));padding:6px;background:#fff;border:1px solid #e5e5e5;border-radius:9px;box-shadow:0 14px 40px rgba(0,0,0,.14);z-index:80}
+  .sidesubmenu.show{display:grid}
+  #analyticsModal .dialoghead{padding:0 12px}
+  #analyticsModal .analyticscontrols{margin:10px 10px 8px}
+  #analyticsModal .analyticsbody{padding:0 10px 20px}
+  #analyticsModal .analytics-row{grid-template-columns:26px minmax(90px,1fr) 90px;min-height:64px}
+  #analyticsModal .analytics-barwrap{grid-column:2/4;height:13px}
+  .installgrid{grid-template-columns:1fr}.installactions{flex-direction:column}.installactions button{width:100%}
+}
