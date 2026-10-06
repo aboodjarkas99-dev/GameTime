@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261005a">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -48,59 +48,100 @@
     <div id="authMessage" class="authmessage"></div>
   </div>
 </div>
-<header class="topbar">
-  <div><div class="brand">GAMETIME FACTORY WORK BOARD</div><div class="subtitle" id="viewLabel">ALL WORK</div></div>
-  <div class="topright"><button id="langToggle" class="langbtn" type="button">Español</button><button id="currentUser" class="userbtn" type="button">👤 Set Your Name</button><div id="syncStatus" class="sync syncing">SYNCING</div><div class="clock" id="clock"></div></div>
-</header>
+<div class="app-shell">
+  <aside class="sidepanel">
+    <div class="sidebrand"><div class="sidebrand-mark">G</div><div><b>GameTime</b><small>Factory Work Board</small></div></div>
 
-<main class="wrap">
-  <section class="toolbar">
-    <button id="prevBtn">← Previous</button>
-    <button class="datebox dateclick" id="dateLabel" title="Open Calendar"></button>
-    <button id="nextBtn">Next →</button>
-    <input id="search" class="grow" placeholder="Search Product or Batch #">
-    <button id="printBtn">Print / Save PDF</button>
-    <button id="holdLineBtn">▣ HOLD LINE</button>
-    <button id="addBtn" class="primary">+ Add Work Order</button>
-  </section>
+    <div class="sidegroup">
+      <div class="sidelabel">Workspace</div>
+      <nav class="sidenav">
+        <button id="overviewNav" class="active" type="button"><span>⌂</span><b>Overview</b></button>
+        <button id="scheduleNav" type="button"><span>▦</span><b>Schedule</b></button>
+        <button id="holdLineBtn" type="button"><span>◫</span><b>Hold Line</b></button>
+        <button id="printBtn" type="button"><span>▤</span><b>Print / Save PDF</b></button>
+      </nav>
+    </div>
 
-  <section id="managerTools" class="manager-tools">
-    <div class="sendbox">
-      <b>Send work board to employees</b>
-      <div class="sendactions">
-        <button id="shareProd" class="dark">↗ Send to Production</button>
-        <button id="shareBatch">↗ Send to Batch Maker</button>
+    <div id="managerTools" class="manager-tools sidebar-manager">
+      <div class="sidelabel">Manager</div>
+      <nav class="sidenav">
+        <button id="monthlyChartBtn" type="button"><span>▥</span><b>Monthly Chart</b></button>
+        <button data-drawer="activity" type="button"><span>◉</span><b>Live Activity</b></button>
+        <button data-drawer="queue" type="button"><span>☰</span><b>Unfinished Queue</b></button>
+        <button id="staffBtn" type="button"><span>♙</span><b>Staff</b></button>
+      </nav>
+      <div class="sendbox">
+        <b>Send work board to employees</b>
+        <div class="sendactions">
+          <button id="shareProd" type="button">↗ Production</button>
+          <button id="shareBatch" type="button">↗ Batch Maker</button>
+        </div>
       </div>
     </div>
-    <div class="quickactions">
-      <button id="staffBtn">👥 Staff</button>
-      <button id="monthlyChartBtn">▥ Monthly Chart</button>
-      <button data-drawer="activity">● Live Activity</button>
-      <button data-drawer="queue">☰ Unfinished Queue</button>
-      <button data-drawer="holdline">▣ HOLD LINE</button>
+
+    <div class="sidebottom">
+      <div id="syncStatus" class="sync syncing">SYNCING</div>
+      <button id="currentUser" class="userbtn" type="button">👤 Sign In</button>
     </div>
-  </section>
+  </aside>
 
-  <section class="stats">
-    <div class="stat"><span>Work Orders</span><b id="sOrders">0</b></div>
-    <div class="stat"><span>Batch Tasks</span><b id="sBatch">0</b></div>
-    <div class="stat"><span>Production Tasks</span><b id="sProd">0</b></div>
-    <div class="stat"><span>Completed</span><b id="sDone">0</b></div>
-  </section>
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topcrumb">GameTime / <b id="viewLabel">ALL WORK</b></div>
+      <div class="topright">
+        <button id="langToggle" class="langbtn" type="button">Español</button>
+        <div class="clock" id="clock"></div>
+      </div>
+    </header>
 
-  <section id="searchHoldPanel" class="search-hold-panel" style="display:none"></section>
+    <main class="wrap" id="overviewSection">
+      <section class="pagehead">
+        <div>
+          <div class="pageeyebrow">Factory Work Board</div>
+          <h1>Production Overview</h1>
+          <p>Live schedule for Batch Maker and Production.</p>
+        </div>
+        <button id="addBtn" class="primary">+ Add Work Order</button>
+      </section>
 
-  <section class="board" id="board">
-    <section class="panel" id="batchPanel">
-      <div class="panelhead"><h2>Batch Maker</h2><small id="batchCount"></small></div>
-      <div id="batchList"></div>
-    </section>
-    <section class="panel" id="prodPanel">
-      <div class="panelhead"><h2>Production / Filling</h2><small id="prodCount"></small></div>
-      <div id="prodList"></div>
-    </section>
-  </section>
-</main>
+      <section class="toolbar">
+        <div class="date-nav">
+          <button id="prevBtn" aria-label="Previous workday">←</button>
+          <button class="datebox dateclick" id="dateLabel" title="Open Calendar"></button>
+          <button id="nextBtn" aria-label="Next workday">→</button>
+        </div>
+        <div class="searchwrap">
+          <span>⌕</span>
+          <input id="search" class="grow" placeholder="Search Product or Batch #">
+        </div>
+      </section>
+
+      <section class="stats">
+        <div class="stat"><span>Work Orders</span><b id="sOrders">0</b></div>
+        <div class="stat"><span>Batch Tasks</span><b id="sBatch">0</b></div>
+        <div class="stat"><span>Production Tasks</span><b id="sProd">0</b></div>
+        <div class="stat"><span>Completed</span><b id="sDone">0</b></div>
+      </section>
+
+      <section id="searchHoldPanel" class="search-hold-panel" style="display:none"></section>
+
+      <section class="workspace-head" id="scheduleSection">
+        <div><h2>Today's Work</h2><small>Drag to reorder • live updates enabled</small></div>
+      </section>
+
+      <section class="board" id="board">
+        <section class="panel" id="batchPanel">
+          <div class="panelhead"><h2>Batch Maker</h2><small id="batchCount"></small></div>
+          <div id="batchList"></div>
+        </section>
+        <section class="panel" id="prodPanel">
+          <div class="panelhead"><h2>Production / Filling</h2><small id="prodCount"></small></div>
+          <div id="prodList"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+</div>
 
 <div class="modal" id="editorModal">
   <div class="dialog">
@@ -215,9 +256,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261005a"></script>
+<script src="app.js?v=SECURE_V2_20261006a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261005a').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006a').catch(()=>{});}
 </script>
 </body>
 </html>
