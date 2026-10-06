@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006f';
+const BUILD='SECURE_V2_20261006g';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -277,7 +277,7 @@ async function managerLogin(){
 }
 async function employeeLogin(){
   const code=$('employeeCodeLogin').value.trim().toLowerCase(),pin=$('employeePinLogin').value.trim();
-  if(!/^[a-z0-9._-]{2,30}$/.test(code)||!/^\d{6,12}$/.test(pin)){authMessage('Enter your Employee Code and 6–12 digit PIN.',true);return}
+  if(!/^[a-z0-9._-]{1,30}$/.test(code)||!/^\d{4,12}$/.test(pin)){authMessage('Enter your Employee Code and 4–12 digit PIN. Codes like 1, 2, or 3 are allowed.',true);return}
   authMessage('Signing in…');
   const {data,error}=await db.auth.signInWithPassword({email:code+'@gametime.local',password:pin});
   if(error){authMessage('Invalid Employee Code or PIN.',true);return}
@@ -347,16 +347,24 @@ async function changeMyPassword(){
   if(!current){passwordMessage(management?'Enter your current password.':'Enter your current PIN.',true);return}
   if(management){
     if(next.length<8){passwordMessage('New password must be at least 8 characters.',true);return}
-  }else if(!/^\d{6,12}$/.test(next)){
-    passwordMessage('New PIN must be 6–12 digits.',true);return
+  }else if(!/^\d{4,12}$/.test(next)){
+    passwordMessage('New PIN must be 4–12 digits.',true);return
   }
   if(next!==confirm){passwordMessage(management?'New passwords do not match.':'New PINs do not match.',true);return}
-  passwordMessage('Checking current credential…');
-  const {error:verifyError}=await db.auth.signInWithPassword({email:authUser.email,password:current});
-  if(verifyError){passwordMessage(management?'Current password is incorrect.':'Current PIN is incorrect.',true);return}
-  passwordMessage(management?'Changing password…':'Changing PIN…');
-  const {error}=await db.auth.updateUser({password:next});
-  if(error){passwordMessage(error.message,true);return}
+
+  if(management){
+    passwordMessage('Checking current password…');
+    const {error:verifyError}=await db.auth.signInWithPassword({email:authUser.email,password:current});
+    if(verifyError){passwordMessage('Current password is incorrect.',true);return}
+    passwordMessage('Changing password…');
+    const {error}=await db.auth.updateUser({password:next});
+    if(error){passwordMessage(error.message,true);return}
+  }else{
+    passwordMessage('Changing PIN…');
+    const {error}=await db.rpc('change_employee_pin',{p_current_pin:current,p_new_pin:next});
+    if(error){passwordMessage(error.message?.includes('Current PIN')?'Current PIN is incorrect.':error.message,true);return}
+  }
+
   $('currentPassword').value='';$('newPassword').value='';$('confirmPassword').value='';
   passwordMessage(management?'Password changed successfully.':'PIN changed successfully.');
 }
@@ -382,7 +390,7 @@ async function openStaff(){
 async function createStaff(){
   if(!isManager)return;
   const display_name=$('staffName').value.trim(),employee_code=$('staffCode').value.trim().toLowerCase(),role=$('staffRole').value,pin=$('staffPin').value.trim();
-  if(!display_name||!employee_code||!/^\d{6,12}$/.test(pin)){staffMessage('Enter name, employee code, and a 6–12 digit PIN.',true);return}
+  if(!display_name||!employee_code||!/^[a-z0-9._-]{1,30}$/.test(employee_code)||!/^\d{4,12}$/.test(pin)){staffMessage('Enter a name, any simple employee code (1, 2, 3 are allowed), and a 4–12 digit PIN.',true);return}
   $('createStaffBtn').disabled=true;staffMessage('Creating employee…');
   try{
     const {data,error}=await db.functions.invoke('create-employee',{body:{display_name,employee_code,role,pin}});
@@ -889,7 +897,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006f':'batch-maker.html?build=SECURE_V2_20261006f'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006g':'batch-maker.html?build=SECURE_V2_20261006g'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
