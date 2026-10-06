@@ -843,3 +843,28 @@ input.full-picker-click{cursor:pointer}
 .full-picker-label{cursor:pointer}
 .full-picker-label input[type="date"],
 .full-picker-label input[type="month"]{cursor:pointer}
+
+/* STAFF EDIT DELETE 20261006 */
+.staffrowinfo{min-width:0}
+.staffactions{display:flex;gap:6px;flex:none;margin-left:10px}
+.staffactions button{
+  border:1px solid #d4d4d8;background:#fff;color:#27272a;border-radius:7px;
+  min-height:31px;padding:6px 9px;font-size:8px;font-weight:850;cursor:pointer
+}
+.staffactions button:hover{background:#f4f4f5}
+.staffactions button.danger{border-color:#fecaca;color:#b91c1c;background:#fffafa}
+.staffactions button.danger:hover{background:#fef2f2}
+.staffeditdialog{width:min(650px,100%)}
+.staffeditgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.staffeditgrid label{
+  font-size:8px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:.04em
+}
+.staffeditgrid input,.staffeditgrid select{
+  width:100%;box-sizing:border-box;margin-top:4px;border:1px solid #cbd5e1;border-radius:8px;
+  min-height:42px;padding:9px 10px;background:#fff;color:#111827;font-size:12px
+}
+@media(max-width:620px){
+  .staffrow{align-items:flex-start;gap:8px}
+  .staffactions{margin-left:0}
+  .staffeditgrid{grid-template-columns:1fr}
+}
