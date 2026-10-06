@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006h';
+const BUILD='SECURE_V2_20261006i';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -11,6 +11,7 @@ let view='all';
 let isManager=false;
 let authUser=null;
 let profile=null;
+let staffRows=[];
 let authStarting=false;
 let recoveryMode=location.hash.includes('type=recovery')||new URLSearchParams(location.search).get('type')==='recovery';
 const CACHE_KEY='gametime_secure_v2_cache';
@@ -209,6 +210,7 @@ function applyProfile(p){
   view=p?.role==='prod'?'prod':p?.role==='batch'?'batch':'all';
   refreshUserLabel();
 }
+function canManageStaff(){return profile?.role==='manager'}
 async function fetchMyProfile(userId){
   const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active').eq('id',userId).maybeSingle();
   if(error)throw error;
@@ -376,19 +378,26 @@ async function signOutSecure(){
   authMessage('Signed out.');
 }
 async function loadStaff(){
-  if(!isManager)return;
+  if(!canManageStaff())return;
   const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active,created_at').order('display_name');
   if(error){staffMessage(error.message,true);return}
-  $('staffList').innerHTML=(data||[]).map(p=>'<div class="staffrow"><div><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(p.job_title||p.role)+(p.active?'':' • INACTIVE')+'</small></div></div>').join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
+  staffRows=data||[];
+  $('staffList').innerHTML=staffRows.map(p=>{
+    const employee=p.role!=='manager';
+    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(p.job_title||p.role)+(p.active?'':' • INACTIVE')+'</small></div>'+
+      (employee?'<div class="staffactions"><button type="button" data-staff-edit="'+p.id+'">Edit</button><button type="button" class="danger" data-staff-delete="'+p.id+'">Delete</button></div>':'')+
+      '</div>';
+  }).join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
+  bindStaffActions();
 }
 async function openStaff(){
-  if(!isManager)return;
+  if(!canManageStaff())return;
   staffMessage('');managementMessage('');
   showModal('staffModal');
   await loadStaff();
 }
 async function createStaff(){
-  if(!isManager)return;
+  if(!canManageStaff())return;
   const display_name=$('staffName').value.trim(),employee_code=$('staffCode').value.trim().toLowerCase(),role=$('staffRole').value,pin=$('staffPin').value.trim();
   if(!display_name||!employee_code||!/^[a-z0-9._-]{1,30}$/.test(employee_code)||!/^\d{4,12}$/.test(pin)){staffMessage('Enter a name, any simple employee code (1, 2, 3 are allowed), and a 4–12 digit PIN.',true);return}
   $('createStaffBtn').disabled=true;staffMessage('Creating employee…');
@@ -405,7 +414,7 @@ function managementMessage(msg,bad=false){
   const el=$('managementMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
 }
 async function createManagementAccount(){
-  if(!isManager)return;
+  if(!canManageStaff())return;
   const display_name=$('managementName')?.value.trim()||'';
   const job_title=$('managementTitle')?.value||'Manager';
   const email=$('managementEmail')?.value.trim().toLowerCase()||'';
@@ -420,6 +429,59 @@ async function createManagementAccount(){
     await loadStaff();
   }catch(e){managementMessage(e.message||String(e),true)}
   finally{$('createManagementBtn').disabled=false}
+}
+function editStaffMessage(msg,bad=false){
+  const el=$('editStaffMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
+}
+function openStaffEditor(id){
+  if(!canManageStaff())return;
+  const p=staffRows.find(x=>x.id===id);
+  if(!p||p.role==='manager')return;
+  $('editStaffId').value=p.id;
+  $('editStaffName').value=p.display_name||'';
+  $('editStaffCode').value=p.employee_code||'';
+  $('editStaffRole').value=p.role||'viewer';
+  $('editStaffPin').value='';
+  editStaffMessage('');
+  showModal('editStaffModal');
+}
+async function saveStaffEdit(){
+  if(!canManageStaff())return;
+  const id=$('editStaffId').value;
+  const display_name=$('editStaffName').value.trim();
+  const employee_code=$('editStaffCode').value.trim().toLowerCase();
+  const role=$('editStaffRole').value;
+  const pin=$('editStaffPin').value.trim();
+  if(!display_name||!/^[a-z0-9._-]{1,30}$/.test(employee_code)){
+    editStaffMessage('Enter a valid name and Employee Code.',true);return
+  }
+  if(pin&&!/^\d{4,12}$/.test(pin)){editStaffMessage('New PIN must be 4–12 digits, or leave it blank.',true);return}
+  $('saveStaffEditBtn').disabled=true;editStaffMessage('Saving employee…');
+  try{
+    const {data,error}=await db.functions.invoke('update-employee',{body:{id,display_name,employee_code,role,pin}});
+    if(error||data?.error)throw new Error(data?.error||error?.message||'Could not update employee');
+    editStaffMessage('Employee updated.');
+    await loadStaff();
+    setTimeout(()=>hideModal('editStaffModal'),250);
+  }catch(e){editStaffMessage(e.message||String(e),true)}
+  finally{$('saveStaffEditBtn').disabled=false}
+}
+async function deleteStaffEmployee(id){
+  if(!canManageStaff())return;
+  const p=staffRows.find(x=>x.id===id);
+  if(!p||p.role==='manager')return;
+  if(!confirm('Delete '+(p.display_name||'this employee')+' from GameTime? This removes their login access.'))return;
+  staffMessage('Deleting employee…');
+  try{
+    const {data,error}=await db.functions.invoke('delete-employee',{body:{id}});
+    if(error||data?.error)throw new Error(data?.error||error?.message||'Could not delete employee');
+    staffMessage('Employee deleted.');
+    await loadStaff();
+  }catch(e){staffMessage(e.message||String(e),true)}
+}
+function bindStaffActions(){
+  document.querySelectorAll('[data-staff-edit]').forEach(b=>b.onclick=()=>openStaffEditor(b.dataset.staffEdit));
+  document.querySelectorAll('[data-staff-delete]').forEach(b=>b.onclick=()=>deleteStaffEmployee(b.dataset.staffDelete));
 }
 async function secureStart(){
   if(authStarting)return;authStarting=true;
@@ -632,6 +694,7 @@ function render(){
   $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
+  if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
   document.querySelectorAll('[data-print-option]').forEach(b=>{
     const mode=b.dataset.printOption;
     b.style.display=isManager||mode===view?'':'none';
@@ -897,7 +960,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006h':'batch-maker.html?build=SECURE_V2_20261006h'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006i':'batch-maker.html?build=SECURE_V2_20261006i'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1112,7 +1175,7 @@ $('addBtn').onclick=()=>openEditor(null,false);
 if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('monthlyChartBtn');openMonthlyAnalytics()};
 if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
 if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;
-if($('staffBtn'))$('staffBtn').onclick=()=>{setShellNavActive('staffBtn');openStaff()};
+if($('staffBtn'))$('staffBtn').onclick=()=>{if(!canManageStaff())return;setShellNavActive('staffBtn');openStaff()};
 if($('settingsBtn'))$('settingsBtn').onclick=()=>{
   setShellNavActive('settingsBtn');toggleSidebarSubmenu('settingsMenu','settingsBtn');
 };
@@ -1129,6 +1192,7 @@ if($('installHelpDoneBtn'))$('installHelpDoneBtn').onclick=finishInstallHelp;
 if($('installAppBtn'))$('installAppBtn').onclick=promptInstallApp;
 if($('createStaffBtn'))$('createStaffBtn').onclick=createStaff;
 if($('createManagementBtn'))$('createManagementBtn').onclick=createManagementAccount;
+if($('saveStaffEditBtn'))$('saveStaffEditBtn').onclick=saveStaffEdit;
 $('printBtn').onclick=()=>{
   setShellNavActive('printBtn');toggleSidebarSubmenu('printMenu','printBtn');
 };
