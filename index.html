@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006a">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006b">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -26,7 +26,8 @@
       <label>Email<input id="loginEmail" type="email" autocomplete="username"></label>
       <label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label>
       <button id="managerLoginBtn" class="primary authprimary" type="button">Sign In</button>
-      <button id="showSetupBtn" class="authlink" type="button">First-time Manager Setup</button>
+      <button id="forgotPasswordBtn" class="authlink" type="button">Forgot Password?</button>
+      <button id="showSetupBtn" class="authlink" type="button">First-time Management Setup</button>
     </div>
 
     <div id="employeeLoginPane" class="authpane" style="display:none">
@@ -35,13 +36,28 @@
       <button id="employeeLoginBtn" class="primary authprimary" type="button">Sign In</button>
     </div>
 
+    <div id="forgotPasswordPane" class="authpane" style="display:none">
+      <div class="setupnote">Enter the email used for your management account. GameTime will send a secure password reset link.</div>
+      <label>Email<input id="forgotEmail" type="email" autocomplete="username"></label>
+      <button id="sendResetBtn" class="primary authprimary" type="button">Send Reset Link</button>
+      <button id="backFromForgotBtn" class="authlink" type="button">Back to Sign In</button>
+    </div>
+
+    <div id="recoveryPasswordPane" class="authpane" style="display:none">
+      <div class="setupnote">Choose a new password for your GameTime account.</div>
+      <label>New Password<input id="recoveryNewPassword" type="password" autocomplete="new-password"></label>
+      <label>Confirm New Password<input id="recoveryConfirmPassword" type="password" autocomplete="new-password"></label>
+      <button id="saveRecoveryPasswordBtn" class="primary authprimary" type="button">Save New Password</button>
+    </div>
+
     <div id="managerSetupPane" class="authpane setup-pane" style="display:none">
-      <div class="setupnote">One-time setup for the first Manager only.</div>
+      <div class="setupnote">One-time setup for the first management account only.</div>
       <label>Your Name<input id="setupName" autocomplete="name"></label>
+      <label>Position<select id="setupJobTitle"><option value="Assistant Manager" selected>Assistant Manager</option><option value="Manager">Manager</option></select></label>
       <label>Email<input id="setupEmail" type="email" autocomplete="username"></label>
       <label>Password<input id="setupPassword" type="password" autocomplete="new-password"></label>
       <label>Setup Code<input id="setupCode" type="password" autocomplete="one-time-code"></label>
-      <button id="createManagerBtn" class="primary authprimary" type="button">Create Manager</button>
+      <button id="createManagerBtn" class="primary authprimary" type="button">Create Management Account</button>
       <button id="backToLoginBtn" class="authlink" type="button">Back to Sign In</button>
     </div>
 
@@ -59,6 +75,7 @@
         <button id="scheduleNav" type="button"><span>▦</span><b>Schedule</b></button>
         <button id="holdLineBtn" type="button"><span>◫</span><b>Hold Line</b></button>
         <button id="printBtn" type="button"><span>▤</span><b>Print / Save PDF</b></button>
+        <button id="settingsBtn" type="button"><span>⚙</span><b>Settings</b></button>
       </nav>
     </div>
 
@@ -140,6 +157,88 @@
         </section>
       </section>
     </main>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="dialog settingsdialog">
+    <div class="dialoghead"><h2 id="settingsTitle">Settings</h2><button data-close="settingsModal">✕</button></div>
+
+    <div class="settingstabs">
+      <button class="active" type="button" data-settings-tab="account">My Account</button>
+      <button type="button" data-settings-tab="security">Password & Security</button>
+      <button type="button" data-settings-tab="about">About GameTime</button>
+    </div>
+
+    <section class="settingspane active" data-settings-pane="account">
+      <div class="settingssection">
+        <h3>My Account</h3>
+        <p>Account identity used for secure access and audit history.</p>
+        <div class="accountgrid">
+          <div><span>Name</span><b id="settingsAccountName">—</b></div>
+          <div><span>Position</span><b id="settingsAccountTitle">—</b></div>
+          <div><span>Email / Login</span><b id="settingsAccountEmail">—</b></div>
+          <div><span>Access Group</span><b id="settingsAccountRole">—</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="settingspane" data-settings-pane="security">
+      <div class="settingssection">
+        <h3>Change Password</h3>
+        <p>Your current password is checked before a new password is saved.</p>
+        <div class="passwordgrid">
+          <label>Current Password<input id="currentPassword" type="password" autocomplete="current-password"></label>
+          <label>New Password<input id="newPassword" type="password" autocomplete="new-password"></label>
+          <label>Confirm New Password<input id="confirmPassword" type="password" autocomplete="new-password"></label>
+        </div>
+        <button id="changePasswordBtn" class="primary settingssave" type="button">Change Password</button>
+        <div id="passwordMessage" class="authmessage"></div>
+      </div>
+
+      <div class="settingssection">
+        <h3>If You Forget Your Password</h3>
+        <p>Use <b>Forgot Password?</b> on the sign-in screen. A recovery link is sent to the email on your management account. After opening the link, GameTime asks you to choose a new password.</p>
+      </div>
+    </section>
+
+    <section class="settingspane" data-settings-pane="about">
+      <div class="settingssection aboutapp">
+        <div class="abouthero"><div class="sidebrand-mark">G</div><div><h3>GameTime Factory Work Board</h3><p id="aboutBuild">Secure V2</p></div></div>
+        <p>GameTime is the factory work-board system used to plan Batch Maker and Production work, record live progress, carry unfinished work forward, track actual filling quantities, manage Hold Line items, print the daily sheet, and review monthly production.</p>
+
+        <h4>What We Use</h4>
+        <div class="aboutgrid">
+          <div><b>Vercel</b><span>Hosts the web application and publishes the Secure V2 website.</span></div>
+          <div><b>Supabase Postgres</b><span>Stores work orders, production progress, audit history and account profiles.</span></div>
+          <div><b>Supabase Auth</b><span>Handles secure sign-in, sessions and management-account passwords.</span></div>
+          <div><b>Supabase Realtime</b><span>Keeps changes synchronized between factory computers and phones.</span></div>
+          <div><b>Row Level Security (RLS)</b><span>Database rules decide what authenticated roles are allowed to read or change.</span></div>
+          <div><b>GitHub</b><span>Stores source code and version history. The repository must be Private if the source code itself should not be publicly visible.</span></div>
+        </div>
+
+        <h4>Security Model</h4>
+        <ul class="aboutlist">
+          <li>No anonymous database access to Secure V2 work data.</li>
+          <li>Every signed-in account has a server-side access role; changing the page or URL does not grant extra database permission.</li>
+          <li>Management accounts use email + password. Factory employees use Employee Code + PIN.</li>
+          <li>Passwords are handled by Supabase Auth; GameTime does not store readable password text in the work-order database.</li>
+          <li>Work-order changes are recorded in activity/audit history for accountability.</li>
+          <li>The publishable browser key is not treated as a secret; protection comes from authentication and server-side RLS policies.</li>
+        </ul>
+
+        <h4>Data & Reliability</h4>
+        <ul class="aboutlist">
+          <li>The Secure V2 database is separate from the old GameTime database.</li>
+          <li>Live synchronization uses Supabase Realtime; the database remains the central source of truth.</li>
+          <li>Code backup branches are created before major releases. Database backup availability and retention depend on the Supabase plan and should be reviewed separately from audit history.</li>
+          <li>Automatic rollover moves unfinished scheduled work to the next business day while preserving production progress records.</li>
+        </ul>
+
+        <h4>Important Source-Code Privacy Note</h4>
+        <div class="securitynote">A login protects factory data, but it does not by itself hide website source files. To prevent outsiders from finding the Secure V2 source in GitHub search, the <b>GameTime GitHub repository must be Private</b>.</div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -256,9 +355,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006a"></script>
+<script src="app.js?v=SECURE_V2_20261006b"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006a').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006b').catch(()=>{});}
 </script>
 </body>
 </html>
