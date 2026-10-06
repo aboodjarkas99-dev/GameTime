@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261005a';
+const BUILD='SECURE_V2_20261006a';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -111,10 +111,12 @@ function applyLanguage(){
   const lt=$('langToggle');if(lt)lt.textContent=t('languageButton');
   refreshUserLabel();
   const map={prevBtn:'previous',nextBtn:'next',printBtn:'printSavePdf',holdLineBtn:'holdLine',addBtn:'addWorkOrder',shareProd:'sendProduction',shareBatch:'sendBatchMaker',saveOrderBtn:'saveWorkOrder',saveQtyBtn:'saveActualQuantity',saveCarryBtn:'moveRemainder',saveDeviceName:'saveNameDevice'};
-  for(const [id,key] of Object.entries(map)){const el=$(id);if(el)el.textContent=t(key)}
+  for(const [id,key] of Object.entries(map)){const el=$(id);if(el){const label=el.querySelector?.('b');if(label)label.textContent=t(key);else el.textContent=t(key)}}
   const search=$('search');if(search)search.placeholder=t('searchPlaceholder');
   staticText('#managerTools .sendbox > b','sendBoard');
-  staticText('[data-drawer="activity"]','liveActivity');staticText('[data-drawer="queue"]','unfinishedQueue');staticText('[data-drawer="holdline"]','holdLine');
+  for(const [sel,key] of [['[data-drawer="activity"]','liveActivity'],['[data-drawer="queue"]','unfinishedQueue'],['[data-drawer="holdline"]','holdLine']]){
+    const el=document.querySelector(sel);if(el){const label=el.querySelector?.('b');if(label)label.textContent=t(key);else el.textContent=t(key)}
+  }
   staticText('.stats .stat:nth-child(1) span','workOrders');staticText('.stats .stat:nth-child(2) span','batchTasks');staticText('.stats .stat:nth-child(3) span','productionTasks');staticText('.stats .stat:nth-child(4) span','completed');
   staticText('#batchPanel .panelhead h2','batchMaker');staticText('#prodPanel .panelhead h2','productionFilling');
   directLabel('product','productName');directLabel('workDate','batchMakerDate');directLabel('prodWorkDate','productionDate');directLabel('batchNumber','batchNumber');directLabel('tank','totalBatchGallons');directLabel('priority','priority');
@@ -124,7 +126,7 @@ function applyLanguage(){
   staticText('.optional-package span b','addJerry');staticText('.optional-package span small','onlyShowPackage');
   if($('catalystOptionTitle'))$('catalystOptionTitle').textContent=t('catalystOption');
   if($('catalystOptionHelp'))$('catalystOptionHelp').textContent=t('catalystHelp');
-  if($('monthlyChartBtn'))$('monthlyChartBtn').textContent=t('monthlyChart');
+  if($('monthlyChartBtn')){const el=$('monthlyChartBtn'),label=el.querySelector?.('b');if(label)label.textContent=t('monthlyChart');else el.textContent=t('monthlyChart')}
   if($('analyticsTitle'))$('analyticsTitle').textContent=t('monthlyChartTitle');
   directLabel('analyticsMonth','month');
   if($('analyticsLoadBtn'))$('analyticsLoadBtn').textContent=t('showChart');
@@ -726,7 +728,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261005a':'batch-maker.html?build=SECURE_V2_20261005a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006a':'batch-maker.html?build=SECURE_V2_20261006a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -895,18 +897,24 @@ function ensureIdentity(){refreshUserLabel();if(!deviceName)openIdentity()}
 function tick(){$('clock').textContent=new Date().toLocaleTimeString(locale(),{hour:'numeric',minute:'2-digit'})}
 
 if($('langToggle'))$('langToggle').onclick=()=>setLanguage(lang==='en'?'es':'en');
+function setShellNavActive(id){
+  document.querySelectorAll('.sidenav button').forEach(b=>b.classList.remove('active'));
+  const el=$(id);if(el)el.classList.add('active');
+}
+if($('overviewNav'))$('overviewNav').onclick=()=>{setShellNavActive('overviewNav');$('overviewSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
+if($('scheduleNav'))$('scheduleNav').onclick=()=>{setShellNavActive('scheduleNav');$('scheduleSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
 $('dateLabel').onclick=openMonth;
 $('search').oninput=render;
 $('addBtn').onclick=()=>openEditor(null,false);
-if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=openMonthlyAnalytics;
+if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('monthlyChartBtn');openMonthlyAnalytics()};
 if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
 if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;
-if($('staffBtn'))$('staffBtn').onclick=openStaff;
+if($('staffBtn'))$('staffBtn').onclick=()=>{setShellNavActive('staffBtn');openStaff()};
 if($('createStaffBtn'))$('createStaffBtn').onclick=createStaff;
-$('printBtn').onclick=()=>isManager?openDrawer('print'):printSheet(view);
-$('holdLineBtn').onclick=()=>openDrawer('holdline');
+$('printBtn').onclick=()=>{setShellNavActive('printBtn');isManager?openDrawer('print'):printSheet(view)};
+$('holdLineBtn').onclick=()=>{setShellNavActive('holdLineBtn');openDrawer('holdline')};
 $('shareProd').onclick=()=>shareDept('prod');
 $('shareBatch').onclick=()=>shareDept('batch');
 $('currentUser').onclick=signOutSecure;
@@ -921,7 +929,7 @@ if($('createManagerBtn'))$('createManagerBtn').onclick=createFirstManager;
 if($('loginPassword'))$('loginPassword').onkeydown=e=>{if(e.key==='Enter')managerLogin()};
 if($('employeePinLogin'))$('employeePinLogin').onkeydown=e=>{if(e.key==='Enter')employeeLogin()};
 
-document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>openDrawer(b.dataset.drawer));
+document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.sidenav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');openDrawer(b.dataset.drawer)});
 $('closeDrawer').onclick=closeDrawer;
 $('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));
