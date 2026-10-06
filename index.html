@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006f">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006g">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -353,7 +353,7 @@
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
       <label>Role<select id="staffRole"><option value="batch">Batch Maker</option><option value="prod">Production</option><option value="chemist">Chemist</option><option value="shipping">Shipping</option><option value="viewer">View Only</option></select></label>
-      <label>PIN (6–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
+      <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
     <div id="staffMessage" class="authmessage"></div>
@@ -440,9 +440,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006f"></script>
+<script src="app.js?v=SECURE_V2_20261006g"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006f').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006g').catch(()=>{});}
 </script>
 </body>
 </html>
