@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006h">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006i">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -373,6 +373,30 @@
   </div>
 </div>
 
+<div class="modal" id="editStaffModal">
+  <div class="dialog staffeditdialog">
+    <div class="dialoghead"><h2>Edit Employee</h2><button data-close="editStaffModal">✕</button></div>
+    <input id="editStaffId" type="hidden">
+    <div class="staffeditgrid">
+      <label>Name<input id="editStaffName" autocomplete="off"></label>
+      <label>Employee Code<input id="editStaffCode" autocapitalize="none" autocomplete="off"></label>
+      <label>Role<select id="editStaffRole">
+        <option value="batch">Batch Maker</option>
+        <option value="prod">Production</option>
+        <option value="chemist">Chemist</option>
+        <option value="shipping">Shipping</option>
+        <option value="viewer">View Only</option>
+      </select></label>
+      <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"></label>
+    </div>
+    <div id="editStaffMessage" class="authmessage"></div>
+    <div class="dialogactions">
+      <button data-close="editStaffModal">Cancel</button>
+      <button id="saveStaffEditBtn" class="primary">Save Employee</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="analyticsModal">
   <div class="dialog analyticsdialog">
     <div class="dialoghead"><h2 id="analyticsTitle">Monthly Production Chart</h2><button data-close="analyticsModal">✕</button></div>
@@ -440,9 +464,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006h"></script>
+<script src="app.js?v=SECURE_V2_20261006i"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006h').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006i').catch(()=>{});}
 </script>
 </body>
 </html>
