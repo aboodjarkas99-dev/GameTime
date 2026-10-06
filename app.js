@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006g';
+const BUILD='SECURE_V2_20261006h';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -897,7 +897,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006g':'batch-maker.html?build=SECURE_V2_20261006g'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006h':'batch-maker.html?build=SECURE_V2_20261006h'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1166,6 +1166,33 @@ if($('employeeLoginBtn'))$('employeeLoginBtn').onclick=employeeLogin;
 if($('createManagerBtn'))$('createManagerBtn').onclick=createFirstManager;
 if($('loginPassword'))$('loginPassword').onkeydown=e=>{if(e.key==='Enter')managerLogin()};
 if($('employeePinLogin'))$('employeePinLogin').onkeydown=e=>{if(e.key==='Enter')employeeLogin()};
+
+function openFullDatePicker(input){
+  if(!input||input.disabled||input.readOnly)return;
+  try{
+    input.focus({preventScroll:true});
+    if(typeof input.showPicker==='function')input.showPicker();
+  }catch{}
+}
+function enableFullDatePickerClicks(){
+  document.querySelectorAll('input[type="date"],input[type="month"]').forEach(input=>{
+    if(input.dataset.fullPickerBound==='1')return;
+    input.dataset.fullPickerBound='1';
+    input.classList.add('full-picker-click');
+    input.addEventListener('click',()=>openFullDatePicker(input));
+    const label=input.closest('label');
+    if(label&&label.dataset.fullPickerBound!=='1'){
+      label.dataset.fullPickerBound='1';
+      label.classList.add('full-picker-label');
+      label.addEventListener('click',e=>{
+        if(e.target===input||e.target.closest?.('button'))return;
+        e.preventDefault();
+        openFullDatePicker(input);
+      });
+    }
+  });
+}
+enableFullDatePickerClicks();
 
 document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.sidenav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');openDrawer(b.dataset.drawer)});
 $('closeDrawer').onclick=closeDrawer;
