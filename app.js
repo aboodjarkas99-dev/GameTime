@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261006a';
+const BUILD='SECURE_V2_20261006b';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{realtime:{params:{eventsPerSecond:20}}});
 
 const $=id=>document.getElementById(id);
@@ -9,6 +9,7 @@ let isManager=false;
 let authUser=null;
 let profile=null;
 let authStarting=false;
+let recoveryMode=location.hash.includes('type=recovery')||new URLSearchParams(location.search).get('type')==='recovery';
 const CACHE_KEY='gametime_secure_v2_cache';
 const LEGACY_KEY='gametime_factory_orders_v2';
 const DEVICE_KEY='gametime_device_id';
@@ -16,7 +17,7 @@ const NAME_KEY='gametime_device_name';
 const LANG_KEY='gametime_language';
 const STRINGS={
   en:{
-    setYourName:'Set Your Name',manager:'Manager',productionRole:'Production',batchMakerRole:'Batch Maker',
+    setYourName:'Set Your Name',manager:'Manager',assistantManager:'Assistant Manager',settings:'Settings',productionRole:'Production',batchMakerRole:'Batch Maker',
     allWork:'ALL WORK',productionFilling:'PRODUCTION / FILLING',batchMaker:'BATCH MAKER',
     previous:'← Previous',next:'Next →',searchPlaceholder:'Search ALL dates — Product or Batch #',allDates:'ALL DATES',searchResults:'Search Results',holdMatches:'Hold Line Matches',monthlyChart:'▥ Monthly Chart',monthlyChartTitle:'Monthly Production Chart',month:'Month',showChart:'Show Chart',chartLoading:'Loading monthly production…',chartNoData:'No production recorded for this month.',totalGallons:'Total Gallons',products:'Products',batches:'Batches',ofMonth:'of month',gallons:'gal',printSavePdf:'Print / Save PDF',holdLine:'▣ HOLD LINE',addWorkOrder:'+ Add Work Order',
     sendBoard:'Send work board to employees',sendProduction:'↗ Send to Production',sendBatchMaker:'↗ Send to Batch Maker',liveActivity:'● Live Activity',unfinishedQueue:'☰ Unfinished Queue',
@@ -57,7 +58,7 @@ const STRINGS={
     languageButton:'Español'
   },
   es:{
-    setYourName:'Pon tu nombre',manager:'Gerente',productionRole:'Producción',batchMakerRole:'Preparación',
+    setYourName:'Pon tu nombre',manager:'Gerente',assistantManager:'Subgerente',settings:'Configuración',productionRole:'Producción',batchMakerRole:'Preparación',
     allWork:'TODO EL TRABAJO',productionFilling:'PRODUCCIÓN / LLENADO',batchMaker:'PREPARACIÓN DE LOTES',
     previous:'← Anterior',next:'Siguiente →',searchPlaceholder:'Buscar en TODAS las fechas — Producto o lote #',allDates:'TODAS LAS FECHAS',searchResults:'Resultados de búsqueda',holdMatches:'Coincidencias en Línea de Espera',monthlyChart:'▥ Gráfica mensual',monthlyChartTitle:'Gráfica mensual de producción',month:'Mes',showChart:'Mostrar gráfica',chartLoading:'Cargando producción mensual…',chartNoData:'No hay producción registrada para este mes.',totalGallons:'Galones totales',products:'Productos',batches:'Lotes',ofMonth:'del mes',gallons:'gal',printSavePdf:'Imprimir / Guardar PDF',holdLine:'▣ LÍNEA DE ESPERA',addWorkOrder:'+ Agregar orden',
     sendBoard:'Enviar tablero a empleados',sendProduction:'↗ Enviar a Producción',sendBatchMaker:'↗ Enviar a Preparación',liveActivity:'● Actividad en vivo',unfinishedQueue:'☰ Trabajo pendiente',
@@ -110,7 +111,7 @@ function applyLanguage(){
   document.documentElement.lang=lang;
   const lt=$('langToggle');if(lt)lt.textContent=t('languageButton');
   refreshUserLabel();
-  const map={prevBtn:'previous',nextBtn:'next',printBtn:'printSavePdf',holdLineBtn:'holdLine',addBtn:'addWorkOrder',shareProd:'sendProduction',shareBatch:'sendBatchMaker',saveOrderBtn:'saveWorkOrder',saveQtyBtn:'saveActualQuantity',saveCarryBtn:'moveRemainder',saveDeviceName:'saveNameDevice'};
+  const map={prevBtn:'previous',nextBtn:'next',printBtn:'printSavePdf',holdLineBtn:'holdLine',settingsBtn:'settings',addBtn:'addWorkOrder',shareProd:'sendProduction',shareBatch:'sendBatchMaker',saveOrderBtn:'saveWorkOrder',saveQtyBtn:'saveActualQuantity',saveCarryBtn:'moveRemainder',saveDeviceName:'saveNameDevice'};
   for(const [id,key] of Object.entries(map)){const el=$(id);if(el){const label=el.querySelector?.('b');if(label)label.textContent=t(key);else el.textContent=t(key)}}
   const search=$('search');if(search)search.placeholder=t('searchPlaceholder');
   staticText('#managerTools .sendbox > b','sendBoard');
@@ -147,6 +148,7 @@ let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
 let deviceName='';
 function roleLabel(){
+  if(profile?.job_title)return profile.job_title;
   const r=profile?.role;
   return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='viewer'?t('readOnly'):'';
 }
@@ -166,6 +168,8 @@ function staffMessage(msg,bad=false){
 function switchAuthPane(which){
   $('managerLoginPane').style.display=which==='manager'?'':'none';
   $('employeeLoginPane').style.display=which==='employee'?'':'none';
+  if($('forgotPasswordPane'))$('forgotPasswordPane').style.display=which==='forgot'?'':'none';
+  if($('recoveryPasswordPane'))$('recoveryPasswordPane').style.display=which==='recovery'?'':'none';
   $('managerSetupPane').style.display=which==='setup'?'':'none';
   $('authManagerTab').classList.toggle('active',which==='manager');
   $('authEmployeeTab').classList.toggle('active',which==='employee');
@@ -187,7 +191,7 @@ function applyProfile(p){
   refreshUserLabel();
 }
 async function fetchMyProfile(userId){
-  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,active').eq('id',userId).maybeSingle();
+  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active').eq('id',userId).maybeSingle();
   if(error)throw error;
   if(!data||!data.active)throw new Error('This account does not have active GameTime access.');
   return data;
@@ -216,15 +220,81 @@ async function employeeLogin(){
   try{await activateSession(data.user)}catch(e){await db.auth.signOut();authMessage(e.message||String(e),true)}
 }
 async function createFirstManager(){
-  const display_name=$('setupName').value.trim(),email=$('setupEmail').value.trim(),password=$('setupPassword').value,setup_code=$('setupCode').value.trim();
+  const display_name=$('setupName').value.trim(),job_title=$('setupJobTitle')?.value||'Assistant Manager',email=$('setupEmail').value.trim(),password=$('setupPassword').value,setup_code=$('setupCode').value.trim();
   if(!display_name||!email||password.length<8||!setup_code){authMessage('Enter name, email, password (8+ characters), and Setup Code.',true);return}
   authMessage('Creating secure Manager…');
-  const {data,error}=await db.functions.invoke('bootstrap-manager',{body:{display_name,email,password,setup_code}});
+  const {data,error}=await db.functions.invoke('bootstrap-manager',{body:{display_name,job_title,email,password,setup_code}});
   if(error||data?.error){authMessage(data?.error||error?.message||'Manager setup failed.',true);return}
   $('loginEmail').value=email;$('loginPassword').value=password;
   switchAuthPane('manager');
   authMessage('Manager created. Signing in…');
   await managerLogin();
+}
+async function requestPasswordReset(){
+  const email=$('forgotEmail')?.value.trim().toLowerCase();
+  if(!email){authMessage('Enter your management account email.',true);return}
+  authMessage('Sending secure reset link…');
+  const redirectTo=location.origin+location.pathname;
+  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error){authMessage(error.message,true);return}
+  authMessage('Reset link sent. Check your email and open the GameTime recovery link.');
+}
+async function saveRecoveryPassword(){
+  const p1=$('recoveryNewPassword')?.value||'',p2=$('recoveryConfirmPassword')?.value||'';
+  if(p1.length<8){authMessage('New password must be at least 8 characters.',true);return}
+  if(p1!==p2){authMessage('Passwords do not match.',true);return}
+  authMessage('Saving new password…');
+  const {error}=await db.auth.updateUser({password:p1});
+  if(error){authMessage(error.message,true);return}
+  recoveryMode=false;
+  history.replaceState(null,'',location.pathname);
+  await db.auth.signOut();
+  stopSecureSession();
+  showAuthScreen();switchAuthPane('manager');
+  $('loginPassword').value='';
+  authMessage('Password changed. Sign in with your new password.');
+}
+function passwordMessage(msg,bad=false){
+  const el=$('passwordMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
+}
+function switchSettingsTab(tab){
+  document.querySelectorAll('[data-settings-tab]').forEach(b=>b.classList.toggle('active',b.dataset.settingsTab===tab));
+  document.querySelectorAll('[data-settings-pane]').forEach(p=>p.classList.toggle('active',p.dataset.settingsPane===tab));
+}
+function fillAccountSettings(){
+  if($('settingsAccountName'))$('settingsAccountName').textContent=profile?.display_name||'—';
+  if($('settingsAccountTitle'))$('settingsAccountTitle').textContent=profile?.job_title||roleLabel()||'—';
+  if($('settingsAccountEmail'))$('settingsAccountEmail').textContent=authUser?.email||profile?.employee_code||'—';
+  if($('settingsAccountRole'))$('settingsAccountRole').textContent=profile?.role==='manager'?'Management':profile?.role==='batch'?'Batch Maker':profile?.role==='prod'?'Production':profile?.role==='viewer'?'View Only':'—';
+  if($('aboutBuild'))$('aboutBuild').textContent='Secure V2 • Build '+BUILD;
+}
+function openSettings(tab='account'){
+  if(!authUser||!profile)return;
+  fillAccountSettings();passwordMessage('');
+  if($('currentPassword'))$('currentPassword').value='';
+  if($('newPassword'))$('newPassword').value='';
+  if($('confirmPassword'))$('confirmPassword').value='';
+  switchSettingsTab(tab);showModal('settingsModal');
+}
+async function changeMyPassword(){
+  if(!authUser?.email){passwordMessage('This account does not have an email login.',true);return}
+  const current=$('currentPassword')?.value||'',next=$('newPassword')?.value||'',confirm=$('confirmPassword')?.value||'';
+  const management=profile?.role==='manager';
+  if(!current){passwordMessage(management?'Enter your current password.':'Enter your current PIN.',true);return}
+  if(management){
+    if(next.length<8){passwordMessage('New password must be at least 8 characters.',true);return}
+  }else if(!/^\d{6,12}$/.test(next)){
+    passwordMessage('New PIN must be 6–12 digits.',true);return
+  }
+  if(next!==confirm){passwordMessage(management?'New passwords do not match.':'New PINs do not match.',true);return}
+  passwordMessage('Checking current credential…');
+  const {error:verifyError}=await db.auth.signInWithPassword({email:authUser.email,password:current});
+  if(verifyError){passwordMessage(management?'Current password is incorrect.':'Current PIN is incorrect.',true);return}
+  passwordMessage(management?'Changing password…':'Changing PIN…');
+  const {error}=await db.auth.updateUser({password:next});
+  if(error){passwordMessage(error.message,true);return}
+  $('currentPassword').value='';$('newPassword').value='';$('confirmPassword').value='';
+  passwordMessage(management?'Password changed successfully.':'PIN changed successfully.');
 }
 async function signOutSecure(){
   await db.auth.signOut();
@@ -263,6 +333,7 @@ async function secureStart(){
   if(authStarting)return;authStarting=true;
   applyLanguage();tick();
   const {data:{session}}=await db.auth.getSession();
+  if(recoveryMode&&session){authUser=session.user;showAuthScreen();switchAuthPane('recovery');authStarting=false;return}
   if(!session){showAuthScreen();switchAuthPane('manager');authStarting=false;return}
   try{await activateSession(session.user)}
   catch(e){await db.auth.signOut();stopSecureSession();showAuthScreen();switchAuthPane('manager');authMessage(e.message||String(e),true)}
@@ -728,7 +799,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006a':'batch-maker.html?build=SECURE_V2_20261006a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261006b':'batch-maker.html?build=SECURE_V2_20261006b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -912,6 +983,9 @@ if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('mon
 if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
 if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;
 if($('staffBtn'))$('staffBtn').onclick=()=>{setShellNavActive('staffBtn');openStaff()};
+if($('settingsBtn'))$('settingsBtn').onclick=()=>{setShellNavActive('settingsBtn');openSettings('account')};
+if($('changePasswordBtn'))$('changePasswordBtn').onclick=changeMyPassword;
+document.querySelectorAll('[data-settings-tab]').forEach(b=>b.onclick=()=>switchSettingsTab(b.dataset.settingsTab));
 if($('createStaffBtn'))$('createStaffBtn').onclick=createStaff;
 $('printBtn').onclick=()=>{setShellNavActive('printBtn');isManager?openDrawer('print'):printSheet(view)};
 $('holdLineBtn').onclick=()=>{setShellNavActive('holdLineBtn');openDrawer('holdline')};
@@ -922,6 +996,10 @@ $('currentUser').onclick=signOutSecure;
 if($('authManagerTab'))$('authManagerTab').onclick=()=>switchAuthPane('manager');
 if($('authEmployeeTab'))$('authEmployeeTab').onclick=()=>switchAuthPane('employee');
 if($('showSetupBtn'))$('showSetupBtn').onclick=()=>switchAuthPane('setup');
+if($('forgotPasswordBtn'))$('forgotPasswordBtn').onclick=()=>{if($('forgotEmail'))$('forgotEmail').value=$('loginEmail')?.value||'';switchAuthPane('forgot')};
+if($('backFromForgotBtn'))$('backFromForgotBtn').onclick=()=>switchAuthPane('manager');
+if($('sendResetBtn'))$('sendResetBtn').onclick=requestPasswordReset;
+if($('saveRecoveryPasswordBtn'))$('saveRecoveryPasswordBtn').onclick=saveRecoveryPassword;
 if($('backToLoginBtn'))$('backToLoginBtn').onclick=()=>switchAuthPane('manager');
 if($('managerLoginBtn'))$('managerLoginBtn').onclick=managerLogin;
 if($('employeeLoginBtn'))$('employeeLoginBtn').onclick=employeeLogin;
@@ -951,4 +1029,9 @@ window.addEventListener('online',()=>{if(!authUser)return;setSync('syncing','REC
 window.addEventListener('offline',()=>{if(authUser)setSync('offline','OFFLINE')});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authUser)reconcile()});
 
+db.auth.onAuthStateChange((event,session)=>{
+  if(event==='PASSWORD_RECOVERY'){
+    recoveryMode=true;authUser=session?.user||authUser;showAuthScreen();switchAuthPane('recovery');
+  }
+});
 tick();setInterval(tick,30000);secureStart();
