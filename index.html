@@ -7,7 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006i">
+<link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
+<link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006j">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -31,7 +33,7 @@
     </div>
 
     <div id="employeeLoginPane" class="authpane" style="display:none">
-      <label>Employee Code<input id="employeeCodeLogin" autocomplete="username" autocapitalize="none"></label>
+      <label>Employee Name<input id="employeeCodeLogin" autocomplete="username" autocapitalize="words" placeholder="Enter your name"></label>
       <label>PIN<input id="employeePinLogin" type="password" inputmode="numeric" autocomplete="current-password"></label>
       <button id="employeeLoginBtn" class="primary authprimary" type="button">Sign In</button>
     </div>
@@ -348,7 +350,7 @@
   <div class="dialog staffdialog">
     <div class="dialoghead"><h2>Staff Accounts</h2><button data-close="staffModal">✕</button></div>
 
-    <div class="staffsectiontitle"><b>Employee Accounts</b><span>Employee Code + PIN</span></div>
+    <div class="staffsectiontitle"><b>Employee Accounts</b><span>Employees sign in with Name + PIN</span></div>
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
@@ -464,9 +466,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006i"></script>
+<script src="app.js?v=SECURE_V2_20261006j"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006i').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006j').catch(()=>{});}
 </script>
 </body>
 </html>
