@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006c">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006d">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -65,8 +65,9 @@
   </div>
 </div>
 <div class="app-shell">
-  <aside class="sidepanel">
-    <div class="sidebrand"><div class="sidebrand-mark">G</div><div><b>GameTime</b><small>Factory Work Board</small></div></div>
+  <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop"></div>
+  <aside class="sidepanel" id="mainSidebar">
+    <div class="sidebrand"><div class="sidebrand-mark">G</div><div><b>GameTime</b><small>Factory Work Board</small></div><button id="sidebarCloseBtn" class="sidebar-close" type="button" aria-label="Close menu">✕</button></div>
 
     <div class="sidegroup">
       <div class="sidelabel">Workspace</div>
@@ -111,7 +112,10 @@
 
   <div class="app-main">
     <header class="topbar">
-      <div class="topcrumb">GameTime / <b id="viewLabel">ALL WORK</b></div>
+      <div class="topbar-left">
+        <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+        <div class="topcrumb">GameTime / <b id="viewLabel">ALL WORK</b></div>
+      </div>
       <div class="topright">
         <button id="langToggle" class="langbtn" type="button">Español</button>
         <div class="clock" id="clock"></div>
@@ -408,9 +412,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006c"></script>
+<script src="app.js?v=SECURE_V2_20261006d"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006c').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006d').catch(()=>{});}
 </script>
 </body>
 </html>
