@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006b">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261006c">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
@@ -74,7 +74,14 @@
         <button id="overviewNav" class="active" type="button"><span>⌂</span><b>Overview</b></button>
         <button id="scheduleNav" type="button"><span>▦</span><b>Schedule</b></button>
         <button id="holdLineBtn" type="button"><span>◫</span><b>Hold Line</b></button>
-        <button id="printBtn" type="button"><span>▤</span><b>Print / Save PDF</b></button>
+        <div class="sideaccordion" id="printAccordion">
+          <button id="printBtn" type="button" aria-expanded="false"><span>▤</span><b>Print / Save PDF</b><i>⌄</i></button>
+          <div id="printMenu" class="sidesubmenu">
+            <button type="button" data-print-option="all">Full Day — Batch + Production</button>
+            <button type="button" data-print-option="batch">Batch Maker</button>
+            <button type="button" data-print-option="prod">Production / Filling</button>
+          </div>
+        </div>
         <button id="settingsBtn" type="button"><span>⚙</span><b>Settings</b></button>
       </nav>
     </div>
@@ -167,7 +174,7 @@
     <div class="settingstabs">
       <button class="active" type="button" data-settings-tab="account">My Account</button>
       <button type="button" data-settings-tab="security">Password & Security</button>
-      <button type="button" data-settings-tab="about">About GameTime</button>
+      <button type="button" data-settings-tab="about">About The App</button>
     </div>
 
     <section class="settingspane active" data-settings-pane="account">
@@ -180,6 +187,7 @@
           <div><span>Email / Login</span><b id="settingsAccountEmail">—</b></div>
           <div><span>Access Group</span><b id="settingsAccountRole">—</b></div>
         </div>
+        <button id="openInstallHelpBtn" class="settingssecondary" type="button">Install GameTime on This Device</button>
       </div>
     </section>
 
@@ -239,6 +247,51 @@
         <div class="securitynote">A login protects factory data, but it does not by itself hide website source files. To prevent outsiders from finding the Secure V2 source in GitHub search, the <b>GameTime GitHub repository must be Private</b>.</div>
       </div>
     </section>
+  </div>
+</div>
+
+<div class="modal" id="installHelpModal">
+  <div class="dialog installdialog">
+    <div class="dialoghead"><h2>Put GameTime on This Device</h2><button data-close="installHelpModal">✕</button></div>
+    <div class="installintro">
+      <div class="installmark">G</div>
+      <div><b>Open GameTime like a normal app</b><p>You can pin it to your desktop, taskbar, Home Screen, or app list so you do not need to search for the website every day.</p></div>
+    </div>
+
+    <div class="installgrid">
+      <section data-install-device="desktop">
+        <h3>Desktop / Laptop</h3>
+        <ol>
+          <li>Open GameTime in Chrome or Microsoft Edge.</li>
+          <li>Look for the <b>Install</b> icon near the address bar, or open the browser menu.</li>
+          <li>Choose <b>Install GameTime</b> / <b>Install this site as an app</b>.</li>
+          <li>Allow a Desktop or Taskbar shortcut if your browser asks.</li>
+        </ol>
+      </section>
+      <section data-install-device="ios">
+        <h3>iPhone / iPad</h3>
+        <ol>
+          <li>Open GameTime in <b>Safari</b>.</li>
+          <li>Tap the <b>Share</b> button.</li>
+          <li>Choose <b>Add to Home Screen</b>.</li>
+          <li>Tap <b>Add</b>.</li>
+        </ol>
+      </section>
+      <section data-install-device="android">
+        <h3>Android</h3>
+        <ol>
+          <li>Open GameTime in Chrome.</li>
+          <li>Tap the <b>⋮</b> menu.</li>
+          <li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li>
+          <li>Confirm <b>Install</b>.</li>
+        </ol>
+      </section>
+    </div>
+
+    <div class="installactions">
+      <button id="installAppBtn" class="primary" type="button" style="display:none">Install GameTime Now</button>
+      <button id="installHelpDoneBtn" type="button">Got It — Don't Show Again on This Device</button>
+    </div>
   </div>
 </div>
 
@@ -355,9 +408,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261006b"></script>
+<script src="app.js?v=SECURE_V2_20261006c"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006b').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261006c').catch(()=>{});}
 </script>
 </body>
 </html>
