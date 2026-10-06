@@ -837,3 +837,9 @@ body{background:#fff;color:var(--ink);font-family:Inter,ui-sans-serif,-apple-sys
   .managementcreate button{grid-column:auto}
   .staffsectiontitle{align-items:flex-start;flex-direction:column;gap:2px}
 }
+
+/* FULL DATE PICKER CLICK TARGET 20261006 */
+input.full-picker-click{cursor:pointer}
+.full-picker-label{cursor:pointer}
+.full-picker-label input[type="date"],
+.full-picker-label input[type="month"]{cursor:pointer}
