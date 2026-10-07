@@ -868,3 +868,5 @@ input.full-picker-click{cursor:pointer}
   .staffactions{margin-left:0}
   .staffeditgrid{grid-template-columns:1fr}
 }
+
+.fieldhelp{display:block;margin-top:5px;color:#94a3b8;font-size:7px;font-weight:700;line-height:1.35;text-transform:none;letter-spacing:0}
