@@ -1,6 +1,9 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261009n';
+const BUILD='SECURE_V2_20261009o';
+const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
+let shippingRefreshTimer=null;
+let shippingRefreshBusy=false;
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -218,6 +221,8 @@ function applyProfile(p){
   profile=p;
   isManager=p?.role==='manager'||p?.role==='chemist';
   view=p?.role==='prod'?'prod':p?.role==='batch'?'batch':'all';
+  document.body.classList.toggle('shipping-only',shippingPortal||p?.role==='shipping');
+  if(shippingPortal||p?.role==='shipping'){document.title='GameTime Shipping';$('viewLabel').textContent='SHIPPING'}
   refreshUserLabel();
 }
 function canManageStaff(){return profile?.role==='manager'}
@@ -602,7 +607,7 @@ async function initialLoad(){
     render();
     const cloud=await fetchOrders();orders=cloud;cache();
     logs=await fetchLogs();render();subscribeLive();setSync('live','LIVE');
-    if(profile?.role==='shipping'&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
+    if((shippingPortal||profile?.role==='shipping')&&canUseShipping()&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
     if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
 }
@@ -611,6 +616,7 @@ async function reconcile(){
   try{
     const cloud=await fetchOrders();
     if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();render()}
+    await refreshShippingData();
     logPollTick++;if(logPollTick%3===0){logs=await fetchLogs();renderFeedIfOpen()}
     if(!channel)setSync('syncing','SYNCING');
   }catch(e){console.error(e);setSync('offline','OFFLINE')}
@@ -626,6 +632,8 @@ function subscribeLive(){
       const r=payload.new;logs.unshift({id:r.id,ts:new Date(r.event_ts).getTime(),date:r.event_date,product:r.product,dept:r.dept,type:r.event_type,extra:r.extra||'',actor:r.actor||''});
       logs=logs.slice(0,200);renderFeedIfOpen();setSync('live','LIVE');
     })
+    .on('postgres_changes',{event:'*',schema:'public',table:'shipping_shipments'},scheduleShippingRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'inventory_event_lines'},scheduleShippingRefresh)
     .subscribe(status=>{if(status==='SUBSCRIBED')setSync('live','LIVE');else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')setSync('syncing','RECONNECTING')});
 }
 async function patchOrder(id,patch,expectedVersion=null){
@@ -711,7 +719,7 @@ function card(o,dept,i){
     '</article>';
 }
 function render(){
-  $('viewLabel').textContent=isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
+  $('viewLabel').textContent=(shippingPortal||profile?.role==='shipping')?'SHIPPING':isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
@@ -984,7 +992,12 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009n':'batch-maker.html?build=SECURE_V2_20261009n'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareShipping(){
+  const url=new URL('shipping.html',location.href).href;
+  try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
+}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009o':'batch-maker.html?build=SECURE_V2_20261009o'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1168,11 +1181,12 @@ async function shippingProcessSlip(){
 }
 function shippingLoadScript(src,globalName){
   if(window[globalName])return Promise.resolve(window[globalName]);
+  if(globalName==='jspdfAutoTableReady'&&window.jspdf?.jsPDF.API.autoTable)return Promise.resolve(true);
   return new Promise((resolve,reject)=>{
     const old=document.querySelector('script[data-shipping-lib="'+globalName+'"]');
     if(old){old.addEventListener('load',()=>resolve(window[globalName]),{once:true});old.addEventListener('error',reject,{once:true});return}
     const s=document.createElement('script');s.src=src;s.async=true;s.dataset.shippingLib=globalName;
-    s.onload=()=>window[globalName]?resolve(window[globalName]):reject(new Error(globalName+' did not load'));
+    s.onload=()=>{const result=globalName==='jspdfAutoTableReady'?window.jspdf?.jsPDF.API.autoTable:window[globalName];result?resolve(result):reject(new Error(globalName+' did not load'))};
     s.onerror=()=>reject(new Error('Could not load '+globalName));document.head.appendChild(s);
   });
 }
@@ -1292,6 +1306,41 @@ function openShippingWorkspace(){
   if(!canUseShipping())return;loadInventoryStock().catch(()=>{});showModal('shippingWorkspaceModal');loadShippingShipments().catch(e=>{console.error(e);$('shippingList').innerHTML='<div class="analytics-empty">Could not load shipping.</div>'});
 }
 
+function scheduleShippingRefresh(){
+  clearTimeout(shippingRefreshTimer);
+  shippingRefreshTimer=setTimeout(()=>refreshShippingData().catch(e=>{console.error(e);setSync('offline','RETRYING')}),150);
+}
+async function refreshShippingData(){
+  if(!canUseShipping()||shippingRefreshBusy)return;
+  shippingRefreshBusy=true;
+  try{
+    if($('shippingWorkspaceModal').classList.contains('show')||$('shippingEditorModal').classList.contains('show'))await loadShippingShipments();
+    if($('inventoryModal').classList.contains('show')||$('shippingEditorModal').classList.contains('show'))await loadInventoryStock(true);
+    const current=shippingShipments.find(s=>s.id===shippingCurrentId);
+    if(current&&current.status!==shippingCurrentStatus&&['SHIPPED','CANCELED'].includes(current.status)){
+      shippingCurrentStatus=current.status;shippingUpdateEditorMode();
+      shippingEditorMessage('Updated on another device: '+current.status+'.');
+    }
+  }finally{shippingRefreshBusy=false}
+}
+async function shippingDownloadPdf(){
+  if(!canUseShipping())return;
+  const btn=$('shippingPdfBtn');btn.disabled=true;
+  try{
+    const plan=['SHIPPED','CANCELED'].includes(shippingCurrentStatus)?shippingDraftPlan:await shippingBuildPlan();
+    if(!plan?.ok)throw new Error('Build and review the pallet plan first.');
+    const lib=await shippingLoadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js','jspdf');
+    await shippingLoadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js','jspdfAutoTableReady');
+    const {createShippingPdf}=await import('./shipping-pdf.mjs?v='+BUILD);
+    const doc=createShippingPdf(lib.jsPDF,{
+      number:$('shippingNumber').value.trim(),customer:$('shippingCustomer').value.trim(),
+      po:$('shippingPo').value.trim(),status:shippingCurrentStatus,notes:$('shippingNotes').value.trim(),
+      plan,lines:shippingDraftLines
+    });
+    const name=($('shippingNumber').value.trim()||'shipment').replace(/[^a-z0-9_-]/gi,'_');
+    doc.save('GameTime-Shipping-'+name+'.pdf');shippingEditorMessage('PDF downloaded. Open it to print.');
+  }catch(e){shippingEditorMessage(e.message||String(e),true)}finally{btn.disabled=false}
+}
 function inventoryPackageLabel(type){
   return {
     five_gallon_pail:'5 Gallon Pail',gallon:'1 Gallon',quart_can:'Quart Can',pint_can:'Pint Can',
@@ -1337,7 +1386,7 @@ function renderInventoryStock(){
       return '<section class="inventorycard"><div class="inventorycardhead"><div><b>'+esc(g.product)+'</b><small>'+(g.gallons?g.gallons.toLocaleString(locale(),{maximumFractionDigits:2})+' gal equivalent':'Non-paint / unit inventory')+'</small></div></div>'+
         '<div class="stockpackages">'+items.map((r,i)=>{
           const units=inventoryNum(r.stock_units),bad=units<0?' negative':'';
-          return '<div class="stockpackage'+bad+'"><span>'+esc(inventoryPackageShort(r.package_type))+'</span><b>'+units.toLocaleString(locale(),{maximumFractionDigits:2})+'</b>'+
+          return '<div class="stockpackage'+bad+'"><span>'+esc(inventoryPackageShort(r.package_type))+'</span><b>'+units.toLocaleString(locale(),{maximumFractionDigits:2})+'</b><small>Remaining</small><small>Produced: '+inventoryNum(r.produced_units).toLocaleString(locale())+'<br>Shipped: '+inventoryNum(r.shipped_units).toLocaleString(locale())+'<br>Stock adjustments: '+inventoryNum(r.adjustment_units).toLocaleString(locale())+'</small>'+
             (isManager?'<button type="button" data-stock-row="'+inventoryStockRows.indexOf(r)+'">Set</button>':'')+'</div>';
         }).join('')+'</div></section>';
     }).join('')+'</div>';
@@ -1345,9 +1394,9 @@ function renderInventoryStock(){
     const r=inventoryStockRows[Number(b.dataset.stockRow)];if(r)openInventorySet(r);
   });
 }
-async function loadInventoryStock(){
+async function loadInventoryStock(quiet=false){
   if(!canViewInventory())return;
-  const body=$('inventoryBody');if(body)body.innerHTML='<div class="analytics-empty">Loading factory inventory…</div>';
+  const body=$('inventoryBody');if(body&&!quiet)body.innerHTML='<div class="analytics-empty">Loading factory inventory…</div>';
   const {data,error}=await db.from('inventory_current_stock').select('*').order('product');
   if(error){if(body)body.innerHTML='<div class="analytics-empty">Could not load inventory.</div>';throw error}
   inventoryStockRows=data||[];
@@ -1637,6 +1686,8 @@ if($('inventoryBtn'))$('inventoryBtn').onclick=()=>{setShellNavActive('inventory
 if($('shippingChartBtn'))$('shippingChartBtn').onclick=()=>{setShellNavActive('shippingChartBtn');openShippingAnalytics()};
 if($('shippingWorkspaceBtn'))$('shippingWorkspaceBtn').onclick=()=>{setShellNavActive('shippingWorkspaceBtn');openShippingWorkspace()};
 if($('newShipmentBtn'))$('newShipmentBtn').onclick=openNewShipment;
+if($('shareShipping'))$('shareShipping').onclick=shareShipping;
+if($('shippingPdfBtn'))$('shippingPdfBtn').onclick=shippingDownloadPdf;
 if($('shippingCameraBtn'))$('shippingCameraBtn').onclick=()=>$('shippingCameraInput').click();
 if($('shippingUploadBtn'))$('shippingUploadBtn').onclick=()=>$('shippingFileInput').click();
 if($('shippingCameraInput'))$('shippingCameraInput').onchange=e=>{const f=e.target.files?.[0];if(f)shippingReadSelectedFile(f,'camera');e.target.value=''};

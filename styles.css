@@ -975,3 +975,12 @@ input.full-picker-click{cursor:pointer}
 .shippingeditoractions .spacer{flex:1}.shippingeditoractions button{border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:9px 11px;font-size:8px;font-weight:900}.danger-outline{border-color:#fecaca!important;color:#b91c1c!important}
 @media(max-width:900px){.shipping-line-row{grid-template-columns:26px 1fr 1fr;align-items:end}.shipping-line-row .shipdesc,.shipping-line-row .shipinventory{grid-column:2/4}.shiplineremove{grid-column:3}.shippingheadergrid{grid-template-columns:1fr 1fr}.shipmentcard{grid-template-columns:1fr}.shipmentmetrics{order:2}.shipmentactions{order:3}}
 @media(max-width:650px){.shippingworkdialog>.dialoghead,.shippingeditordialog>.dialoghead{padding:0 12px}.shippingtoolbar{grid-template-columns:1fr;margin:12px}.shippingfilters{overflow:auto}.shippingtoolbar>.primary{width:100%}.shippingsummary{margin:0 12px 9px;grid-template-columns:1fr 1fr}.shippinglist{padding:0 12px 24px}.shippingcapture,.shippingreview{margin:12px 12px 0;padding:11px}.shippingcapturehead,.shippingsectiontitle,.shippingplanbar{align-items:flex-start;flex-direction:column}.captureactions{width:100%}.captureactions button{flex:1}.shippingheadergrid{grid-template-columns:1fr}.shipping-line-row{grid-template-columns:24px 1fr}.shipping-line-row .shipdesc,.shipping-line-row .shipinventory{grid-column:2}.shiplineremove{grid-column:2;width:100%}.shippingplansummary{grid-template-columns:1fr 1fr}.palletgrid{grid-template-columns:1fr}.shippingeditoractions{flex-wrap:wrap}.shippingeditoractions .spacer{display:none}.shippingeditoractions button{flex:1}}
+
+/* Shipping shares the factory session and ledger, with a dedicated workspace. */
+.shipping-only #overviewNav,.shipping-only #scheduleNav,.shipping-only #holdLineBtn,.shipping-only #inventoryBtn,.shipping-only #shippingChartBtn,.shipping-only #printBtn,.shipping-only #managerTools,.shipping-only #overviewSection,.shipping-only #scheduleSection{display:none!important}
+.shipping-only #shippingWorkspaceModal.show{background:#f4f5f7;inset:64px 0 0 230px;z-index:50}
+.shipping-only #shippingWorkspaceModal .dialog{width:100%;margin:0;box-shadow:none!important}
+.shipping-only [data-close="shippingWorkspaceModal"]{display:none}
+.stockpackage small{display:block;font-size:11px;line-height:1.6;color:#475569;font-weight:500}
+#shippingPdfBtn{white-space:normal;min-height:42px}
+@media(max-width:900px){.shipping-only #shippingWorkspaceModal.show{inset:64px 0 0 0}}
