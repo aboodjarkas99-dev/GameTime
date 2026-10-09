@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261009o';
+const BUILD='SECURE_V2_20261009p';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
 let shippingRefreshBusy=false;
@@ -992,12 +992,18 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
+async function shareManagement(){
+  if(!isManager)return;
+  const url=new URL('manager.html',location.href).href;
+  try{if(navigator.share){await navigator.share({title:'GameTime Management',url});return}}catch(e){if(e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(url);toast('Management link copied')}catch{prompt('Copy Management link:',url)}
+}
 async function shareShipping(){
   const url=new URL('shipping.html',location.href).href;
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009o':'batch-maker.html?build=SECURE_V2_20261009o'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009p':'batch-maker.html?build=SECURE_V2_20261009p'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1687,6 +1693,7 @@ if($('shippingChartBtn'))$('shippingChartBtn').onclick=()=>{setShellNavActive('s
 if($('shippingWorkspaceBtn'))$('shippingWorkspaceBtn').onclick=()=>{setShellNavActive('shippingWorkspaceBtn');openShippingWorkspace()};
 if($('newShipmentBtn'))$('newShipmentBtn').onclick=openNewShipment;
 if($('shareShipping'))$('shareShipping').onclick=shareShipping;
+if($('shareManagement'))$('shareManagement').onclick=shareManagement;
 if($('shippingPdfBtn'))$('shippingPdfBtn').onclick=shippingDownloadPdf;
 if($('shippingCameraBtn'))$('shippingCameraBtn').onclick=()=>$('shippingCameraInput').click();
 if($('shippingUploadBtn'))$('shippingUploadBtn').onclick=()=>$('shippingFileInput').click();
