@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261009m';
+const BUILD='SECURE_V2_20261009n';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -984,7 +984,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009m':'batch-maker.html?build=SECURE_V2_20261009m'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009n':'batch-maker.html?build=SECURE_V2_20261009n'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1004,9 +1004,31 @@ function addAnalyticsRow(map,product,gallons,orderId){
   const row=map.get(key);row.gallons+=gallons;if(orderId!=null)row.batches.add(String(orderId))
 }
 
+let shippingEnginePromise=null;
+async function shippingEngine(){
+  if(!shippingEnginePromise)shippingEnginePromise=import('./gametim-shipping.mjs?v='+BUILD);
+  return shippingEnginePromise;
+}
 async function shippingPlan(mode,payload={}){
-  const {data,error}=await db.functions.invoke('shipping-plan',{body:{mode,...payload}});
-  if(error||data?.error)throw new Error(data?.error||error?.message||'Could not calculate shipping plan');
+  const engine=await shippingEngine();
+  let data;
+  if(mode==='slip'){
+    data=engine.planFromSlip(String(payload.text||''));
+  }else if(mode==='lines'){
+    data=engine.planShipment({
+      orderName:String(payload.orderName||''),
+      customer:String(payload.customer||''),
+      lines:Array.isArray(payload.lines)?payload.lines:[]
+    },String(payload.slipText||''));
+  }else{
+    throw new Error('Unknown shipping plan mode');
+  }
+  if(data?.ok&&Array.isArray(data.lines)){
+    data.lines=data.lines.map(line=>({
+      ...line,
+      inventoryProduct:engine.productLabel(line.sku||'',line.description||'',line.size||'')
+    }));
+  }
   return data;
 }
 function shippingSizeLabel(size){
@@ -1036,14 +1058,22 @@ function shippingCleanProduct(desc,sku){
   const hits=known.filter(x=>hay.includes(x.toLowerCase().replace(/excel/g,'xcel'))).sort((a,b)=>b.length-a.length);
   if(hits[0])return hits[0];
   s=s.replace(/\b(?:5\s*gallon|1\.?5\s*gallon|1\.?25\s*gallon|1\s*gallon|gallon|quart|pint|pails?|buckets?)\b/ig,' ').replace(/\s*[-–—]\s*$/,' ').replace(/\s+/g,' ').trim();
-  if(sku){
-    const safe=String(sku).replace(/[-/\\^$*+?.()|[\]{}]/g,'\\function inventoryPackageLabel(type){');
-    try{s=s.replace(new RegExp('^'+safe+'\\s*[-–—:]?\\s*','i'),'').trim()}catch{}
+  const skuText=String(sku||'').trim();
+  if(skuText&&s.toLowerCase().startsWith(skuText.toLowerCase())){
+    s=s.slice(skuText.length).replace(/^\s*[-–—:]?\s*/,'').trim();
   }
-  return s||String(sku||'Item').trim()||'Item';
+  return s||skuText||'Item';
 }
 function shippingLineFromEngine(line,batch=''){
-  return {sku:line.sku||'',description:line.description||'',size:line.size||'gal1',qty:Number(line.qty)||0,inventory_product:shippingCleanProduct(line.description,line.sku),batch:batch||'',source:line.source||''};
+  return {
+    sku:line.sku||'',
+    description:line.description||'',
+    size:line.size||'gal1',
+    qty:Number(line.qty)||0,
+    inventory_product:line.inventoryProduct||shippingCleanProduct(line.description,line.sku),
+    batch:batch||'',
+    source:line.source||''
+  };
 }
 function shippingEditorMessage(msg,bad=false){
   const el=$('shippingEditorMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
