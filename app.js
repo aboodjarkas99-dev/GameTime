@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261009l';
+const BUILD='SECURE_V2_20261009m';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -13,6 +13,15 @@ let authUser=null;
 let profile=null;
 let staffRows=[];
 let inventoryStockRows=[];
+let shippingShipments=[];
+let shippingCurrentId=null;
+let shippingCurrentStatus='DRAFT';
+let shippingDraftLines=[];
+let shippingDraftPlan=null;
+let shippingSourceKind='manual';
+let shippingSourceFilename='';
+let shippingFilter='all';
+let shippingAutoOpened=false;
 let authStarting=false;
 let recoveryMode=location.hash.includes('type=recovery')||new URLSearchParams(location.search).get('type')==='recovery';
 const CACHE_KEY='gametime_secure_v2_cache';
@@ -213,6 +222,7 @@ function applyProfile(p){
 }
 function canManageStaff(){return profile?.role==='manager'}
 function canViewInventory(){return ['manager','chemist','shipping'].includes(profile?.role)}
+function canUseShipping(){return ['manager','chemist','shipping'].includes(profile?.role)}
 async function fetchMyProfile(userId){
   const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active').eq('id',userId).maybeSingle();
   if(error)throw error;
@@ -592,6 +602,7 @@ async function initialLoad(){
     render();
     const cloud=await fetchOrders();orders=cloud;cache();
     logs=await fetchLogs();render();subscribeLive();setSync('live','LIVE');
+    if(profile?.role==='shipping'&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
     if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
 }
@@ -706,6 +717,7 @@ function render(){
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
   if($('inventoryBtn'))$('inventoryBtn').style.display=canViewInventory()?'':'none';
   if($('shippingChartBtn'))$('shippingChartBtn').style.display=canViewInventory()?'':'none';
+  if($('shippingWorkspaceBtn'))$('shippingWorkspaceBtn').style.display=canUseShipping()?'':'none';
   if($('setInventoryBtn'))$('setInventoryBtn').style.display=isManager?'':'none';
   document.querySelectorAll('[data-print-option]').forEach(b=>{
     const mode=b.dataset.printOption;
@@ -972,7 +984,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009l':'batch-maker.html?build=SECURE_V2_20261009l'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009m':'batch-maker.html?build=SECURE_V2_20261009m'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -991,14 +1003,273 @@ function addAnalyticsRow(map,product,gallons,orderId){
   if(!map.has(key))map.set(key,{product:name,gallons:0,batches:new Set()});
   const row=map.get(key);row.gallons+=gallons;if(orderId!=null)row.batches.add(String(orderId))
 }
+
+async function shippingPlan(mode,payload={}){
+  const {data,error}=await db.functions.invoke('shipping-plan',{body:{mode,...payload}});
+  if(error||data?.error)throw new Error(data?.error||error?.message||'Could not calculate shipping plan');
+  return data;
+}
+function shippingSizeLabel(size){
+  return {quart:'Quart',pint:'Pint',gal1:'1 Gallon',gal125:'1.25 Gallon',gal15:'1.5 Gallon',gal5:'5 Gallon',vinyl:'Vinyl Box',drawdown:'Drawdown'}[size]||size;
+}
+function shippingSizeOptions(selected){
+  return ['gal5','gal15','gal125','gal1','quart','pint','vinyl','drawdown'].map(s=>'<option value="'+s+'" '+(s===selected?'selected':'')+'>'+esc(shippingSizeLabel(s))+'</option>').join('');
+}
+function shippingStatusClass(status){return status==='SHIPPED'?'shipped':status==='READY'?'ready':status==='CANCELED'?'canceled':'draft'}
+function shippingKnownProducts(){
+  const map=new Map();
+  for(const o of orders){const v=(o.product||'').trim();if(v)map.set(v.toLowerCase(),v)}
+  for(const r of inventoryStockRows){const v=String(r.product||'').trim();if(v)map.set(v.toLowerCase(),v)}
+  return [...map.values()].sort((a,b)=>a.localeCompare(b));
+}
+function shippingPopulateProducts(){
+  const list=$('inventoryProductList');if(!list)return;
+  const all=new Map();
+  for(const x of shippingKnownProducts())all.set(x.toLowerCase(),x);
+  for(const r of inventoryStockRows){const x=String(r.product||'').trim();if(x)all.set(x.toLowerCase(),x)}
+  list.innerHTML=[...all.values()].map(x=>'<option value="'+esc(x)+'"></option>').join('');
+}
+function shippingCleanProduct(desc,sku){
+  let s=String(desc||'').replace(/\s*\[\[[^\]]+\]\]\s*/g,' ').replace(/\s+/g,' ').trim();
+  const known=shippingKnownProducts();
+  const hay=(String(sku||'')+' '+s).toLowerCase().replace(/excel/g,'xcel');
+  const hits=known.filter(x=>hay.includes(x.toLowerCase().replace(/excel/g,'xcel'))).sort((a,b)=>b.length-a.length);
+  if(hits[0])return hits[0];
+  s=s.replace(/\b(?:5\s*gallon|1\.?5\s*gallon|1\.?25\s*gallon|1\s*gallon|gallon|quart|pint|pails?|buckets?)\b/ig,' ').replace(/\s*[-–—]\s*$/,' ').replace(/\s+/g,' ').trim();
+  if(sku){
+    const safe=String(sku).replace(/[-/\\^$*+?.()|[\]{}]/g,'\\function inventoryPackageLabel(type){');
+    try{s=s.replace(new RegExp('^'+safe+'\\s*[-–—:]?\\s*','i'),'').trim()}catch{}
+  }
+  return s||String(sku||'Item').trim()||'Item';
+}
+function shippingLineFromEngine(line,batch=''){
+  return {sku:line.sku||'',description:line.description||'',size:line.size||'gal1',qty:Number(line.qty)||0,inventory_product:shippingCleanProduct(line.description,line.sku),batch:batch||'',source:line.source||''};
+}
+function shippingEditorMessage(msg,bad=false){
+  const el=$('shippingEditorMessage');if(!el)return;el.textContent=msg||'';el.className='authmessage'+(bad?' bad':' good');
+}
+function shippingScanMessage(msg,busy=false){
+  const el=$('shippingScanStatus');if(!el)return;el.textContent=msg||'';el.className='shippingscanstatus'+(busy?' busy':'');
+}
+function shippingCollectLines(){
+  return [...document.querySelectorAll('.shipping-line-row')].map(row=>({
+    sku:row.querySelector('[data-ship-field="sku"]').value.trim(),
+    description:row.querySelector('[data-ship-field="description"]').value.trim(),
+    size:row.querySelector('[data-ship-field="size"]').value,
+    qty:Number(row.querySelector('[data-ship-field="qty"]').value),
+    inventory_product:row.querySelector('[data-ship-field="inventory"]').value.trim(),
+    batch:row.querySelector('[data-ship-field="batch"]').value.trim(),
+    source:row.dataset.source||''
+  }));
+}
+function shippingRenderLines(){
+  shippingPopulateProducts();
+  const host=$('shippingLines');if(!host)return;
+  host.innerHTML=shippingDraftLines.map((l,i)=>
+    '<div class="shipping-line-row" data-line-index="'+i+'" data-source="'+esc(l.source||'')+'">'+
+      '<div class="shiplineindex">'+(i+1)+'</div>'+
+      '<label>SKU<input data-ship-field="sku" value="'+esc(l.sku||'')+'"></label>'+
+      '<label class="shipdesc">Description<input data-ship-field="description" value="'+esc(l.description||'')+'"></label>'+
+      '<label>Size<select data-ship-field="size">'+shippingSizeOptions(l.size)+'</select></label>'+
+      '<label>Qty Units<input data-ship-field="qty" type="number" min="0.01" step="any" inputmode="decimal" value="'+esc(l.qty)+'"></label>'+
+      '<label class="shipinventory">Inventory Product<input data-ship-field="inventory" list="inventoryProductList" value="'+esc(l.inventory_product||'')+'"></label>'+
+      '<label>Batch<input data-ship-field="batch" value="'+esc(l.batch||'')+'"></label>'+
+      '<button type="button" class="shiplineremove" data-remove-ship-line="'+i+'" aria-label="Remove line">✕</button>'+
+    '</div>'
+  ).join('')||'<div class="analytics-empty">No shipment lines yet.</div>';
+  document.querySelectorAll('[data-remove-ship-line]').forEach(b=>b.onclick=()=>{
+    shippingDraftLines=shippingCollectLines();shippingDraftLines.splice(Number(b.dataset.removeShipLine),1);shippingRenderLines();
+  });
+}
+function shippingAddLine(){
+  if(shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED')return;
+  shippingDraftLines=shippingCollectLines();shippingDraftLines.push({sku:'',description:'',size:'gal1',qty:1,inventory_product:'',batch:'',source:''});shippingRenderLines();
+}
+function shippingRenderPlan(plan){
+  const host=$('shippingPalletPlan');if(!host)return;
+  if(!plan||!plan.ok){host.innerHTML='<div class="analytics-empty">'+esc(plan?.error||'Build the pallet plan to continue.')+'</div>';return}
+  const drawdowns=shippingDraftLines.filter(x=>x.size==='drawdown').reduce((s,x)=>s+(Number(x.qty)||0),0);
+  host.innerHTML=
+    '<div class="shippingplansummary">'+
+      '<div><span>Pallets</span><b>'+esc(plan.totals?.pallets??0)+'</b></div>'+
+      '<div><span>Full</span><b>'+esc(plan.totals?.full??0)+'</b></div>'+
+      '<div><span>Mixed</span><b>'+esc(plan.totals?.mixed??0)+'</b></div>'+
+      '<div><span>Gross Weight</span><b>'+Number(plan.totals?.grossLb||0).toLocaleString(locale())+' lb</b></div>'+
+      (drawdowns?'<div><span>Drawdowns / Mail</span><b>'+drawdowns+'</b></div>':'')+
+    '</div>'+
+    '<div class="palletgrid">'+(plan.pallets||[]).map(p=>
+      '<article class="palletcard">'+
+        '<div class="pallethead"><div><b>Pallet '+p.number+'</b><span class="palletkind '+esc(p.kind)+'">'+esc(p.kind)+'</span></div><strong>'+Number(p.pounds||0).toLocaleString(locale())+' lb</strong></div>'+
+        '<div class="palletitems">'+(p.items||[]).map(item=>
+          '<div class="palletitem '+(item.onTop?'ontop':'')+'">'+
+            '<div><b>'+esc(item.product)+'</b><small>'+esc(item.size)+(item.sku?' • '+esc(item.sku):'')+'</small></div>'+
+            '<div class="palletqty">'+(item.onTop?'<span>ON TOP</span>':'')+'<b>'+esc(item.units)+'</b><small>units'+(item.boxes?' • '+esc(item.boxes)+' boxes':'')+'</small></div>'+
+          '</div>'
+        ).join('')+'</div>'+
+      '</article>'
+    ).join('')+'</div>';
+}
+async function shippingBuildPlan(){
+  shippingDraftLines=shippingCollectLines();
+  const bad=shippingDraftLines.find(l=>!l.description||!l.size||!Number.isFinite(l.qty)||l.qty<=0);
+  if(bad){shippingEditorMessage('Every line needs a description, size, and quantity greater than zero.',true);return null}
+  const lines=shippingDraftLines.map((l,i)=>({id:String(i+1),sku:l.sku,description:l.description,size:l.size,qty:Math.round(Number(l.qty))}));
+  const plan=await shippingPlan('lines',{orderName:$('shippingNumber').value.trim(),customer:$('shippingCustomer').value.trim(),lines,slipText:$('shippingSlipText').value||''});
+  shippingDraftPlan=plan;shippingRenderPlan(plan);
+  if(!plan.ok)shippingEditorMessage(plan.error||'Could not build pallets.',true);else shippingEditorMessage('Pallet plan updated.');
+  return plan;
+}
+async function shippingProcessSlip(){
+  const text=($('shippingSlipText').value||'').trim();
+  if(!text){shippingScanMessage('Add a packing slip photo, file, or text first.');return}
+  shippingScanMessage('Reading packing slip and calculating pallets…',true);shippingEditorMessage('');
+  try{
+    const plan=await shippingPlan('slip',{text});
+    if(!plan.ok)throw new Error(plan.error||'No product lines found.');
+    $('shippingNumber').value=plan.orderName||'';$('shippingCustomer').value=plan.customer||'';$('shippingPo').value=plan.po||'';
+    $('shippingSalesperson').value=plan.salesperson?.name||plan.salesperson?.email||'';
+    const batch=(plan.batchCodes||[]).length===1?plan.batchCodes[0]:'';
+    shippingDraftLines=(plan.lines||[]).map(x=>shippingLineFromEngine(x,batch));shippingDraftPlan=plan;
+    shippingRenderLines();shippingRenderPlan(plan);$('shippingReviewSection').style.display='';
+    shippingScanMessage('Packing slip read successfully. Review the details below.');
+    shippingEditorMessage((plan.batchCodes||[]).length>1?'Multiple batch codes were found. Confirm the batch on each line before shipping.':'Review the extracted details, then Save Ready.');
+    setTimeout(()=>$('shippingReviewSection').scrollIntoView({behavior:'smooth',block:'start'}),80);
+  }catch(e){console.error(e);shippingScanMessage(e.message||String(e));shippingEditorMessage(e.message||String(e),true)}
+}
+function shippingLoadScript(src,globalName){
+  if(window[globalName])return Promise.resolve(window[globalName]);
+  return new Promise((resolve,reject)=>{
+    const old=document.querySelector('script[data-shipping-lib="'+globalName+'"]');
+    if(old){old.addEventListener('load',()=>resolve(window[globalName]),{once:true});old.addEventListener('error',reject,{once:true});return}
+    const s=document.createElement('script');s.src=src;s.async=true;s.dataset.shippingLib=globalName;
+    s.onload=()=>window[globalName]?resolve(window[globalName]):reject(new Error(globalName+' did not load'));
+    s.onerror=()=>reject(new Error('Could not load '+globalName));document.head.appendChild(s);
+  });
+}
+async function shippingOcrImage(source,label='photo'){
+  shippingScanMessage('Reading '+label+'… 0%',true);
+  const T=await shippingLoadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js','Tesseract');
+  const result=await T.recognize(source,'eng',{logger:m=>{
+    if(m.status==='recognizing text')shippingScanMessage('Reading '+label+'… '+Math.round((m.progress||0)*100)+'%',true);
+    else if(m.status)shippingScanMessage(m.status.replace(/\b\w/g,c=>c.toUpperCase())+'…',true);
+  }});
+  return result?.data?.text||'';
+}
+async function shippingExtractPdf(file){
+  shippingScanMessage('Opening PDF…',true);
+  const pdfjs=await shippingLoadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjsLib');
+  pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc=await pdfjs.getDocument({data:await file.arrayBuffer()}).promise;const pages=Math.min(doc.numPages,8);let out='';
+  for(let i=1;i<=pages;i++){shippingScanMessage('Reading PDF page '+i+' of '+pages+'…',true);const page=await doc.getPage(i),tc=await page.getTextContent();out+=(tc.items||[]).map(x=>x.str).join(' ')+'\n'}
+  if(out.replace(/\s/g,'').length>=80)return out;
+  out='';
+  for(let i=1;i<=pages;i++){
+    shippingScanMessage('Scanning PDF image page '+i+' of '+pages+'…',true);
+    const page=await doc.getPage(i),viewport=page.getViewport({scale:1.7});const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;out+=await shippingOcrImage(canvas,'PDF page '+i)+'\n';
+  }
+  return out;
+}
+async function shippingReadSelectedFile(file,kind){
+  if(!file)return;shippingSourceKind=kind;shippingSourceFilename=file.name||'';
+  try{
+    let text='';if(file.type.startsWith('image/'))text=await shippingOcrImage(file,kind==='camera'?'photo':'image');
+    else if(file.type==='application/pdf'||/\.pdf$/i.test(file.name))text=await shippingExtractPdf(file);else text=await file.text();
+    $('shippingSlipText').value=text.trim();shippingScanMessage('File read. Building shipment details…',true);await shippingProcessSlip();
+  }catch(e){console.error(e);shippingScanMessage('Could not read this file: '+(e.message||String(e)))}
+}
+function shippingResetEditor(){
+  shippingCurrentId=null;shippingCurrentStatus='DRAFT';shippingDraftLines=[];shippingDraftPlan=null;shippingSourceKind='manual';shippingSourceFilename='';
+  $('shippingEditorTitle').textContent='New Shipment';$('shippingEditorStatus').textContent='DRAFT';
+  $('shippingSlipText').value='';$('shippingNumber').value='';$('shippingCustomer').value='';$('shippingPo').value='';$('shippingSalesperson').value='';$('shippingNotes').value='';
+  $('shippingReviewSection').style.display='none';$('shippingPalletPlan').innerHTML='';$('shippingLines').innerHTML='';
+  shippingScanMessage('Ready for a packing slip.');shippingEditorMessage('');shippingUpdateEditorMode();
+}
+function shippingUpdateEditorMode(){
+  const locked=shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED';
+  $('shippingEditorStatus').textContent=shippingCurrentStatus;$('shippingEditorStatus').className='shipstatus '+shippingStatusClass(shippingCurrentStatus);
+  const capture=$('shippingCaptureSection');if(capture)capture.classList.toggle('locked',locked);
+  ['shippingSlipText','shippingNumber','shippingCustomer','shippingPo','shippingSalesperson','shippingNotes'].forEach(id=>{if($(id))$(id).disabled=locked});
+  document.querySelectorAll('#shippingLines input,#shippingLines select,#shippingLines button').forEach(el=>el.disabled=locked);
+  ['shippingCameraBtn','shippingUploadBtn','shippingProcessTextBtn','shippingAddLineBtn','shippingRebuildBtn','shippingSaveDraftBtn','shippingSaveReadyBtn'].forEach(id=>{if($(id))$(id).style.display=locked?'none':''});
+  $('shippingMarkShippedBtn').style.display=shippingCurrentStatus==='READY'?'':'none';
+  $('shippingCancelShipmentBtn').style.display=shippingCurrentId&&shippingCurrentStatus!=='SHIPPED'&&shippingCurrentStatus!=='CANCELED'?'':'none';
+}
+function openNewShipment(){if(!canUseShipping())return;shippingResetEditor();showModal('shippingEditorModal')}
+async function shippingSave(status){
+  if(!canUseShipping()||shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED')return;
+  const plan=await shippingBuildPlan();if(!plan?.ok)return;shippingDraftLines=shippingCollectLines();
+  if(shippingDraftLines.some(l=>!l.inventory_product)){shippingEditorMessage('Choose an Inventory Product for every shipment line before saving.',true);return}
+  const header={shipment_number:$('shippingNumber').value.trim(),packing_slip:$('shippingNumber').value.trim(),customer:$('shippingCustomer').value.trim(),po:$('shippingPo').value.trim(),salesperson_name:$('shippingSalesperson').value.trim(),salesperson_email:'',source_kind:shippingSourceKind,source_filename:shippingSourceFilename,slip_text:$('shippingSlipText').value||'',batch_codes:[...new Set(shippingDraftLines.map(x=>x.batch).filter(Boolean))],status,notes:$('shippingNotes').value.trim()};
+  const btn=status==='READY'?$('shippingSaveReadyBtn'):$('shippingSaveDraftBtn');btn.disabled=true;shippingEditorMessage(status==='READY'?'Saving Ready shipment…':'Saving Draft…');
+  try{
+    const {data,error}=await db.rpc('save_shipping_shipment',{p_shipment_id:shippingCurrentId,p_header:header,p_lines:shippingDraftLines,p_plan:plan,p_totals:plan.totals||{}});
+    if(error)throw error;shippingCurrentId=data;shippingCurrentStatus=status;
+    shippingEditorMessage(status==='READY'?'Shipment is READY. Mark Shipped only after it actually leaves the factory.':'Draft saved.');
+    shippingUpdateEditorMode();await loadShippingShipments();
+  }catch(e){shippingEditorMessage(e.message||String(e),true)}finally{btn.disabled=false}
+}
+async function loadShippingShipments(){
+  if(!canUseShipping())return;
+  const {data,error}=await db.from('shipping_shipments').select('*').order('created_at',{ascending:false}).limit(300);
+  if(error)throw error;shippingShipments=data||[];renderShippingList();
+}
+function shippingDisplayDate(s){const d=s.shipped_date||String(s.created_at||'').slice(0,10);return d?usDate(d):''}
+function renderShippingList(){
+  const host=$('shippingList');if(!host)return;const q=($('shippingSearch')?.value||'').trim().toLowerCase();const today=iso(new Date());
+  const visible=shippingShipments.filter(s=>(shippingFilter==='all'||s.status===shippingFilter)&&(!q||[s.shipment_number,s.packing_slip,s.customer,s.po].some(v=>String(v||'').toLowerCase().includes(q))));
+  $('shippingDraftCount').textContent=shippingShipments.filter(x=>x.status==='DRAFT').length;$('shippingReadyCount').textContent=shippingShipments.filter(x=>x.status==='READY').length;
+  $('shippingShippedCount').textContent=shippingShipments.filter(x=>x.status==='SHIPPED').length;$('shippingTodayCount').textContent=shippingShipments.filter(x=>x.status==='SHIPPED'&&x.shipped_date===today).length;
+  if(!visible.length){host.innerHTML='<div class="analytics-empty">No shipments in this view.</div>';return}
+  host.innerHTML=visible.map(s=>{
+    const pallets=Number(s.totals?.pallets||0),weight=Number(s.totals?.grossLb||0);
+    return '<article class="shipmentcard" data-open-shipment="'+s.id+'"><div class="shipmentmain"><span class="shipstatus '+shippingStatusClass(s.status)+'">'+esc(s.status)+'</span><h3>'+esc(s.shipment_number||s.packing_slip||'Shipment')+'</h3><p>'+esc(s.customer||'No customer')+(s.po?' • PO '+esc(s.po):'')+'</p></div>'+
+      '<div class="shipmentmetrics"><div><span>Pallets</span><b>'+pallets+'</b></div><div><span>Weight</span><b>'+weight.toLocaleString(locale())+' lb</b></div><div><span>'+esc(s.status==='SHIPPED'?'Shipped':'Created')+'</span><b>'+esc(shippingDisplayDate(s))+'</b></div></div>'+
+      '<div class="shipmentactions">'+(s.status==='READY'?'<button type="button" class="shipbutton" data-ship-now="'+s.id+'">✓ Mark Shipped</button>':'')+'<button type="button" data-edit-shipment="'+s.id+'">'+(s.status==='SHIPPED'?'View':'Open')+'</button></div></article>';
+  }).join('');
+  document.querySelectorAll('[data-edit-shipment]').forEach(b=>b.onclick=e=>{e.stopPropagation();openShippingShipment(b.dataset.editShipment)});
+  document.querySelectorAll('[data-ship-now]').forEach(b=>b.onclick=e=>{e.stopPropagation();shippingMarkShipped(b.dataset.shipNow)});
+  document.querySelectorAll('[data-open-shipment]').forEach(c=>c.onclick=()=>openShippingShipment(c.dataset.openShipment));
+}
+async function openShippingShipment(id){
+  if(!canUseShipping())return;const s=shippingShipments.find(x=>x.id===id);if(!s)return;
+  const {data:lines,error}=await db.from('shipping_lines').select('*').eq('shipment_id',id).order('line_order');if(error){toast(error.message);return}
+  shippingCurrentId=id;shippingCurrentStatus=s.status;shippingSourceKind=s.source_kind||'manual';shippingSourceFilename=s.source_filename||'';
+  $('shippingEditorTitle').textContent=(s.status==='SHIPPED'?'Shipped ':'')+(s.shipment_number||'Shipment');$('shippingSlipText').value=s.slip_text||'';
+  $('shippingNumber').value=s.shipment_number||s.packing_slip||'';$('shippingCustomer').value=s.customer||'';$('shippingPo').value=s.po||'';
+  $('shippingSalesperson').value=s.salesperson_name||s.salesperson_email||'';$('shippingNotes').value=s.notes||'';
+  shippingDraftLines=(lines||[]).map(l=>({sku:l.sku||'',description:l.description||'',size:l.size,qty:Number(l.qty),inventory_product:l.inventory_product||'',batch:l.batch||'',source:l.source||''}));
+  shippingDraftPlan=s.pallet_plan&&Object.keys(s.pallet_plan).length?s.pallet_plan:null;shippingRenderLines();shippingRenderPlan(shippingDraftPlan);
+  $('shippingReviewSection').style.display='';shippingScanMessage(s.source_filename?'Source: '+s.source_filename:'Saved shipment');
+  shippingEditorMessage(s.status==='SHIPPED'?'Inventory was deducted when this shipment was marked shipped.':'');shippingUpdateEditorMode();showModal('shippingEditorModal');
+}
+async function shippingMarkShipped(id=shippingCurrentId){
+  if(!canUseShipping()||!id)return;const s=shippingShipments.find(x=>x.id===id);if(s&&s.status!=='READY'){toast('Save the shipment as Ready first.');return}
+  if(!confirm('Mark this shipment SHIPPED? GameTime will subtract every shipment line from factory inventory.'))return;
+  try{
+    const {data,error}=await db.rpc('mark_shipping_shipped',{p_shipment_id:id,p_ship_date:iso(new Date())});if(error)throw error;
+    await Promise.all([loadShippingShipments(),loadInventoryStock().catch(()=>{})]);
+    if(shippingCurrentId===id){shippingCurrentStatus='SHIPPED';shippingUpdateEditorMode();shippingEditorMessage(data?.duplicate?'This shipment was already deducted. No inventory was deducted twice.':'Shipment marked SHIPPED. Inventory updated.')}
+    toast(data?.duplicate?'Already shipped — no duplicate deduction.':'Shipment shipped — inventory updated.');
+  }catch(e){shippingEditorMessage(e.message||String(e),true);toast(e.message||String(e))}
+}
+async function shippingCancelCurrent(){
+  if(!shippingCurrentId||shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED')return;if(!confirm('Cancel this shipment? It will not subtract inventory.'))return;
+  try{const {error}=await db.rpc('cancel_shipping_shipment',{p_shipment_id:shippingCurrentId});if(error)throw error;shippingCurrentStatus='CANCELED';shippingUpdateEditorMode();await loadShippingShipments();shippingEditorMessage('Shipment canceled.')}
+  catch(e){shippingEditorMessage(e.message||String(e),true)}
+}
+function openShippingWorkspace(){
+  if(!canUseShipping())return;showModal('shippingWorkspaceModal');loadShippingShipments().catch(e=>{console.error(e);$('shippingList').innerHTML='<div class="analytics-empty">Could not load shipping.</div>'});
+}
+
 function inventoryPackageLabel(type){
   return {
     five_gallon_pail:'5 Gallon Pail',gallon:'1 Gallon',quart_can:'Quart Can',pint_can:'Pint Can',
-    jerry_1_25:'Jerry 1.25G',vinyl_box:'Vinyl Box',drawdown_box:'Drawdown Box',box:'Box',unit:'Unit'
+    jerry_1_25:'Jerry 1.25G',gallon_1_5:'1.5 Gallon',vinyl_box:'Vinyl Box',drawdown_box:'Drawdown Box',box:'Box',unit:'Unit'
   }[type]||type||'Unit';
 }
 function inventoryPackageShort(type){
-  return {five_gallon_pail:'5G',gallon:'1G',quart_can:'Q',pint_can:'Pint',jerry_1_25:'Jerry',vinyl_box:'Vinyl Box',drawdown_box:'Drawdown Box',box:'Box',unit:'Unit'}[type]||type;
+  return {five_gallon_pail:'5G',gallon:'1G',quart_can:'Q',pint_can:'Pint',jerry_1_25:'Jerry',gallon_1_5:'1.5G',vinyl_box:'Vinyl Box',drawdown_box:'Drawdown Box',box:'Box',unit:'Unit'}[type]||type;
 }
 function inventoryNum(v){const n=Number(v);return Number.isFinite(n)?n:0}
 function populateInventoryProducts(){
@@ -1334,6 +1605,21 @@ $('addBtn').onclick=()=>openEditor(null,false);
 if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('monthlyChartBtn');openMonthlyAnalytics()};
 if($('inventoryBtn'))$('inventoryBtn').onclick=()=>{setShellNavActive('inventoryBtn');openInventory()};
 if($('shippingChartBtn'))$('shippingChartBtn').onclick=()=>{setShellNavActive('shippingChartBtn');openShippingAnalytics()};
+if($('shippingWorkspaceBtn'))$('shippingWorkspaceBtn').onclick=()=>{setShellNavActive('shippingWorkspaceBtn');openShippingWorkspace()};
+if($('newShipmentBtn'))$('newShipmentBtn').onclick=openNewShipment;
+if($('shippingCameraBtn'))$('shippingCameraBtn').onclick=()=>$('shippingCameraInput').click();
+if($('shippingUploadBtn'))$('shippingUploadBtn').onclick=()=>$('shippingFileInput').click();
+if($('shippingCameraInput'))$('shippingCameraInput').onchange=e=>{const f=e.target.files?.[0];if(f)shippingReadSelectedFile(f,'camera');e.target.value=''};
+if($('shippingFileInput'))$('shippingFileInput').onchange=e=>{const f=e.target.files?.[0];if(f)shippingReadSelectedFile(f,'upload');e.target.value=''};
+if($('shippingProcessTextBtn'))$('shippingProcessTextBtn').onclick=()=>{shippingSourceKind=shippingSourceKind==='manual'?'paste':shippingSourceKind;shippingProcessSlip()};
+if($('shippingAddLineBtn'))$('shippingAddLineBtn').onclick=shippingAddLine;
+if($('shippingRebuildBtn'))$('shippingRebuildBtn').onclick=shippingBuildPlan;
+if($('shippingSaveDraftBtn'))$('shippingSaveDraftBtn').onclick=()=>shippingSave('DRAFT');
+if($('shippingSaveReadyBtn'))$('shippingSaveReadyBtn').onclick=()=>shippingSave('READY');
+if($('shippingMarkShippedBtn'))$('shippingMarkShippedBtn').onclick=()=>shippingMarkShipped();
+if($('shippingCancelShipmentBtn'))$('shippingCancelShipmentBtn').onclick=shippingCancelCurrent;
+if($('shippingSearch'))$('shippingSearch').oninput=renderShippingList;
+document.querySelectorAll('[data-shipping-filter]').forEach(b=>b.onclick=()=>{shippingFilter=b.dataset.shippingFilter;document.querySelectorAll('[data-shipping-filter]').forEach(x=>x.classList.toggle('active',x===b));renderShippingList()});
 if($('setInventoryBtn'))$('setInventoryBtn').onclick=()=>openInventorySet();
 if($('saveInventorySetBtn'))$('saveInventorySetBtn').onclick=saveInventorySet;
 if($('inventorySearch'))$('inventorySearch').oninput=renderInventoryStock;

@@ -9,11 +9,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
 <link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261009l">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261009m">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
-<!-- SECURE_V2_20261009l employee-name-login company-logo -->
+<!-- SECURE_V2_20261009m employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -84,6 +84,7 @@
             <button type="button" data-hold-option="add">+ Add Hold Line Item</button>
           </div>
         </div>
+        <button id="shippingWorkspaceBtn" type="button"><span>▣</span><b>Shipping</b></button>
         <button id="inventoryBtn" type="button"><span>▧</span><b>Inventory</b></button>
         <button id="shippingChartBtn" type="button"><span>⇢</span><b>Shipping Chart</b></button>
         <div class="sideaccordion" id="printAccordion">
@@ -402,6 +403,84 @@
   </div>
 </div>
 
+<div class="modal" id="shippingWorkspaceModal">
+  <div class="dialog shippingworkdialog">
+    <div class="dialoghead"><h2>Shipping Workspace</h2><button data-close="shippingWorkspaceModal">✕</button></div>
+    <div class="shippingtoolbar">
+      <div class="shippingfilters">
+        <button class="active" type="button" data-shipping-filter="all">All</button>
+        <button type="button" data-shipping-filter="DRAFT">Draft</button>
+        <button type="button" data-shipping-filter="READY">Ready</button>
+        <button type="button" data-shipping-filter="SHIPPED">Shipped</button>
+      </div>
+      <div class="shippingsearch"><span>⌕</span><input id="shippingSearch" placeholder="Packing slip, customer, PO"></div>
+      <button id="newShipmentBtn" class="primary" type="button">+ New Shipment</button>
+    </div>
+    <div class="shippingsummary">
+      <div><span>Draft</span><b id="shippingDraftCount">0</b></div>
+      <div><span>Ready</span><b id="shippingReadyCount">0</b></div>
+      <div><span>Shipped</span><b id="shippingShippedCount">0</b></div>
+      <div><span>Today</span><b id="shippingTodayCount">0</b></div>
+    </div>
+    <div id="shippingList" class="shippinglist"></div>
+  </div>
+</div>
+
+<div class="modal" id="shippingEditorModal">
+  <div class="dialog shippingeditordialog">
+    <div class="dialoghead">
+      <div><h2 id="shippingEditorTitle">New Shipment</h2><small id="shippingEditorStatus"></small></div>
+      <button data-close="shippingEditorModal">✕</button>
+    </div>
+    <section id="shippingCaptureSection" class="shippingcapture">
+      <div class="shippingcapturehead">
+        <div><b>1. Packing Slip</b><small>Take a photo, upload a PDF/image/file, or paste the packing-slip text.</small></div>
+        <div class="captureactions">
+          <button id="shippingCameraBtn" type="button">📷 Take Photo</button>
+          <button id="shippingUploadBtn" type="button">↑ Upload File</button>
+        </div>
+      </div>
+      <input id="shippingCameraInput" class="hiddenfile" type="file" accept="image/*" capture="environment">
+      <input id="shippingFileInput" class="hiddenfile" type="file" accept="image/*,application/pdf,text/plain,text/csv,.csv,.tsv">
+      <div id="shippingScanStatus" class="shippingscanstatus">Ready for a packing slip.</div>
+      <textarea id="shippingSlipText" class="shippingsliptext" placeholder="Extracted packing-slip text will appear here. You can also paste text manually."></textarea>
+      <div class="capturefooter"><button id="shippingProcessTextBtn" class="primary" type="button">Read Packing Slip & Build Pallets</button></div>
+    </section>
+
+    <section id="shippingReviewSection" class="shippingreview" style="display:none">
+      <div class="shippingsectiontitle"><div><b>2. Review Shipment</b><small>Correct anything the scan read incorrectly before saving.</small></div></div>
+      <div class="shippingheadergrid">
+        <label>Packing Slip / Shipment #<input id="shippingNumber" autocomplete="off"></label>
+        <label>Customer<input id="shippingCustomer" autocomplete="off"></label>
+        <label>Customer PO<input id="shippingPo" autocomplete="off"></label>
+        <label>Salesperson<input id="shippingSalesperson" autocomplete="off"></label>
+      </div>
+
+      <div class="shippingsectiontitle shippinglineshead">
+        <div><b>Shipment Lines</b><small>Qty is individual units/cans/pails. Inventory Product controls what GameTime subtracts.</small></div>
+        <button id="shippingAddLineBtn" type="button">+ Add Line</button>
+      </div>
+      <div id="shippingLines" class="shippinglines"></div>
+
+      <div class="shippingplanbar">
+        <div><b>3. Pallet Plan</b><small>Uses the exact pallet engine from the existing shipping system.</small></div>
+        <button id="shippingRebuildBtn" type="button">↻ Rebuild Pallets</button>
+      </div>
+      <div id="shippingPalletPlan" class="shippingpalletplan"></div>
+
+      <label class="shippingnoteslabel">Shipping Notes<textarea id="shippingNotes" placeholder="Optional notes"></textarea></label>
+      <div id="shippingEditorMessage" class="authmessage"></div>
+      <div class="shippingeditoractions">
+        <button id="shippingCancelShipmentBtn" class="danger-outline" type="button">Cancel Shipment</button>
+        <div class="spacer"></div>
+        <button id="shippingSaveDraftBtn" type="button">Save Draft</button>
+        <button id="shippingSaveReadyBtn" class="primary" type="button">Save Ready</button>
+        <button id="shippingMarkShippedBtn" class="shipbutton" type="button">✓ Mark Shipped</button>
+      </div>
+    </section>
+  </div>
+</div>
+
 <div class="modal" id="inventoryModal">
   <div class="dialog analyticsdialog inventorydialog">
     <div class="dialoghead"><h2>Factory Inventory</h2><button data-close="inventoryModal">✕</button></div>
@@ -430,6 +509,7 @@
         <option value="quart_can">Quart Can</option>
         <option value="pint_can">Pint Can</option>
         <option value="jerry_1_25">Jerry Can 1.25G</option>
+        <option value="gallon_1_5">1.5 Gallon</option>
         <option value="vinyl_box">Vinyl Box</option>
         <option value="drawdown_box">Drawdown Box</option>
         <option value="box">Box</option>
@@ -523,9 +603,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261009l"></script>
+<script src="app.js?v=SECURE_V2_20261009m"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261009l').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261009m').catch(()=>{});}
 </script>
 </body>
 </html>
