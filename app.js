@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261009p';
+const BUILD='SECURE_V2_20261009q';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
 let shippingRefreshBusy=false;
@@ -687,8 +687,8 @@ function actual(o,k){return k==='quart'?o.actualQuart:k==='gallon'?o.actualGallo
 function pkgClass(o,k){const a=actual(o,k),p=num(o[k]);if(a==null)return'';return a>=p?'done':'partial'}
 function pkgCard(o,k,labelKey){
   const a=actual(o,k),p=num(o[k]),mark=a==null?'':(a>=p?'✓':'◐'),label=t(labelKey);
-  const extra=a==null?((k==='five'||k==='jerry')?t('tapWhenFilled'):boxes(o[k])+' '+t('boxes')+' • '+t('tapWhenFilled')):t('actual')+' '+a+' / '+p;
-  return '<div class="pkg '+pkgClass(o,k)+'" data-qty="'+o.id+'" data-key="'+k+'"><span class="pkgmark">'+mark+'</span><b>'+esc(o[k])+'</b><span>'+esc(label)+'</span><small>'+esc(extra)+'</small></div>';
+  const extra=a==null?((k==='five'||k==='jerry')?t('tapWhenFilled'):boxes(o[k])+' '+t('boxes')+' • '+t('tapWhenFilled')):t('planned')+': '+p;
+  return '<div class="pkg '+pkgClass(o,k)+'" data-qty="'+o.id+'" data-key="'+k+'"><span class="pkgmark">'+mark+'</span><b>'+esc(a==null?o[k]:a)+'</b><span>'+esc(label)+(a==null?'':' • '+esc(t('actual')))+'</span><small>'+esc(extra)+'</small></div>';
 }
 function card(o,dept,i){
   const checked=dept==='batch'?o.batchChecked:o.prodChecked,
@@ -1003,7 +1003,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009p':'batch-maker.html?build=SECURE_V2_20261009p'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009q':'batch-maker.html?build=SECURE_V2_20261009q'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1587,10 +1587,10 @@ function printSheet(mode){
       '</div><div class="ps-tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div></div>'+
       (dept==='prod'
         ?'<div class="ps-pkgs '+(o.jerryEnabled?'four':'three')+'">'+
-          '<div><b>'+esc(o.quart)+'</b><small>'+esc(t('quarts'))+'</small></div>'+
-          '<div><b>'+esc(o.gallon)+'</b><small>'+esc(t('oneGallon'))+'</small></div>'+
-          '<div><b>'+esc(o.five)+'</b><small>'+esc(t('fiveGallon'))+'</small></div>'+
-          (o.jerryEnabled?'<div><b>'+esc(o.jerry)+'</b><small>'+esc(t('jerryCan'))+'</small></div>':'')+
+          '<div><b>'+esc(actual(o,'quart')??o.quart)+'</b><small>'+esc(t('quarts'))+'</small>'+(actual(o,'quart')==null?'':'<small>'+esc(t('planned'))+': '+esc(o.quart)+'</small>')+'</div>'+
+          '<div><b>'+esc(actual(o,'gallon')??o.gallon)+'</b><small>'+esc(t('oneGallon'))+'</small>'+(actual(o,'gallon')==null?'':'<small>'+esc(t('planned'))+': '+esc(o.gallon)+'</small>')+'</div>'+
+          '<div><b>'+esc(actual(o,'five')??o.five)+'</b><small>'+esc(t('fiveGallon'))+'</small>'+(actual(o,'five')==null?'':'<small>'+esc(t('planned'))+': '+esc(o.five)+'</small>')+'</div>'+
+          (o.jerryEnabled?'<div><b>'+esc(actual(o,'jerry')??o.jerry)+'</b><small>'+esc(t('jerryCan'))+'</small>'+(actual(o,'jerry')==null?'':'<small>'+esc(t('planned'))+': '+esc(o.jerry)+'</small>')+'</div>':'')+
           '</div>'
         :'')+
       '<div class="ps-note">'+esc(note||(dept==='batch'?t('prepareBatch'):''))+'</div>'+
