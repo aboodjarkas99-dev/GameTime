@@ -1071,7 +1071,7 @@ function shippingRenderLines(){
       '<label>SKU<input data-ship-field="sku" value="'+esc(l.sku||'')+'"></label>'+
       '<label class="shipdesc">Description<input data-ship-field="description" value="'+esc(l.description||'')+'"></label>'+
       '<label>Size<select data-ship-field="size">'+shippingSizeOptions(l.size)+'</select></label>'+
-      '<label>Qty Units<input data-ship-field="qty" type="number" min="0.01" step="any" inputmode="decimal" value="'+esc(l.qty)+'"></label>'+
+      '<label>Qty Units<input data-ship-field="qty" type="number" min="1" step="1" inputmode="numeric" value="'+esc(l.qty)+'"></label>'+
       '<label class="shipinventory">Inventory Product<input data-ship-field="inventory" list="inventoryProductList" value="'+esc(l.inventory_product||'')+'"></label>'+
       '<label>Batch<input data-ship-field="batch" value="'+esc(l.batch||'')+'"></label>'+
       '<button type="button" class="shiplineremove" data-remove-ship-line="'+i+'" aria-label="Remove line">✕</button>'+
@@ -1111,8 +1111,8 @@ function shippingRenderPlan(plan){
 }
 async function shippingBuildPlan(){
   shippingDraftLines=shippingCollectLines();
-  const bad=shippingDraftLines.find(l=>!l.description||!l.size||!Number.isFinite(l.qty)||l.qty<=0);
-  if(bad){shippingEditorMessage('Every line needs a description, size, and quantity greater than zero.',true);return null}
+  const bad=shippingDraftLines.find(l=>!l.description||!l.size||!Number.isFinite(l.qty)||l.qty<=0||!Number.isInteger(l.qty));
+  if(bad){shippingEditorMessage('Every line needs a description, size, and a whole-number quantity greater than zero.',true);return null}
   const lines=shippingDraftLines.map((l,i)=>({id:String(i+1),sku:l.sku,description:l.description,size:l.size,qty:Math.round(Number(l.qty))}));
   const plan=await shippingPlan('lines',{orderName:$('shippingNumber').value.trim(),customer:$('shippingCustomer').value.trim(),lines,slipText:$('shippingSlipText').value||''});
   shippingDraftPlan=plan;shippingRenderPlan(plan);
@@ -1195,19 +1195,19 @@ function shippingUpdateEditorMode(){
   $('shippingMarkShippedBtn').style.display=shippingCurrentStatus==='READY'?'':'none';
   $('shippingCancelShipmentBtn').style.display=shippingCurrentId&&shippingCurrentStatus!=='SHIPPED'&&shippingCurrentStatus!=='CANCELED'?'':'none';
 }
-function openNewShipment(){if(!canUseShipping())return;shippingResetEditor();showModal('shippingEditorModal')}
+function openNewShipment(){if(!canUseShipping())return;loadInventoryStock().catch(()=>{});shippingResetEditor();showModal('shippingEditorModal')}
 async function shippingSave(status){
-  if(!canUseShipping()||shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED')return;
-  const plan=await shippingBuildPlan();if(!plan?.ok)return;shippingDraftLines=shippingCollectLines();
-  if(shippingDraftLines.some(l=>!l.inventory_product)){shippingEditorMessage('Choose an Inventory Product for every shipment line before saving.',true);return}
+  if(!canUseShipping()||shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED')return false;
+  const plan=await shippingBuildPlan();if(!plan?.ok)return false;shippingDraftLines=shippingCollectLines();
+  if(shippingDraftLines.some(l=>!l.inventory_product)){shippingEditorMessage('Choose an Inventory Product for every shipment line before saving.',true);return false}
   const header={shipment_number:$('shippingNumber').value.trim(),packing_slip:$('shippingNumber').value.trim(),customer:$('shippingCustomer').value.trim(),po:$('shippingPo').value.trim(),salesperson_name:$('shippingSalesperson').value.trim(),salesperson_email:'',source_kind:shippingSourceKind,source_filename:shippingSourceFilename,slip_text:$('shippingSlipText').value||'',batch_codes:[...new Set(shippingDraftLines.map(x=>x.batch).filter(Boolean))],status,notes:$('shippingNotes').value.trim()};
   const btn=status==='READY'?$('shippingSaveReadyBtn'):$('shippingSaveDraftBtn');btn.disabled=true;shippingEditorMessage(status==='READY'?'Saving Ready shipment…':'Saving Draft…');
   try{
     const {data,error}=await db.rpc('save_shipping_shipment',{p_shipment_id:shippingCurrentId,p_header:header,p_lines:shippingDraftLines,p_plan:plan,p_totals:plan.totals||{}});
     if(error)throw error;shippingCurrentId=data;shippingCurrentStatus=status;
     shippingEditorMessage(status==='READY'?'Shipment is READY. Mark Shipped only after it actually leaves the factory.':'Draft saved.');
-    shippingUpdateEditorMode();await loadShippingShipments();
-  }catch(e){shippingEditorMessage(e.message||String(e),true)}finally{btn.disabled=false}
+    shippingUpdateEditorMode();await loadShippingShipments();return true;
+  }catch(e){shippingEditorMessage(e.message||String(e),true);return false}finally{btn.disabled=false}
 }
 async function loadShippingShipments(){
   if(!canUseShipping())return;
@@ -1259,7 +1259,7 @@ async function shippingCancelCurrent(){
   catch(e){shippingEditorMessage(e.message||String(e),true)}
 }
 function openShippingWorkspace(){
-  if(!canUseShipping())return;showModal('shippingWorkspaceModal');loadShippingShipments().catch(e=>{console.error(e);$('shippingList').innerHTML='<div class="analytics-empty">Could not load shipping.</div>'});
+  if(!canUseShipping())return;loadInventoryStock().catch(()=>{});showModal('shippingWorkspaceModal');loadShippingShipments().catch(e=>{console.error(e);$('shippingList').innerHTML='<div class="analytics-empty">Could not load shipping.</div>'});
 }
 
 function inventoryPackageLabel(type){
@@ -1616,7 +1616,7 @@ if($('shippingAddLineBtn'))$('shippingAddLineBtn').onclick=shippingAddLine;
 if($('shippingRebuildBtn'))$('shippingRebuildBtn').onclick=shippingBuildPlan;
 if($('shippingSaveDraftBtn'))$('shippingSaveDraftBtn').onclick=()=>shippingSave('DRAFT');
 if($('shippingSaveReadyBtn'))$('shippingSaveReadyBtn').onclick=()=>shippingSave('READY');
-if($('shippingMarkShippedBtn'))$('shippingMarkShippedBtn').onclick=()=>shippingMarkShipped();
+if($('shippingMarkShippedBtn'))$('shippingMarkShippedBtn').onclick=async()=>{const ok=await shippingSave('READY');if(ok)await shippingMarkShipped(shippingCurrentId)};
 if($('shippingCancelShipmentBtn'))$('shippingCancelShipmentBtn').onclick=shippingCancelCurrent;
 if($('shippingSearch'))$('shippingSearch').oninput=renderShippingList;
 document.querySelectorAll('[data-shipping-filter]').forEach(b=>b.onclick=()=>{shippingFilter=b.dataset.shippingFilter;document.querySelectorAll('[data-shipping-filter]').forEach(x=>x.classList.toggle('active',x===b));renderShippingList()});
