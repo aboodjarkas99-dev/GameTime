@@ -9,11 +9,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
 <link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261007k">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261009l">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
-<!-- SECURE_V2_20261007k employee-name-login company-logo -->
+<!-- SECURE_V2_20261009l employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -84,6 +84,8 @@
             <button type="button" data-hold-option="add">+ Add Hold Line Item</button>
           </div>
         </div>
+        <button id="inventoryBtn" type="button"><span>▧</span><b>Inventory</b></button>
+        <button id="shippingChartBtn" type="button"><span>⇢</span><b>Shipping Chart</b></button>
         <div class="sideaccordion" id="printAccordion">
           <button id="printBtn" class="accordion-toggle" type="button" aria-expanded="false"><span>▤</span><b>Print / Save PDF</b><i>⌄</i></button>
           <div id="printMenu" class="sidesubmenu">
@@ -400,6 +402,60 @@
   </div>
 </div>
 
+<div class="modal" id="inventoryModal">
+  <div class="dialog analyticsdialog inventorydialog">
+    <div class="dialoghead"><h2>Factory Inventory</h2><button data-close="inventoryModal">✕</button></div>
+    <div class="inventorytop">
+      <div>
+        <b>Live Storage Stock</b>
+        <small>Set the physical stock once. After that, Production adds automatically and Mark shipped subtracts automatically.</small>
+      </div>
+      <button id="setInventoryBtn" class="primary" type="button">Set Current Stock</button>
+    </div>
+    <div class="inventorysearch"><span>⌕</span><input id="inventorySearch" placeholder="Search product"></div>
+    <div id="inventoryBody" class="analyticsbody inventorybody"></div>
+  </div>
+</div>
+
+<div class="modal" id="inventorySetModal">
+  <div class="dialog inventorystockdialog">
+    <div class="dialoghead"><h2>Set Current Stock</h2><button data-close="inventorySetModal">✕</button></div>
+    <p class="inventoryhelp">Enter the quantity physically in storage right now. GameTime saves only the difference, so this can also be used later for inventory corrections.</p>
+    <div class="inventorysetgrid">
+      <label>Product<input id="inventorySetProduct" list="inventoryProductList" autocomplete="off"></label>
+      <datalist id="inventoryProductList"></datalist>
+      <label>Package<select id="inventorySetPackage">
+        <option value="five_gallon_pail">5 Gallon Pail</option>
+        <option value="gallon">1 Gallon</option>
+        <option value="quart_can">Quart Can</option>
+        <option value="pint_can">Pint Can</option>
+        <option value="jerry_1_25">Jerry Can 1.25G</option>
+        <option value="vinyl_box">Vinyl Box</option>
+        <option value="drawdown_box">Drawdown Box</option>
+        <option value="box">Box</option>
+        <option value="unit">Unit</option>
+      </select></label>
+      <label>Current Quantity<input id="inventorySetQty" inputmode="decimal" type="number" min="0" step="any"></label>
+      <label>Date<input id="inventorySetDate" type="date"></label>
+      <label class="wide">Note<input id="inventorySetNote" placeholder="Opening count / cycle count / correction"></label>
+    </div>
+    <div id="inventorySetMessage" class="authmessage"></div>
+    <div class="dialogactions"><button data-close="inventorySetModal">Cancel</button><button id="saveInventorySetBtn" class="primary">Save Current Stock</button></div>
+  </div>
+</div>
+
+<div class="modal" id="shippingAnalyticsModal">
+  <div class="dialog analyticsdialog shippingdialog">
+    <div class="dialoghead"><h2>Monthly Shipping Chart</h2><button data-close="shippingAnalyticsModal">✕</button></div>
+    <div class="analyticscontrols">
+      <label>Month<input id="shippingAnalyticsMonth" type="month"></label>
+      <button id="shippingAnalyticsLoadBtn" class="primary">Show Shipping</button>
+    </div>
+    <div class="shippingnote">Only a real <b>Mark shipped</b> event counts here. Packing slips, pallet estimates, and reopened orders do not subtract inventory.</div>
+    <div id="shippingAnalyticsBody" class="analyticsbody"></div>
+  </div>
+</div>
+
 <div class="modal" id="analyticsModal">
   <div class="dialog analyticsdialog">
     <div class="dialoghead"><h2 id="analyticsTitle">Monthly Production Chart</h2><button data-close="analyticsModal">✕</button></div>
@@ -467,9 +523,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261007k"></script>
+<script src="app.js?v=SECURE_V2_20261009l"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261007k').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261009l').catch(()=>{});}
 </script>
 </body>
 </html>

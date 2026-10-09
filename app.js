@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261007k';
+const BUILD='SECURE_V2_20261009l';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage},
   realtime:{params:{eventsPerSecond:20}}
@@ -12,6 +12,7 @@ let isManager=false;
 let authUser=null;
 let profile=null;
 let staffRows=[];
+let inventoryStockRows=[];
 let authStarting=false;
 let recoveryMode=location.hash.includes('type=recovery')||new URLSearchParams(location.search).get('type')==='recovery';
 const CACHE_KEY='gametime_secure_v2_cache';
@@ -211,6 +212,7 @@ function applyProfile(p){
   refreshUserLabel();
 }
 function canManageStaff(){return profile?.role==='manager'}
+function canViewInventory(){return ['manager','chemist','shipping'].includes(profile?.role)}
 async function fetchMyProfile(userId){
   const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active').eq('id',userId).maybeSingle();
   if(error)throw error;
@@ -702,6 +704,9 @@ function render(){
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
+  if($('inventoryBtn'))$('inventoryBtn').style.display=canViewInventory()?'':'none';
+  if($('shippingChartBtn'))$('shippingChartBtn').style.display=canViewInventory()?'':'none';
+  if($('setInventoryBtn'))$('setInventoryBtn').style.display=isManager?'':'none';
   document.querySelectorAll('[data-print-option]').forEach(b=>{
     const mode=b.dataset.printOption;
     b.style.display=isManager||mode===view?'':'none';
@@ -967,7 +972,7 @@ function openDrawer(type){
 }
 function renderFeedIfOpen(){if($('drawerBackdrop').classList.contains('show')&&$('drawerBackdrop').dataset.type==='activity')$('drawerBody').innerHTML=renderFeedHTML()}
 function closeDrawer(){$('drawerBackdrop').classList.remove('show')}
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261007k':'batch-maker.html?build=SECURE_V2_20261007k'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009l':'batch-maker.html?build=SECURE_V2_20261009l'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -986,6 +991,153 @@ function addAnalyticsRow(map,product,gallons,orderId){
   if(!map.has(key))map.set(key,{product:name,gallons:0,batches:new Set()});
   const row=map.get(key);row.gallons+=gallons;if(orderId!=null)row.batches.add(String(orderId))
 }
+function inventoryPackageLabel(type){
+  return {
+    five_gallon_pail:'5 Gallon Pail',gallon:'1 Gallon',quart_can:'Quart Can',pint_can:'Pint Can',
+    jerry_1_25:'Jerry 1.25G',vinyl_box:'Vinyl Box',drawdown_box:'Drawdown Box',box:'Box',unit:'Unit'
+  }[type]||type||'Unit';
+}
+function inventoryPackageShort(type){
+  return {five_gallon_pail:'5G',gallon:'1G',quart_can:'Q',pint_can:'Pint',jerry_1_25:'Jerry',vinyl_box:'Vinyl Box',drawdown_box:'Drawdown Box',box:'Box',unit:'Unit'}[type]||type;
+}
+function inventoryNum(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function populateInventoryProducts(){
+  const names=new Map();
+  for(const o of orders){if(o.product)names.set(o.product.trim().toLowerCase(),o.product.trim())}
+  for(const r of inventoryStockRows){if(r.product)names.set(String(r.product).trim().toLowerCase(),String(r.product).trim())}
+  const list=$('inventoryProductList');if(list)list.innerHTML=[...names.values()].sort((a,b)=>a.localeCompare(b)).map(x=>'<option value="'+esc(x)+'"></option>').join('');
+}
+function renderInventoryStock(){
+  const body=$('inventoryBody');if(!body)return;
+  const q=($('inventorySearch')?.value||'').trim().toLowerCase();
+  const rows=inventoryStockRows.filter(r=>!q||String(r.product||'').toLowerCase().includes(q));
+  const grouped=new Map();
+  for(const r of rows){
+    const key=r.product_key||String(r.product||'').toLowerCase();
+    if(!grouped.has(key))grouped.set(key,{product:r.product||key,items:[],gallons:0});
+    const g=grouped.get(key);g.items.push(r);g.gallons+=inventoryNum(r.stock_gallons);
+  }
+  const products=[...grouped.values()].sort((a,b)=>b.gallons-a.gallons||a.product.localeCompare(b.product));
+  if(!products.length){
+    body.innerHTML='<div class="analytics-empty"><b>No inventory balance yet.</b><br><small>Use Set Current Stock to enter today’s physical stock. After that, Production and Shipping update it automatically.</small></div>';
+    return;
+  }
+  const allItems=products.flatMap(x=>x.items),negative=allItems.filter(x=>inventoryNum(x.stock_units)<0).length;
+  const totalGallons=products.reduce((s,x)=>s+x.gallons,0);
+  body.innerHTML=
+    '<div class="analytics-summary">'+
+      '<div><span>Products</span><b>'+products.length+'</b></div>'+
+      '<div><span>Paint Equivalent</span><b>'+totalGallons.toLocaleString(locale(),{maximumFractionDigits:2})+' gal</b></div>'+
+      '<div><span>Below Zero</span><b>'+negative+'</b></div>'+
+    '</div>'+
+    (negative?'<div class="inventorywarning">Some stock is below zero. Set the physical current stock for those products before relying on the balance.</div>':'')+
+    '<div class="inventorycards">'+products.map(g=>{
+      const items=g.items.slice().sort((a,b)=>inventoryPackageLabel(a.package_type).localeCompare(inventoryPackageLabel(b.package_type)));
+      return '<section class="inventorycard"><div class="inventorycardhead"><div><b>'+esc(g.product)+'</b><small>'+(g.gallons?g.gallons.toLocaleString(locale(),{maximumFractionDigits:2})+' gal equivalent':'Non-paint / unit inventory')+'</small></div></div>'+
+        '<div class="stockpackages">'+items.map((r,i)=>{
+          const units=inventoryNum(r.stock_units),bad=units<0?' negative':'';
+          return '<div class="stockpackage'+bad+'"><span>'+esc(inventoryPackageShort(r.package_type))+'</span><b>'+units.toLocaleString(locale(),{maximumFractionDigits:2})+'</b>'+
+            (isManager?'<button type="button" data-stock-row="'+inventoryStockRows.indexOf(r)+'">Set</button>':'')+'</div>';
+        }).join('')+'</div></section>';
+    }).join('')+'</div>';
+  document.querySelectorAll('[data-stock-row]').forEach(b=>b.onclick=()=>{
+    const r=inventoryStockRows[Number(b.dataset.stockRow)];if(r)openInventorySet(r);
+  });
+}
+async function loadInventoryStock(){
+  if(!canViewInventory())return;
+  const body=$('inventoryBody');if(body)body.innerHTML='<div class="analytics-empty">Loading factory inventory…</div>';
+  const {data,error}=await db.from('inventory_current_stock').select('*').order('product');
+  if(error){if(body)body.innerHTML='<div class="analytics-empty">Could not load inventory.</div>';throw error}
+  inventoryStockRows=data||[];
+  populateInventoryProducts();renderInventoryStock();
+}
+function openInventory(){
+  if(!canViewInventory())return;
+  if($('setInventoryBtn'))$('setInventoryBtn').style.display=isManager?'':'none';
+  showModal('inventoryModal');loadInventoryStock().catch(console.error);
+}
+function openInventorySet(row=null){
+  if(!isManager)return;
+  populateInventoryProducts();
+  $('inventorySetProduct').value=row?.product||'';
+  $('inventorySetPackage').value=row?.package_type||'five_gallon_pail';
+  $('inventorySetQty').value=row?String(inventoryNum(row.stock_units)):'';
+  $('inventorySetDate').value=iso(new Date());
+  $('inventorySetNote').value=row?'Cycle count / stock correction':'Opening stock count';
+  const m=$('inventorySetMessage');if(m){m.textContent='';m.className='authmessage'}
+  showModal('inventorySetModal');
+}
+async function saveInventorySet(){
+  if(!isManager)return;
+  const product=$('inventorySetProduct').value.trim().replace(/\s+/g,' ');
+  const package_type=$('inventorySetPackage').value;
+  const raw=$('inventorySetQty').value.trim(),target_units=Number(raw);
+  const event_date=$('inventorySetDate').value,note=$('inventorySetNote').value.trim();
+  const msg=$('inventorySetMessage');
+  const say=(x,bad=false)=>{msg.textContent=x;msg.className='authmessage'+(bad?' bad':' good')};
+  if(!product||raw===''||!Number.isFinite(target_units)||target_units<0||!event_date){say('Enter product, package, current quantity, and date.',true);return}
+  $('saveInventorySetBtn').disabled=true;say('Saving current stock…');
+  try{
+    const {data,error}=await db.functions.invoke('inventory-set-stock',{body:{product,package_type,target_units,event_date,note}});
+    if(error||data?.error)throw new Error(data?.error||error?.message||'Could not save stock');
+    say(data?.no_change?'Stock already matches this quantity.':'Current stock saved.');
+    await loadInventoryStock();
+    setTimeout(()=>hideModal('inventorySetModal'),300);
+  }catch(e){say(e.message||String(e),true)}
+  finally{$('saveInventorySetBtn').disabled=false}
+}
+function shippingGroupRows(rows){
+  const map=new Map();
+  for(const r of rows){
+    const key=r.product_key||String(r.product||'').toLowerCase();
+    if(!map.has(key))map.set(key,{product:r.product||key,items:[],gallons:0});
+    const g=map.get(key);g.items.push(r);g.gallons+=inventoryNum(r.shipped_gallons);
+  }
+  return [...map.values()].sort((a,b)=>b.gallons-a.gallons||a.product.localeCompare(b.product));
+}
+function renderShippingSection(groups,title,paint=true){
+  if(!groups.length)return '';
+  const max=Math.max(...groups.map(g=>paint?Math.max(g.gallons,0):g.items.reduce((s,r)=>s+Math.max(inventoryNum(r.shipped_units),0),0)),1);
+  return '<div class="shippingsection"><h3>'+esc(title)+'</h3><div class="analytics-chart">'+groups.map((g,i)=>{
+    const metric=paint?g.gallons:g.items.reduce((s,r)=>s+inventoryNum(r.shipped_units),0);
+    const bar=Math.max(0,100*metric/max);
+    const packages=g.items.map(r=>inventoryPackageShort(r.package_type)+' '+inventoryNum(r.shipped_units).toLocaleString(locale(),{maximumFractionDigits:2})).join(' • ');
+    return '<div class="analytics-row shippingrow"><div class="analytics-rank">'+(i+1)+'</div><div class="analytics-product"><b>'+esc(g.product)+'</b><small>'+esc(packages)+'</small></div>'+
+      '<div class="analytics-barwrap"><div class="analytics-bar" style="width:'+bar.toFixed(2)+'%"></div></div>'+
+      '<div class="analytics-values"><b>'+(paint?metric.toLocaleString(locale(),{maximumFractionDigits:2})+' gal':metric.toLocaleString(locale(),{maximumFractionDigits:2})+' units')+'</b><small>shipped</small></div></div>';
+  }).join('')+'</div></div>';
+}
+async function loadShippingAnalytics(){
+  if(!canViewInventory())return;
+  const month=$('shippingAnalyticsMonth').value,bounds=monthBounds(month),body=$('shippingAnalyticsBody');if(!bounds)return;
+  body.innerHTML='<div class="analytics-empty">Loading shipping…</div>';
+  try{
+    const [lineRes,eventRes]=await Promise.all([
+      db.from('inventory_shipping_monthly').select('*').eq('month',bounds.start),
+      db.from('inventory_events').select('event_id',{count:'exact',head:true}).in('event_type',['SHIPPED','SHIPPING_CORRECTION']).gte('event_date',bounds.start).lt('event_date',bounds.next)
+    ]);
+    if(lineRes.error)throw lineRes.error;if(eventRes.error)throw eventRes.error;
+    const rows=lineRes.data||[],groups=shippingGroupRows(rows);
+    const paint=groups.filter(g=>g.gallons!==0),other=groups.filter(g=>g.gallons===0);
+    const totalGallons=paint.reduce((s,g)=>s+g.gallons,0);
+    if(!groups.length){body.innerHTML='<div class="analytics-empty"><b>No Mark shipped events for this month.</b><br><small>Old packing slips are intentionally not guessed as shipments.</small></div>';return}
+    body.innerHTML=
+      '<div class="analytics-summary">'+
+        '<div><span>Shipment Events</span><b>'+(eventRes.count||0)+'</b></div>'+
+        '<div><span>Products</span><b>'+groups.length+'</b></div>'+
+        '<div><span>Paint Shipped</span><b>'+totalGallons.toLocaleString(locale(),{maximumFractionDigits:2})+' gal</b></div>'+
+      '</div>'+
+      renderShippingSection(paint,'Paint / Finish Shipments',true)+
+      renderShippingSection(other,'Other Shipments',false);
+  }catch(e){console.error(e);body.innerHTML='<div class="analytics-empty">Could not load shipping chart.</div>'}
+}
+function openShippingAnalytics(){
+  if(!canViewInventory())return;
+  $('shippingAnalyticsMonth').value=iso(selected).slice(0,7);
+  showModal('shippingAnalyticsModal');loadShippingAnalytics();
+}
+
 async function loadMonthlyAnalytics(){
   if(!isManager)return;
   const monthValue=$('analyticsMonth').value,bounds=monthBounds(monthValue);if(!bounds)return;
@@ -1180,6 +1332,13 @@ $('dateLabel').onclick=openMonth;
 $('search').oninput=render;
 $('addBtn').onclick=()=>openEditor(null,false);
 if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('monthlyChartBtn');openMonthlyAnalytics()};
+if($('inventoryBtn'))$('inventoryBtn').onclick=()=>{setShellNavActive('inventoryBtn');openInventory()};
+if($('shippingChartBtn'))$('shippingChartBtn').onclick=()=>{setShellNavActive('shippingChartBtn');openShippingAnalytics()};
+if($('setInventoryBtn'))$('setInventoryBtn').onclick=()=>openInventorySet();
+if($('saveInventorySetBtn'))$('saveInventorySetBtn').onclick=saveInventorySet;
+if($('inventorySearch'))$('inventorySearch').oninput=renderInventoryStock;
+if($('shippingAnalyticsLoadBtn'))$('shippingAnalyticsLoadBtn').onclick=loadShippingAnalytics;
+if($('shippingAnalyticsMonth'))$('shippingAnalyticsMonth').onchange=loadShippingAnalytics;
 if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
 if($('analyticsMonth'))$('analyticsMonth').onchange=loadMonthlyAnalytics;
 if($('staffBtn'))$('staffBtn').onclick=()=>{if(!canManageStaff())return;setShellNavActive('staffBtn');openStaff()};

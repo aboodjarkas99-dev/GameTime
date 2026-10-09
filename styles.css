@@ -870,3 +870,52 @@ input.full-picker-click{cursor:pointer}
 }
 
 .fieldhelp{display:block;margin-top:5px;color:#94a3b8;font-size:7px;font-weight:700;line-height:1.35;text-transform:none;letter-spacing:0}
+
+/* INVENTORY + SHIPPING LEDGER UI 20261009 */
+#inventoryModal,#shippingAnalyticsModal{padding:0!important}
+#inventoryModal.show,#shippingAnalyticsModal.show{align-items:stretch!important;justify-content:stretch!important}
+#inventoryModal .analyticsdialog,#shippingAnalyticsModal .analyticsdialog{
+  margin:0!important;width:100%!important;max-width:none!important;min-height:100vh;
+  border-radius:0!important;padding:0!important;display:flex;flex-direction:column;background:#fafafa
+}
+#inventoryModal .dialoghead,#shippingAnalyticsModal .dialoghead{
+  position:sticky;top:0;z-index:4;min-height:58px;padding:0 24px;background:#fff;border-bottom:1px solid #e7e7e7
+}
+#inventoryModal .analyticsbody,#shippingAnalyticsModal .analyticsbody{flex:1;padding:0 24px 28px;overflow:auto;min-height:0}
+#shippingAnalyticsModal .analyticscontrols{margin:20px 24px 10px}
+.inventorytop{
+  margin:20px 24px 8px;padding:12px 14px;border:1px solid #e7e7e7;border-radius:10px;background:#fff;
+  display:flex;align-items:center;justify-content:space-between;gap:14px
+}
+.inventorytop b{display:block;font-size:12px}.inventorytop small{display:block;margin-top:3px;color:#71717a;font-size:8px;line-height:1.4}
+.inventorytop button{border:0;border-radius:8px;padding:9px 12px;font-size:9px;font-weight:900;white-space:nowrap}
+.inventorysearch{
+  margin:0 24px 12px;border:1px solid #e7e7e7;border-radius:9px;background:#fff;display:flex;align-items:center;padding:0 10px;gap:8px
+}
+.inventorysearch span{color:#a1a1aa}.inventorysearch input{width:100%;border:0;outline:0;padding:10px 0;font-size:11px;background:transparent}
+.inventorywarning{margin:0 0 12px;padding:9px 11px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:9px;font-size:9px;font-weight:800}
+.inventorycards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:9px}
+.inventorycard{border:1px solid #e7e7e7;border-radius:10px;background:#fff;padding:11px}
+.inventorycardhead b{display:block;font-size:12px}.inventorycardhead small{display:block;margin-top:2px;font-size:7px;color:#71717a;font-weight:750}
+.stockpackages{display:grid;gap:5px;margin-top:9px}
+.stockpackage{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;background:#fafafa;border:1px solid #efefef}
+.stockpackage span{font-size:8px;color:#71717a;font-weight:850}.stockpackage b{font-size:12px}
+.stockpackage button{border:1px solid #e4e4e7;background:#fff;border-radius:6px;padding:4px 7px;font-size:7px;font-weight:900}
+.stockpackage.negative{border-color:#fecaca;background:#fff7f7}.stockpackage.negative b{color:#b91c1c}
+.inventorystockdialog{width:min(760px,100%)}
+.inventoryhelp{margin:0 0 12px;padding:9px 10px;border:1px solid #e7e7e7;border-radius:8px;background:#fafafa;color:#52525b;font-size:9px;line-height:1.45}
+.inventorysetgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:8px}
+.inventorysetgrid label{font-size:8px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:.04em}
+.inventorysetgrid input,.inventorysetgrid select{width:100%;box-sizing:border-box;margin-top:4px;min-height:41px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 9px;background:#fff}
+.inventorysetgrid .wide{grid-column:1/-1}
+.shippingnote{margin:0 24px 12px;padding:9px 11px;border:1px solid #dbeafe;background:#eff6ff;color:#1e3a8a;border-radius:9px;font-size:8px;line-height:1.45}
+.shippingsection{margin-top:14px}.shippingsection h3{font-size:11px;margin:0 0 7px}
+.shippingrow .analytics-bar{background:#111827}
+@media(max-width:720px){
+  #inventoryModal .analyticsbody,#shippingAnalyticsModal .analyticsbody{padding:0 12px 24px}
+  .inventorytop,.inventorysearch,#shippingAnalyticsModal .analyticscontrols,.shippingnote{margin-left:12px;margin-right:12px}
+  .inventorytop{align-items:flex-start;flex-direction:column}.inventorytop button{width:100%}
+  .inventorysetgrid{grid-template-columns:1fr}
+  .inventorysetgrid .wide{grid-column:auto}
+  .inventorycards{grid-template-columns:1fr}
+}
