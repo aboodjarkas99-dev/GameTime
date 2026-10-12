@@ -1,0 +1,4 @@
+import React,{useEffect,useState} from 'react';import {createRoot} from 'react-dom/client';
+import {authorize,db} from './lib/pallet/api';import {PalletDesk} from './components/pallet-desk';import './styles.css';
+function App(){const [state,setState]=useState<'loading'|'ready'|'login'>('loading');useEffect(()=>{authorize().then(a=>setState(a?'ready':'login')).catch(()=>setState('login'));const {data}=db.auth.onAuthStateChange(e=>{if(e==='SIGNED_OUT')setState('login')});return()=>data.subscription.unsubscribe()},[]);if(state==='ready')return <PalletDesk/>;return <main style={{padding:32}}><h1>GameTime Shipping</h1><p>{state==='loading'?'Checking factory access…':'Sign in with your Shipping or Management account to open the live shipping desk.'}</p>{state==='login'&&<a href="/index.html?workspace=shipping">Factory sign in</a>}</main>}
+createRoot(document.getElementById('root')!).render(<App/>);

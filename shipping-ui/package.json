@@ -1,0 +1,25 @@
+{
+  "name": "gametime-shipping-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.57.4",
+    "@tailwindcss/vite": "4.1.16",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.0.4",
+    "@zxing/browser": "0.1.5",
+    "lucide-react": "0.510.0",
+    "pdfjs-dist": "^4.10.38",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "tailwindcss": "4.1.16",
+    "tesseract.js": "5.1.1",
+    "typescript": "5.9.3",
+    "vite": "7.1.12"
+  }
+}
