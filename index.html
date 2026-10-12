@@ -9,11 +9,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
 <link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261009q">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261012a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
-<!-- SECURE_V2_20261009q employee-name-login company-logo -->
+<!-- SECURE_V2_20261012a employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -438,12 +438,14 @@
       <div class="shippingcapturehead">
         <div><b>1. Packing Slip</b><small>Take a photo, upload a PDF/image/file, or paste the packing-slip text.</small></div>
         <div class="captureactions">
-          <button id="shippingCameraBtn" type="button">📷 Take Photo</button>
+          <button id="shippingCameraBtn" type="button">📷 Scan Page</button>
           <button id="shippingUploadBtn" type="button">↑ Upload File</button>
         </div>
       </div>
       <input id="shippingCameraInput" class="hiddenfile" type="file" accept="image/*" capture="environment">
-      <input id="shippingFileInput" class="hiddenfile" type="file" accept="image/*,application/pdf,text/plain,text/csv,.csv,.tsv">
+      <input id="shippingFileInput" class="hiddenfile" type="file" multiple accept="image/*,application/pdf,text/plain,text/csv,.csv,.tsv">
+      <label><input id="shippingAppendPages" type="checkbox"> Add more pages to the current order</label>
+      <details class="shipping-source-preview"><summary>Scanned page preview</summary><div id="shippingSourcePreview"></div></details>
       <div id="shippingScanStatus" class="shippingscanstatus">Ready for a packing slip.</div>
       <textarea id="shippingSlipText" class="shippingsliptext" placeholder="Extracted packing-slip text will appear here. You can also paste text manually."></textarea>
       <div class="capturefooter"><button id="shippingProcessTextBtn" class="primary" type="button">Read Packing Slip & Build Pallets</button></div>
@@ -463,6 +465,7 @@
         <button id="shippingAddLineBtn" type="button">+ Add Line</button>
       </div>
       <div id="shippingLines" class="shippinglines"></div>
+      <div id="shippingReadReview" class="shipping-scan-review" style="display:none"><p id="shippingReadSummary">Compare every extracted row against the original packing slip.</p><label>Product rows on paper (optional check)<input id="shippingExpectedLines" type="number" min="1" step="1"></label><label><input id="shippingReviewed" type="checkbox"> I checked every product, package, quantity, and all pages against the original.</label></div>
 
       <div class="shippingplanbar">
         <div><b>3. Pallet Plan</b><small>Review each pallet, then download the packing plan to print.</small></div>
@@ -606,9 +609,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261009q"></script>
+<script src="app.js?v=SECURE_V2_20261012a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261009q').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261012a').catch(()=>{});}
 </script>
 </body>
 </html>

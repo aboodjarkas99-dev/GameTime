@@ -984,3 +984,9 @@ input.full-picker-click{cursor:pointer}
 .stockpackage small{display:block;font-size:11px;line-height:1.6;color:#475569;font-weight:500}
 #shippingPdfBtn{white-space:normal;min-height:42px}
 @media(max-width:900px){.shipping-only #shippingWorkspaceModal.show{inset:64px 0 0 0}}
+.document-scanner{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.8);overflow:auto;padding:12px;display:flex;align-items:flex-start;justify-content:center}
+.scan-dialog{background:#fff;padding:18px;border-radius:12px;width:min(700px,100%);color:#111}
+.scan-dialog h2{margin:0 0 12px}.scan-dialog p{font-size:14px;line-height:1.5}
+.scan-canvas{display:block;max-width:calc(100% - 24px);max-height:65vh;margin:auto;touch-action:none;border:12px solid #e2e8f0;box-sizing:content-box;width:auto;height:auto}
+.scan-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.scan-actions button{padding:12px;border:1px solid #cbd5e1;border-radius:8px;background:white}.scan-actions [data-scan-use]{background:#111827;color:white}
+.shipping-source-preview img{max-width:100%;max-height:350px;border:1px solid #cbd5e1}.shipping-scan-review{display:block;background:#fff7ed;border:1px solid #fdba74;padding:12px;margin-top:10px;font-size:14px}

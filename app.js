@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261009q';
+const BUILD='SECURE_V2_20261012a';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
 let shippingRefreshBusy=false;
@@ -1003,7 +1003,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261009q':'batch-maker.html?build=SECURE_V2_20261009q'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261012a':'batch-maker.html?build=SECURE_V2_20261012a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1170,6 +1170,7 @@ async function shippingBuildPlan(){
 }
 async function shippingProcessSlip(){
   const text=($('shippingSlipText').value||'').trim();
+  $('shippingReviewed').checked=false;
   if(!text){shippingScanMessage('Add a packing slip photo, file, or text first.');return}
   shippingScanMessage('Reading packing slip and calculating pallets…',true);shippingEditorMessage('');
   try{
@@ -1196,43 +1197,76 @@ function shippingLoadScript(src,globalName){
     s.onerror=()=>reject(new Error('Could not load '+globalName));document.head.appendChild(s);
   });
 }
-async function shippingOcrImage(source,label='photo'){
-  shippingScanMessage('Reading '+label+'… 0%',true);
+let shippingScanIssues=[];
+async function shippingOcrImage(source,label='page'){
+  shippingScanMessage('Reading '+label+'…',true);
   const T=await shippingLoadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js','Tesseract');
-  const result=await T.recognize(source,'eng',{logger:m=>{
+  const worker=await T.createWorker('eng',1,{logger:m=>{
     if(m.status==='recognizing text')shippingScanMessage('Reading '+label+'… '+Math.round((m.progress||0)*100)+'%',true);
-    else if(m.status)shippingScanMessage(m.status.replace(/\b\w/g,c=>c.toUpperCase())+'…',true);
   }});
-  return result?.data?.text||'';
+  try{
+    await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1',user_defined_dpi:'300'});
+    const result=await worker.recognize(source,{rotateAuto:true});
+    if(Number(result.data.confidence)<80)shippingScanIssues.push(label+': low reading confidence. Compare every row and quantity with the original.');
+    if(!(result.data.text||'').trim())throw new Error('No readable text on '+label+'. Retake the page or upload the original PDF.');
+    return result.data.text;
+  }finally{await worker.terminate()}
 }
 async function shippingExtractPdf(file){
-  shippingScanMessage('Opening PDF…',true);
+  shippingScanMessage('Opening all PDF pages…',true);
   const pdfjs=await shippingLoadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjsLib');
   pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const doc=await pdfjs.getDocument({data:await file.arrayBuffer()}).promise;const pages=Math.min(doc.numPages,8);let out='';
-  for(let i=1;i<=pages;i++){shippingScanMessage('Reading PDF page '+i+' of '+pages+'…',true);const page=await doc.getPage(i),tc=await page.getTextContent();out+=(tc.items||[]).map(x=>x.str).join(' ')+'\n'}
-  if(out.replace(/\s/g,'').length>=80)return out;
-  out='';
-  for(let i=1;i<=pages;i++){
-    shippingScanMessage('Scanning PDF image page '+i+' of '+pages+'…',true);
-    const page=await doc.getPage(i),viewport=page.getViewport({scale:1.7});const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;out+=await shippingOcrImage(canvas,'PDF page '+i)+'\n';
-  }
-  return out;
-}
-async function shippingReadSelectedFile(file,kind){
-  if(!file)return;shippingSourceKind=kind;shippingSourceFilename=file.name||'';
+  const {pdfPageText}=await import('./document-scan.mjs?v='+BUILD);
+  const doc=await pdfjs.getDocument({data:await file.arrayBuffer()}).promise;const output=[];
+  if(doc.numPages>30){await doc.destroy();throw new Error('This PDF has more than 30 pages. Split it into smaller files; no pages were silently skipped.');}
   try{
-    let text='';if(file.type.startsWith('image/'))text=await shippingOcrImage(file,kind==='camera'?'photo':'image');
-    else if(file.type==='application/pdf'||/\.pdf$/i.test(file.name))text=await shippingExtractPdf(file);else text=await file.text();
-    $('shippingSlipText').value=text.trim();shippingScanMessage('File read. Building shipment details…',true);await shippingProcessSlip();
-  }catch(e){console.error(e);shippingScanMessage('Could not read this file: '+(e.message||String(e)))}
+    for(let i=1;i<=doc.numPages;i++){
+      shippingScanMessage('Reading PDF page '+i+' of '+doc.numPages+'…',true);
+      const page=await doc.getPage(i),tc=await page.getTextContent();let text=pdfPageText(tc.items||[]);
+      // A header-only text layer must not hide a scanned order table.
+      const plan=await shippingPlan('slip',{text});
+      if(text.replace(/\s/g,'').length<80||!plan?.ok||!(plan.lines||[]).length){
+        const viewport=page.getViewport({scale:2.5}),canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
+        await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+        text=await shippingOcrImage(canvas,'PDF page '+i+' of '+doc.numPages);canvas.width=canvas.height=1;
+      }
+      output.push(text);page.cleanup();
+    }
+    return output.join('\n\n');
+  }finally{await doc.destroy()}
+}
+async function shippingReadSelectedFiles(files,kind){
+  if(!files.length)return;
+  const previous=$('shippingAppendPages')?.checked?$('shippingSlipText').value.trim():'';
+  const previews=$('shippingSourcePreview');if(!previous){shippingScanIssues=[];$('shippingExpectedLines').value='';if(previews)previews.replaceChildren()}
+  const output=previous?[previous]:[];
+  shippingSourceKind=kind;shippingSourceFilename=files.map(f=>f.name).join(', ');
+  $('shippingReviewed').checked=false;
+  try{
+    for(let i=0;i<files.length;i++){
+      const file=files[i];let text='';
+      if(file.type.startsWith('image/')){
+        const {scanPage}=await import('./document-scan.mjs?v='+BUILD);
+        const scan=await scanPage(file);if(!scan)return;
+        if(previews){const image=document.createElement('img');image.src=scan.toDataURL('image/jpeg',0.9);image.alt='Corrected packing-slip page '+(i+1);previews.append(image)}
+        text=await shippingOcrImage(scan,'page '+(i+1)+' of '+files.length);
+      }else if(file.type==='application/pdf'||/\.pdf$/i.test(file.name))text=await shippingExtractPdf(file);
+      else text=await file.text();
+      output.push(text);
+    }
+    // Update only after every selected page was read successfully.
+    $('shippingSlipText').value=output.join('\n\n').trim();await shippingProcessSlip();
+    $('shippingReadReview').style.display='';
+    $('shippingReadSummary').textContent='Extracted '+shippingDraftLines.length+' product lines. '+(shippingScanIssues.join(' ')||'Compare against ALL rows on the paper before saving Ready.');
+    shippingScanMessage('All '+files.length+' selected files were read. Review the complete order below.');
+  }catch(e){console.error(e);shippingScanMessage('Reading stopped: '+(e.message||String(e))+'. The previous order text was kept.');}
 }
 function shippingResetEditor(){
   shippingCurrentId=null;shippingCurrentStatus='DRAFT';shippingDraftLines=[];shippingDraftPlan=null;shippingSourceKind='manual';shippingSourceFilename='';
   $('shippingEditorTitle').textContent='New Shipment';$('shippingEditorStatus').textContent='DRAFT';
   $('shippingSlipText').value='';$('shippingNumber').value='';$('shippingCustomer').value='';$('shippingPo').value='';$('shippingSalesperson').value='';$('shippingNotes').value='';
   $('shippingReviewSection').style.display='none';$('shippingPalletPlan').innerHTML='';$('shippingLines').innerHTML='';
+  $('shippingReviewed').checked=false;$('shippingExpectedLines').value='';$('shippingReadReview').style.display='none';$('shippingSourcePreview').replaceChildren();shippingScanIssues=[];
   shippingScanMessage('Ready for a packing slip.');shippingEditorMessage('');shippingUpdateEditorMode();
 }
 function shippingUpdateEditorMode(){
@@ -1249,6 +1283,9 @@ function openNewShipment(){if(!canUseShipping())return;loadInventoryStock().catc
 async function shippingSave(status){
   if(!canUseShipping()||shippingCurrentStatus==='SHIPPED'||shippingCurrentStatus==='CANCELED')return false;
   const plan=await shippingBuildPlan();if(!plan?.ok)return false;shippingDraftLines=shippingCollectLines();
+  if(status==='READY'&&shippingSourceKind!=='manual'&&!$('shippingReviewed').checked){shippingEditorMessage('Compare the extracted lines with every row on the packing slip, then check the review box.',true);return false}
+  const expected=$('shippingExpectedLines').value.trim();
+  if(status==='READY'&&expected&&Number(expected)!==shippingDraftLines.length){shippingEditorMessage('The extracted line count does not match the paper. Add missing lines before Ready.',true);return false}
   if(shippingDraftLines.some(l=>!l.inventory_product)){shippingEditorMessage('Choose an Inventory Product for every shipment line before saving.',true);return false}
   const header={shipment_number:$('shippingNumber').value.trim(),packing_slip:$('shippingNumber').value.trim(),customer:$('shippingCustomer').value.trim(),po:$('shippingPo').value.trim(),salesperson_name:$('shippingSalesperson').value.trim(),salesperson_email:'',source_kind:shippingSourceKind,source_filename:shippingSourceFilename,slip_text:$('shippingSlipText').value||'',batch_codes:[...new Set(shippingDraftLines.map(x=>x.batch).filter(Boolean))],status,notes:$('shippingNotes').value.trim()};
   const btn=status==='READY'?$('shippingSaveReadyBtn'):$('shippingSaveDraftBtn');btn.disabled=true;shippingEditorMessage(status==='READY'?'Saving Ready shipment…':'Saving Draft…');
@@ -1284,7 +1321,7 @@ function renderShippingList(){
 async function openShippingShipment(id){
   if(!canUseShipping())return;const s=shippingShipments.find(x=>x.id===id);if(!s)return;
   const {data:lines,error}=await db.from('shipping_lines').select('*').eq('shipment_id',id).order('line_order');if(error){toast(error.message);return}
-  shippingCurrentId=id;shippingCurrentStatus=s.status;shippingSourceKind=s.source_kind||'manual';shippingSourceFilename=s.source_filename||'';
+  shippingCurrentId=id;shippingCurrentStatus=s.status;$('shippingSourcePreview').replaceChildren();$('shippingReviewed').checked=s.status==='READY'||s.status==='SHIPPED';$('shippingExpectedLines').value='';$('shippingReadReview').style.display='';$('shippingReadSummary').textContent='Saved shipment — compare all rows if you edit the lines.';shippingSourceKind=s.source_kind||'manual';shippingSourceFilename=s.source_filename||'';
   $('shippingEditorTitle').textContent=(s.status==='SHIPPED'?'Shipped ':'')+(s.shipment_number||'Shipment');$('shippingSlipText').value=s.slip_text||'';
   $('shippingNumber').value=s.shipment_number||s.packing_slip||'';$('shippingCustomer').value=s.customer||'';$('shippingPo').value=s.po||'';
   $('shippingSalesperson').value=s.salesperson_name||s.salesperson_email||'';$('shippingNotes').value=s.notes||'';
@@ -1697,9 +1734,9 @@ if($('shareManagement'))$('shareManagement').onclick=shareManagement;
 if($('shippingPdfBtn'))$('shippingPdfBtn').onclick=shippingDownloadPdf;
 if($('shippingCameraBtn'))$('shippingCameraBtn').onclick=()=>$('shippingCameraInput').click();
 if($('shippingUploadBtn'))$('shippingUploadBtn').onclick=()=>$('shippingFileInput').click();
-if($('shippingCameraInput'))$('shippingCameraInput').onchange=e=>{const f=e.target.files?.[0];if(f)shippingReadSelectedFile(f,'camera');e.target.value=''};
-if($('shippingFileInput'))$('shippingFileInput').onchange=e=>{const f=e.target.files?.[0];if(f)shippingReadSelectedFile(f,'upload');e.target.value=''};
-if($('shippingProcessTextBtn'))$('shippingProcessTextBtn').onclick=()=>{shippingSourceKind=shippingSourceKind==='manual'?'paste':shippingSourceKind;shippingProcessSlip()};
+if($('shippingCameraInput'))$('shippingCameraInput').onchange=e=>{const f=e.target.files?.[0];if(f)shippingReadSelectedFiles([f],'camera');e.target.value=''};
+if($('shippingFileInput'))$('shippingFileInput').onchange=e=>{const files=[...(e.target.files||[])];if(files.length)shippingReadSelectedFiles(files,'upload');e.target.value=''};
+if($('shippingProcessTextBtn'))$('shippingProcessTextBtn').onclick=()=>{shippingSourceKind=shippingSourceKind==='manual'?'paste':shippingSourceKind;$('shippingReviewed').checked=false;$('shippingReadReview').style.display='';shippingProcessSlip()};
 if($('shippingAddLineBtn'))$('shippingAddLineBtn').onclick=shippingAddLine;
 if($('shippingRebuildBtn'))$('shippingRebuildBtn').onclick=shippingBuildPlan;
 if($('shippingSaveDraftBtn'))$('shippingSaveDraftBtn').onclick=()=>shippingSave('DRAFT');
