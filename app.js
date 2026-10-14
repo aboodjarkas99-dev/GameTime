@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261014a';
+const BUILD='SECURE_V2_20261014b';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
 let shippingRefreshBusy=false;
@@ -727,6 +727,7 @@ function render(){
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
   if($('inventoryBtn'))$('inventoryBtn').style.display=canViewInventory()?'':'none';
   if($('shippingChartBtn'))$('shippingChartBtn').style.display=canViewInventory()?'':'none';
+  if($('managerShippingBtn'))$('managerShippingBtn').style.display=isManager?'':'none';
   if($('shippingWorkspaceBtn'))$('shippingWorkspaceBtn').style.display=canUseShipping()?'':'none';
   if($('setInventoryBtn'))$('setInventoryBtn').style.display=isManager?'':'none';
   document.querySelectorAll('[data-print-option]').forEach(b=>{
@@ -1005,7 +1006,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261014a':'batch-maker.html?build=SECURE_V2_20261014a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261014b':'batch-maker.html?build=SECURE_V2_20261014b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1361,6 +1362,7 @@ async function refreshShippingData(){
   try{
     if($('shippingWorkspaceModal').classList.contains('show')||$('shippingEditorModal').classList.contains('show'))await loadShippingShipments();
     if($('inventoryModal').classList.contains('show')||$('shippingEditorModal').classList.contains('show'))await loadInventoryStock(true);
+    if(isManager&&$('managerShippingModal')?.classList.contains('show'))await loadManagerShippingDetails();
     const current=shippingShipments.find(s=>s.id===shippingCurrentId);
     if(current&&current.status!==shippingCurrentStatus&&['SHIPPED','CANCELED'].includes(current.status)){
       shippingCurrentStatus=current.status;shippingUpdateEditorMode();
@@ -1389,7 +1391,7 @@ async function shippingDownloadPdf(){
 function companyProductNames(){return factoryProducts.filter(p=>p.active).map(p=>p.name).sort((a,b)=>a.localeCompare(b))}
 async function loadFactoryProducts(){
   if(!profile)return;
-  const {data,error}=await db.from('factory_products').select('id,name,active').order('name');
+  const {data,error}=await db.from('factory_products').select('id,name,active,category,stock_limits').order('name');
   if(error)throw error;
   if(JSON.stringify(factoryProducts)===JSON.stringify(data||[]))return;
   factoryProducts=data||[];populateInventoryProducts();
@@ -1407,9 +1409,12 @@ function showProductOptions(){
 }
 function renderProductCatalog(){
   $('catalogEditControls').hidden=!isManager;
-  $('catalogList').innerHTML=factoryProducts.map(p=>'<div class="catalog-row'+(p.active?'':' inactive')+'"><input aria-label="Product name" data-catalog-name="'+p.id+'" value="'+esc(p.name)+'" maxlength="120" '+(!isManager?'readonly':'')+'>'+(isManager?'<button type="button" data-catalog-save="'+p.id+'">Save name</button><button type="button" data-catalog-toggle="'+p.id+'">'+(p.active?'Archive':'Restore')+'</button>':'')+'</div>').join('')||'<p>No products yet.</p>';
+  const productRow=p=>'<div class="catalog-row'+(p.active?'':' inactive')+'"><input aria-label="Product name" data-catalog-name="'+p.id+'" value="'+esc(p.name)+'" maxlength="120" '+(!isManager?'readonly':'')+'>'+(isManager?'<button type="button" data-catalog-save="'+p.id+'">Save name</button><button type="button" data-product-settings="'+p.id+'">'+esc(inventoryCategoryLabel(p.category))+'</button><button type="button" data-catalog-toggle="'+p.id+'">'+(p.active?'Delete':'Restore')+'</button>':'')+'</div>';
+  const active=factoryProducts.filter(p=>p.active),deleted=factoryProducts.filter(p=>!p.active);
+  $('catalogList').innerHTML=active.map(productRow).join('')+(deleted.length?'<details><summary>Deleted products ('+deleted.length+') — restore</summary>'+deleted.map(productRow).join('')+'</details>':'')||'<p>No products yet.</p>';
   document.querySelectorAll('[data-catalog-save]').forEach(b=>b.onclick=()=>updateCatalogProduct(b.dataset.catalogSave,{name:document.querySelector('[data-catalog-name="'+b.dataset.catalogSave+'"]').value.trim().replace(/\s+/g,' ')}));
-  document.querySelectorAll('[data-catalog-toggle]').forEach(b=>b.onclick=()=>{const p=factoryProducts.find(p=>p.id===b.dataset.catalogToggle);if(p)updateCatalogProduct(p.id,{active:!p.active})});
+  $('catalogList').querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));
+  document.querySelectorAll('[data-catalog-toggle]').forEach(b=>b.onclick=()=>{const p=factoryProducts.find(p=>p.id===b.dataset.catalogToggle);if(p){if(p.active)deleteCompanyProduct(p.id);else updateCatalogProduct(p.id,{active:true})}});
 }
 async function updateCatalogProduct(id,patch){
   if(!isManager)return;
@@ -1442,49 +1447,63 @@ function populateInventoryProducts(){
   for(const r of inventoryStockRows){if(r.product)names.set(String(r.product).trim().toLowerCase(),String(r.product).trim())}
   const list=$('inventoryProductList');if(list)list.innerHTML=[...names.values()].sort((a,b)=>a.localeCompare(b)).map(x=>'<option value="'+esc(x)+'"></option>').join('');
 }
+function inventoryLevel(units,limits){
+  if(!limits||!Number.isFinite(Number(limits.minimum))||!Number.isFinite(Number(limits.safe)))return {key:'unset',label:'Set stock limits'};
+  if(units<=Number(limits.minimum))return {key:'low',label:'Minimum reached'};
+  if(units<Number(limits.safe))return {key:'warning',label:'Below safe stock'};
+  return {key:'healthy',label:'Safe stock'};
+}
+function inventoryCategoryLabel(category){return {sport:'Sport Floors',residential:'Residential',cleaner:'Cleaners',unclassified:'Needs classification'}[category]||'Needs classification'}
+function inventoryProductCard(p){
+  const rows=inventoryStockRows.filter(r=>String(r.product).trim().toLowerCase()===p.name.trim().toLowerCase());
+  const standard=p.category==='sport'?['five_gallon_pail']:['quart_can','gallon','five_gallon_pail'];
+  const packages=[...new Set([...standard,...(p.category==='sport'?[]:rows.map(r=>r.package_type))])];
+  return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Settings</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
+    const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units),limits=p.stock_limits?.[type];
+    const level=row?inventoryLevel(v,limits):{key:'unset',label:'No recorded balance'};
+    const scale=limits?Math.max(Number(limits.safe)*1.5,v,1):Math.max(v,1),fill=Math.max(0,Math.min(100,100*v/scale));
+    return '<div class="inventory-v3-package '+level.key+'"><div class="inventory-v3-number"><span>'+esc(inventoryPackageLabel(type))+'</span><b>'+(row?v.toLocaleString(locale(),{maximumFractionDigits:2}):'—')+'</b></div><div class="inventory-v3-track" aria-hidden="true"><div style="width:'+fill+'%"></div>'+(limits?'<i style="left:'+Math.min(100,100*Number(limits.minimum)/scale)+'%" title="Minimum"></i><i style="left:'+Math.min(100,100*Number(limits.safe)/scale)+'%" title="Safe stock"></i>':'')+'</div><div class="inventory-v3-level">'+esc(level.label)+'</div><small>'+(limits?'Minimum: '+esc(limits.minimum)+' · Safe: '+esc(limits.safe):'Limits not configured')+'</small>'+(row?'<small>Produced '+inventoryNum(row.produced_units).toLocaleString(locale())+' · Shipped '+inventoryNum(row.shipped_units).toLocaleString(locale())+'</small>':'')+(isManager?'<button type="button" data-stock-name="'+esc(p.name)+'" data-stock-type="'+esc(type)+'">Set current stock</button>':'')+'</div>';
+  }).join('')+'</div></article>';
+}
 function renderInventoryStock(){
   const body=$('inventoryBody');if(!body)return;
   const q=($('inventorySearch')?.value||'').trim().toLowerCase();
-  const rows=inventoryStockRows.filter(r=>!q||String(r.product||'').toLowerCase().includes(q));
-  const grouped=new Map();
-  for(const r of rows){
-    const key=r.product_key||String(r.product||'').toLowerCase();
-    if(!grouped.has(key))grouped.set(key,{product:r.product||key,items:[],gallons:0});
-    const g=grouped.get(key);g.items.push(r);g.gallons+=inventoryNum(r.stock_gallons);
-  }
-  for(const name of companyProductNames()){if(q&&!name.toLowerCase().includes(q))continue;const found=[...grouped.values()].some(g=>g.product.toLowerCase()===name.toLowerCase());if(!found)grouped.set('catalog:'+name.toLowerCase(),{product:name,items:[],gallons:0});}
-  const products=[...grouped.values()].sort((a,b)=>b.gallons-a.gallons||a.product.localeCompare(b.product));
-  if(!products.length){
-    body.innerHTML='<div class="analytics-empty"><b>No inventory balance yet.</b><br><small>Use Set Current Stock to enter today’s physical stock. After that, Production and Shipping update it automatically.</small></div>';
-    return;
-  }
-  const allItems=products.flatMap(x=>x.items),negative=allItems.filter(x=>inventoryNum(x.stock_units)<0).length;
-  const totalGallons=products.reduce((s,x)=>s+x.gallons,0);
-  const chartPackage=$('inventoryChartPackage')?.value||'five_gallon_pail';
-  const chartRows=products.map(g=>({name:g.product,row:g.items.find(r=>r.package_type===chartPackage)}));
-  const chartMax=Math.max(1,...chartRows.map(g=>inventoryNum(g.row?.stock_units)));
-  const chart='<section class="inventory-chart" aria-label="Remaining stock by product"><h3>Remaining '+esc(inventoryPackageLabel(chartPackage))+' — units</h3>'+chartRows.map(g=>{const v=inventoryNum(g.row?.stock_units);return '<div class="inventory-chart-row"><span>'+esc(g.name)+'</span><div class="inventory-chart-track" aria-hidden="true"><div class="inventory-chart-bar" style="width:'+Math.max(0,v/chartMax*100)+'%"></div></div><b class="'+(v<0?'negative':'')+'">'+(g.row?v.toLocaleString(locale()):'—')+'</b></div>'}).join('')+'<small>— means no recorded balance for this package.</small></section>';
-  body.innerHTML=
-    '<div class="analytics-summary">'+
-      '<div><span>Products</span><b>'+products.length+'</b></div>'+
-      '<div><span>Paint Equivalent</span><b>'+totalGallons.toLocaleString(locale(),{maximumFractionDigits:2})+' gal</b></div>'+
-      '<div><span>Below Zero</span><b>'+negative+'</b></div>'+
-    '</div>'+
-    (negative?'<div class="inventorywarning">Some stock is below zero. Set the physical current stock for those products before relying on the balance.</div>':'')+
-    chart+'<div class="inventorycards">'+products.map(g=>{
-      const items=g.items.slice().sort((a,b)=>inventoryPackageLabel(a.package_type).localeCompare(inventoryPackageLabel(b.package_type)));
-      return '<section class="inventorycard"><div class="inventorycardhead"><div><b>'+esc(g.product)+'</b><small>'+(g.items.length?(g.gallons?g.gallons.toLocaleString(locale(),{maximumFractionDigits:2})+' gal equivalent':'Unit inventory'):'Company product')+'</small></div></div>'+
-        '<div class="stockpackages">'+items.map((r,i)=>{
-          const units=inventoryNum(r.stock_units),bad=units<0?' negative':'';
-          return '<div class="stockpackage'+bad+'"><span>'+esc(inventoryPackageShort(r.package_type))+'</span><b>'+units.toLocaleString(locale(),{maximumFractionDigits:2})+'</b><small>Remaining</small><small>Produced: '+inventoryNum(r.produced_units).toLocaleString(locale())+'<br>Shipped: '+inventoryNum(r.shipped_units).toLocaleString(locale())+'<br>Stock adjustments: '+inventoryNum(r.adjustment_units).toLocaleString(locale())+'</small>'+
-            (isManager?'<button type="button" data-stock-row="'+inventoryStockRows.indexOf(r)+'">Set</button>':'')+'</div>';
-        }).join('')+'</div>'+(!items.length?'<div class="inventory-no-stock">No recorded balance yet.'+(isManager?' <button type="button" data-stock-product="'+esc(g.product)+'">Set current stock</button>':'')+'</div>':'')+'</section>';
-    }).join('')+'</div>';
-  document.querySelectorAll('[data-stock-product]').forEach(b=>b.onclick=()=>{openInventorySet();$('inventorySetProduct').value=b.dataset.stockProduct});
-  document.querySelectorAll('[data-stock-row]').forEach(b=>b.onclick=()=>{
-    const r=inventoryStockRows[Number(b.dataset.stockRow)];if(r)openInventorySet(r);
-  });
+  const products=factoryProducts.filter(p=>p.active&&(!q||p.name.toLowerCase().includes(q)));
+  // Preserve visibility of recorded balances awaiting a company classification.
+  const known=new Set(factoryProducts.map(p=>p.name.trim().toLowerCase()));
+  for(const r of inventoryStockRows){const name=String(r.product).trim();if(!known.has(name.toLowerCase())&&(!q||name.toLowerCase().includes(q))){products.push({name,id:'',category:'unclassified',stock_limits:{}});known.add(name.toLowerCase());}}
+  body.innerHTML='<div class="inventory-legend"><strong>Stock health</strong><span class="low">Red: at or below your minimum</span><span class="warning">Orange: above minimum, below safe stock</span><span class="healthy">Green: at or above safe stock</span><span>Gray: set limits or enter a balance</span></div>'+['sport','residential','cleaner','unclassified'].map(category=>{
+    const list=products.filter(p=>p.category===category).sort((a,b)=>a.name.localeCompare(b.name));
+    if(category==='unclassified'&&!list.length)return '';
+    const content='<div class="inventory-v3-grid">'+list.map(inventoryProductCard).join('')+'</div>';
+    return category==='unclassified'?'<details class="inventory-category"><summary>Needs classification ('+list.length+')</summary>'+content+'</details>':'<section class="inventory-category"><div class="inventory-category-head"><h2>'+inventoryCategoryLabel(category)+'</h2><span>'+list.length+' products</span></div><p>'+(category==='sport'?'5 gallon pails':category==='residential'?'Quarts, gallons, and 5 gallon pails':'Company cleaning products')+'</p>'+(list.length?content:'<div class="inventory-empty-category">Classify products here using Company Products → Settings.</div>')+'</section>';
+  }).join('');
+  body.querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));
+  body.querySelectorAll('[data-stock-name]').forEach(b=>b.onclick=()=>{const row=inventoryStockRows.find(r=>r.product===b.dataset.stockName&&r.package_type===b.dataset.stockType);openInventorySet(row||null);$('inventorySetProduct').value=b.dataset.stockName;$('inventorySetPackage').value=b.dataset.stockType});
 }
+let productSettingsTarget=null;
+async function openProductSettings(id){
+  if(!isManager)return;
+  let p=factoryProducts.find(p=>p.id===id);
+  if(!p){const {data,error}=await db.from('factory_products').insert({name:id}).select().single();if(error){toast(error.message);return}await loadFactoryProducts();p=data;}
+  productSettingsTarget=p;$('productSettingsTitle').textContent=p.name;$('productCategory').value=p.category;
+  const packages=[...new Set(['five_gallon_pail','gallon','quart_can',...inventoryStockRows.filter(r=>r.product===p.name).map(r=>r.package_type)])];
+  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type];return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><b>'+esc(inventoryPackageLabel(type))+'</b><label>Minimum<input data-minimum type="number" min="0" step="any" value="'+esc(limit?.minimum??'')+'" placeholder="Not set"></label><label>Safe stock<input data-safe type="number" min="0" step="any" value="'+esc(limit?.safe??'')+'" placeholder="Not set"></label></div>'}).join('');
+  $('productSettingsMessage').textContent='';showModal('productSettingsModal');
+}
+async function saveProductSettings(){
+  if(!isManager||!productSettingsTarget)return;
+  const limits={};
+  for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const min=row.querySelector('[data-minimum]').value,safe=row.querySelector('[data-safe]').value;if(min===''&&safe==='')continue;if(min===''||safe===''||!Number.isFinite(Number(min))||!Number.isFinite(Number(safe))||Number(min)<0||Number(safe)<=Number(min)){$('productSettingsMessage').textContent='Safe stock must be greater than minimum. Fill both values, or leave both blank.';return}limits[row.dataset.limitType]={minimum:Number(min),safe:Number(safe)};}
+  $('saveProductSettingsBtn').disabled=true;
+  try{const {error}=await db.from('factory_products').update({category:$('productCategory').value,stock_limits:limits}).eq('id',productSettingsTarget.id);if(error)throw error;await loadFactoryProducts();hideModal('productSettingsModal');renderInventoryStock();}catch(e){$('productSettingsMessage').textContent=e.message}finally{$('saveProductSettingsBtn').disabled=false}
+}
+async function deleteCompanyProduct(id){
+  if(!isManager)return;const p=factoryProducts.find(p=>p.id===id);if(!p)return;
+  if(!confirm('Are you sure you want to delete '+p.name+' from the company list and inventory display? Historical production and shipping records will be preserved.'))return;
+  await updateCatalogProduct(id,{active:false});
+}
+
 async function loadInventoryStock(quiet=false){
   if(!canViewInventory())return;
   const body=$('inventoryBody');if(body&&!quiet)body.innerHTML='<div class="analytics-empty">Loading factory inventory…</div>';
@@ -1528,6 +1547,27 @@ async function saveInventorySet(){
   }catch(e){say(e.message||String(e),true)}
   finally{$('saveInventorySetBtn').disabled=false}
 }
+let managerShippingRows=[],managerShippingLines=[],managerShippingFilter='DRAFT',managerShippingBusy=false;
+async function loadManagerShippingDetails(){
+  if(!isManager||managerShippingBusy)return;managerShippingBusy=true;
+  try{
+    const all=[],allLines=[];
+    for(let start=0;;start+=500){const r=await db.from('shipping_shipments').select('id,shipment_number,packing_slip,customer,status,totals,pallet_plan,shipped_at,updated_at,notes').in('status',['DRAFT','READY','SHIPPED']).order('updated_at',{ascending:false}).order('id').range(start,start+499);if(r.error)throw r.error;all.push(...r.data);if(r.data.length<500)break;}
+    for(let start=0;;start+=500){const r=await db.from('shipping_lines').select('shipment_id,sku,description,size,qty,inventory_product,batch,inventory_managed').order('id').range(start,start+499);if(r.error)throw r.error;allLines.push(...r.data);if(r.data.length<500)break;}
+    managerShippingRows=all;managerShippingLines=allLines;renderManagerShippingDetails();$('managerShippingMessage').textContent='Live · updates every 4 seconds';
+  }catch(e){$('managerShippingMessage').textContent='Could not refresh: '+e.message;}finally{managerShippingBusy=false}
+}
+function renderManagerShippingDetails(){
+  const q=$('managerShippingSearch').value.trim().toLowerCase();
+  document.querySelectorAll('[data-manager-shipping]').forEach(b=>{const status=b.dataset.managerShipping;b.classList.toggle('active',status===managerShippingFilter);b.textContent=({DRAFT:'Preparing',READY:'Ready',SHIPPED:'Shipped'}[status])+' ('+managerShippingRows.filter(r=>r.status===status).length+')';});
+  const rows=managerShippingRows.filter(r=>r.status===managerShippingFilter&&(!q||[r.shipment_number,r.packing_slip,r.customer].some(v=>String(v||'').toLowerCase().includes(q))));
+  $('managerShippingBody').innerHTML=rows.map(s=>{
+    const lines=managerShippingLines.filter(l=>l.shipment_id===s.id),floor=s.pallet_plan?.floor||{};
+    return '<article class="manager-shipping-card"><header><div><h3>'+esc(s.packing_slip||s.shipment_number)+'</h3><p>'+esc(s.customer||'Customer not entered')+'</p></div><span>'+esc(s.status==='DRAFT'?'Preparing':s.status==='READY'?'Ready':'Shipped / stock posted')+'</span></header><div class="manager-shipping-meta"><span>'+inventoryNum(s.totals?.pallets)+' pallets</span><span>Worker: '+esc(floor.worker||floor.done?.finishedBy||'Not claimed')+'</span><span>Updated: '+esc(new Date(s.updated_at).toLocaleString(locale(),{timeZone:'America/Chicago'}))+'</span></div><div class="manager-shipping-table"><table><thead><tr><th>Product</th><th>Package</th><th>Qty</th><th>Batch</th></tr></thead><tbody>'+lines.map(l=>'<tr><td>'+esc(l.inventory_managed?l.inventory_product:l.description.replace(/\[\[.*?\]\]/g,''))+(l.inventory_managed?'':'<small>Outside factory inventory</small>')+'</td><td>'+esc(shippingSizeLabel(l.size))+'</td><td><b>'+inventoryNum(l.qty).toLocaleString(locale())+'</b></td><td>'+esc(l.batch||'—')+'</td></tr>').join('')+'</tbody></table></div>'+(s.notes?'<p>'+esc(s.notes)+'</p>':'')+'</article>';
+  }).join('')||'<p class="analytics-empty">No matching shipments in this section.</p>';
+}
+function openManagerShippingDetails(){if(!isManager)return;showModal('managerShippingModal');loadManagerShippingDetails();}
+
 function shippingGroupRows(rows){
   const map=new Map();
   for(const r of rows){
@@ -1902,7 +1942,10 @@ $('product').onfocus=showProductOptions;
 $('product').onclick=showProductOptions;
 $('product').onkeydown=e=>{if(e.key==='Escape')hideProductOptions();if(e.key==='ArrowDown'){e.preventDefault();if($('productOptions').hidden)showProductOptions();$('productOptions').querySelector('button')?.focus()}};
 document.addEventListener('click',e=>{if(!e.target.closest?.('.product-picker'))hideProductOptions()});
-if($('inventoryChartPackage'))$('inventoryChartPackage').onchange=renderInventoryStock;
+if($('saveProductSettingsBtn'))$('saveProductSettingsBtn').onclick=saveProductSettings;
+if($('managerShippingBtn'))$('managerShippingBtn').onclick=()=>{setShellNavActive('managerShippingBtn');openManagerShippingDetails()};
+if($('managerShippingSearch'))$('managerShippingSearch').oninput=renderManagerShippingDetails;
+document.querySelectorAll('[data-manager-shipping]').forEach(b=>b.onclick=()=>{managerShippingFilter=b.dataset.managerShipping;renderManagerShippingDetails()});
 if($('catalogAddBtn'))$('catalogAddBtn').onclick=addCatalogProducts;
 if($('catalogBtn'))$('catalogBtn').onclick=()=>{showModal('catalogModal');renderProductCatalog();loadFactoryProducts().catch(e=>$('catalogMessage').textContent=e.message)};
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}showProductOptions()};

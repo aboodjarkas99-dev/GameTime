@@ -9,11 +9,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
 <link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261014a">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261014b">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
-<!-- SECURE_V2_20261014a employee-name-login company-logo -->
+<!-- SECURE_V2_20261014b employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -86,6 +86,7 @@
         </div>
         <button id="shippingWorkspaceBtn" type="button"><span>▣</span><b>Shipping</b></button>
         <button id="inventoryBtn" type="button"><span>▧</span><b>Inventory</b></button>
+        <button id="managerShippingBtn" type="button" style="display:none"><span>⇢</span><b>Shipping Details</b></button>
         <button id="shippingChartBtn" type="button"><span>⇢</span><b>Shipping Chart</b></button>
         <div class="sideaccordion" id="printAccordion">
           <button id="printBtn" class="accordion-toggle" type="button" aria-expanded="false"><span>▤</span><b>Print / Save PDF</b><i>⌄</i></button>
@@ -498,11 +499,14 @@
       <div class="inventory-actions"><button id="catalogBtn" type="button">Company Products</button><button id="setInventoryBtn" class="primary" type="button">Set Current Stock</button></div>
     </div>
     <div class="inventorysearch"><span>⌕</span><input id="inventorySearch" placeholder="Search product"></div>
-    <div class="inventory-view-controls"><label>Chart package <select id="inventoryChartPackage"><option value="five_gallon_pail">5 Gallon Pails</option><option value="gallon">1 Gallon Cans</option><option value="quart_can">Quart Cans</option><option value="jerry_1_25">Jerry Cans 1.25G</option></select></label><span>Bars compare remaining units of the same package.</span></div><div id="inventoryBody" class="analyticsbody inventorybody"></div>
+<div id="inventoryBody" class="analyticsbody inventorybody"></div>
   </div>
 </div>
 
 <div class="modal" id="catalogModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Company Products</h2><button data-close="catalogModal">✕</button></div><p class="inventoryhelp">Products from past production are included. Add the products we manufacture here; they appear in new orders and inventory. Editing a name changes future suggestions; past stock and records keep their original name.</p><div id="catalogEditControls"><label for="catalogNames">Add products — one name per line</label><textarea id="catalogNames" rows="4" placeholder="Alpha Satin&#10;Phoenix"></textarea><button id="catalogAddBtn" class="primary" type="button">Add to company list</button></div><div id="catalogMessage" role="status"></div><div id="catalogList"></div></div></div>
+
+<div class="modal" id="productSettingsModal"><div class="dialog"><div class="dialoghead"><h2 id="productSettingsTitle">Product Settings</h2><button data-close="productSettingsModal">✕</button></div><label>Product category<select id="productCategory"><option value="sport">Sport Floors</option><option value="residential">Residential</option><option value="cleaner">Cleaners</option><option value="unclassified">Needs classification</option></select></label><p>Set limits in individual containers, not boxes or gallons of paint. Safe stock must be higher than minimum.</p><div id="productLimits"></div><div id="productSettingsMessage" role="status"></div><div class="dialogactions"><button data-close="productSettingsModal">Cancel</button><button id="saveProductSettingsBtn" class="primary">Save category &amp; limits</button></div></div></div>
+<div class="modal" id="managerShippingModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Shipping Details</h2><button data-close="managerShippingModal">✕</button></div><p>Live shipping progress inside the management system. Shipped includes confirmed breakdown printing, when inventory is posted.</p><div class="manager-shipping-tabs"><button data-manager-shipping="DRAFT" class="active">Preparing</button><button data-manager-shipping="READY">Ready</button><button data-manager-shipping="SHIPPED">Shipped</button></div><input id="managerShippingSearch" placeholder="Search order / packing slip / customer" aria-label="Search shipping details"><p id="managerShippingMessage" role="status"></p><div id="managerShippingBody"></div></div></div>
 
 <div class="modal" id="inventorySetModal">
   <div class="dialog inventorystockdialog">
@@ -611,9 +615,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261014a"></script>
+<script src="app.js?v=SECURE_V2_20261014b"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261014a').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261014b').catch(()=>{});}
 </script>
 </body>
 </html>
