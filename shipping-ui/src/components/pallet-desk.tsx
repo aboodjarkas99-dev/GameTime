@@ -351,32 +351,33 @@ export function PalletDesk() {
   async function markFactoryShipped(id=activeOpenId){if(!id)return;if(!confirm('This shipment has left the factory? Mark Shipped deducts inventory once.'))return;try{await cloudQueue.current;const result=await shipDesk(id);if(id===activeOpenId)setCloudStatus('SHIPPED');setCloudMessage(result.duplicate?'Already shipped — no duplicate deduction.':'SHIPPED — factory inventory updated.')}catch(e){setCloudMessage(e instanceof Error?e.message:'Could not mark shipped')}}
 
 
-  async function printBreakdown(){
-    if(printLock.current)return;
-    if(!orderName.trim()){setCloudMessage('Enter the Packing Slip number before printing.');return;}
-    if(mismatch){setCloudMessage('Fix quantities that do not match the packing slip before printing.');return;}
-    printLock.current=true;setPrintBusy(true);setPrintError('');
-    if(autoSaveTimer.current)clearTimeout(autoSaveTimer.current);
+  async function preparePrintedSnapshot(state:any){
+    setPrintBusy(true);setPrintError('');
     try{
+      if(!state.orderName.trim())throw new Error('Printing is available, but enter the Packing Slip number before updating inventory. Cancel this confirmation, add the number, and print again.');
+      if(mismatch)throw new Error('Printing is available, but fix quantities that do not match the packing slip before updating inventory.');
       await cloudQueue.current.catch(()=>{});
-      const state={...deskState(),lines:lines.filter(l=>l.qty>0)};
-      const saved=activeOpenId?await deskStatus(activeOpenId):null;
+      const saved=state.id?await deskStatus(state.id):null;
       const alreadyShipped=saved?.status==='SHIPPED';
-      if(alreadyShipped){
-        const canonical=(v:any):string=>JSON.stringify(v,(_k,val)=>val&&typeof val==='object'&&!Array.isArray(val)?Object.fromEntries(Object.keys(val).sort().map(k=>[k,val[k]])):val);
-        for(const key of ['lines','inventoryProducts','batchCodes','orderName','customer']){
-          if(canonical(saved.pallet_plan?.floor?.[key])!==canonical((state as any)[key]))throw new Error('This order was already deducted. Reload the saved order before reprinting.');
-        }
-      }
-      const id=alreadyShipped?activeOpenId:await persistDesk(state,'READY');
+      const id=alreadyShipped?state.id:await persistDesk(state,'READY');
       setActiveOpenId(id);setCloudStatus(alreadyShipped?'SHIPPED':'READY');
       setPrintPending({id,state});
-      window.print();
-    }catch(e){setCloudMessage('Could not prepare print: '+(e instanceof Error?e.message:'Error'));printLock.current=false;}
+    }catch(e){setPrintError('Inventory has not been updated: '+(e instanceof Error?e.message:'Could not save. Retry when connected.'));}
     finally{setPrintBusy(false);}
   }
+  function printBreakdown(){
+    if(printLock.current)return;
+    printLock.current=true;setPrintBusy(true);setPrintError('');
+    if(autoSaveTimer.current)clearTimeout(autoSaveTimer.current);
+    const state={...deskState(),lines:lines.filter(l=>l.qty>0)};
+    setPrintPending({id:'',state});
+    // Keep print in the click handler: no network wait or lost user activation.
+    try{window.print();}
+    catch(e){setPrintError('Could not open the print dialog: '+(e instanceof Error?e.message:'Try Print again.'));setPrintBusy(false);return;}
+    void preparePrintedSnapshot(state);
+  }
   async function confirmPrinted(){
-    if(!printPending||printBusy)return;
+    if(!printPending?.id||printBusy||printError)return;
     setPrintBusy(true);setPrintError('');
     try{
       const result=await confirmDeskPrint(printPending.id,printPending.state);
@@ -1418,8 +1419,9 @@ export function PalletDesk() {
         {(printPending||printBusy)&&<div className="no-print fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-5"><div role="dialog" aria-modal="true" aria-labelledby="print-confirm-title" className="bg-card border border-line rounded-xl p-6 max-w-lg w-full">
           <h2 id="print-confirm-title" className="text-xl font-bold">{printPending?'Was the breakdown printed?':'Preparing breakdown…'}</h2>
           {printPending&&<><p className="my-4">Packing Slip: <strong>{printPending.state.orderName}</strong>. Confirm only after the breakdown was printed. Inventory is deducted once for this slip, including reprints.</p>
+          {printBusy&&<p role="status" className="my-3">Saving the printed order — inventory has not been deducted yet.</p>}
           {printError&&<p role="alert" className="my-3">{printError}</p>}
-          <div className="flex flex-wrap gap-3"><button autoFocus className="katchup-btn is-lit" disabled={printBusy} onClick={()=>void confirmPrinted()}>Printed — update inventory</button><button className="katchup-btn" disabled={printBusy} onClick={cancelPrint}>Canceled / not printed</button></div></>}
+          <div className="flex flex-wrap gap-3"><button className="katchup-btn" type="button" onClick={()=>window.print()}>Print again</button>{printError&&<button className="katchup-btn" type="button" disabled={printBusy} onClick={()=>void preparePrintedSnapshot(printPending.state)}>Retry live save</button>}<button autoFocus className="katchup-btn is-lit" disabled={printBusy||!printPending.id||!!printError} onClick={()=>void confirmPrinted()}>Printed — update inventory</button><button className="katchup-btn" disabled={printBusy} onClick={cancelPrint}>Canceled / not printed</button></div></>}
         </div></div>}
         <InstallApp />
         {scanBol ? (
