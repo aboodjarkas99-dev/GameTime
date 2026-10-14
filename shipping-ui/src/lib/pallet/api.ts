@@ -11,7 +11,7 @@ export type ReturnSlip=Omit<DoneOrder,'day'>;
 type Request={data:any};
 export let account:{id:string;display_name:string;role:string}|null=null;
 export async function authorize(){const {data:{session}}=await db.auth.getSession();if(!session)return null;const {data,error}=await db.from('profiles').select('id,display_name,role,active').eq('id',session.user.id).single();if(error||!data?.active||!['manager','chemist','shipping'].includes(data.role))return null;account=data;return data;}
-async function rpc(name:string,params:any){const {data,error}=await db.rpc(name,params);if(error)throw new Error(error.message);return data;}
+async function rpc(name:string,params:any){const {data,error}=await db.rpc(name,params);if(error)throw new Error(error.message.includes('shipping_packing_slip_unique')?'Packing Slip number already exists. Open the existing order to reprint; inventory will not be deducted twice.':error.message);return data;}
 export async function deskStatus(id:string){const {data,error}=await db.from('shipping_shipments').select('*').eq('id',id).single();if(error)throw new Error(error.message);return data;}
 export function storagePlan(lines:OrderLine[],rules=DEFAULT_RULES,mixSmall=true,palletTareLb=45){const plan=buildPlan(lines,rules,{mixSmall,palletTareLb});if(!isPlan(plan))throw new Error(plan.error);return {ok:true,...plan,pallets:plan.pallets.map(p=>({...p,items:p.lines.map(l=>({product:productLabel(l.sku,l.description,l.size),sku:l.sku,size:l.size,units:l.units,boxes:l.size==='gal5'?null:l.packs,onTop:l.onTop}))}))};}
 export async function persistDesk(state:any,status='DRAFT'){
@@ -41,7 +41,7 @@ export async function touchDeskOrder({data}:Request){return patch(data.id,{check
 export async function releaseDeskOrder({data}:Request){return patch(data.id,{worker:'',workerSession:'',claimedAt:0})}
 export async function cancelDeskOpen({data}:Request){await rpc('cancel_shipping_shipment',{p_shipment_id:data.id});return {ok:true};}
 export async function cancelDeskDone({data}:Request){return cancelDeskOpen({data})}
-export async function completeDeskOrder({data}:Request){const s=await deskStatus(data.id),f=s.pallet_plan?.floor||{};await persistDesk({...f,id:data.id,done:{...data,finishedAt:Date.now(),finishedBy:account?.display_name}},'READY');return {ok:true};}
+export async function completeDeskOrder({data}:Request){const s=await deskStatus(data.id),f=s.pallet_plan?.floor||{};if(s.status==='SHIPPED'){const {floor,...done}=data;return rpc('complete_printed_shipping',{p_id:data.id,p_floor:floor,p_done:done});}await persistDesk({...f,id:data.id,done:{...data,finishedAt:Date.now(),finishedBy:account?.display_name}},'READY');return {ok:true};}
 export async function pullDeskOrder(_r:Request){return {ok:true,order:null};}
 export async function returnDeskOrder({data}:Request){if(!data.id){const r=await db.from('shipping_shipments').select('id').eq('shipment_number',data.orderName).eq('customer',data.customer).in('status',['DRAFT','READY']).limit(1);if(r.error)throw r.error;data.id=r.data?.[0]?.id;if(!data.id)throw new Error('Save the live order first.');}return completeDeskOrder({data});}
 export async function confirmDeskOrder(_r:Request){return {ok:true};}
@@ -52,3 +52,5 @@ export async function readPackingSlip({data}:Request){
   try{for(let n=1;n<=doc.numPages;n++){const p=await doc.getPage(n),tc=await p.getTextContent();let t=pdfPageText(tc.items);if(t.replace(/\s/g,'').length<80){const v=p.getViewport({scale:2.5}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d')!,viewport:v}).promise;const {readSlipPhoto}=await import('./scan');const blob=await new Promise<Blob>(r=>c.toBlob(b=>r(b!),'image/jpeg',.98));t=await readSlipPhoto(new File([blob],`page-${n}.jpg`,{type:'image/jpeg'}));}text+=t+'\n\n';p.cleanup();}return {ok:true as const,text};}finally{await doc.destroy()}
  }catch(e){return {ok:false as const,error:e instanceof Error?e.message:'Could not read PDF'};}
 }
+
+export async function confirmDeskPrint(id:string,state:any){return rpc('confirm_shipping_print',{p_shipment_id:id,p_expected_floor:state})}
