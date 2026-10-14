@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261014b';
+const BUILD='SECURE_V2_20261014c';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
 let shippingRefreshBusy=false;
@@ -1006,7 +1006,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261014b':'batch-maker.html?build=SECURE_V2_20261014b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261014c':'batch-maker.html?build=SECURE_V2_20261014c'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1447,6 +1447,24 @@ function populateInventoryProducts(){
   for(const r of inventoryStockRows){if(r.product)names.set(String(r.product).trim().toLowerCase(),String(r.product).trim())}
   const list=$('inventoryProductList');if(list)list.innerHTML=[...names.values()].sort((a,b)=>a.localeCompare(b)).map(x=>'<option value="'+esc(x)+'"></option>').join('');
 }
+let inventoryLegendSelection='';
+function inventorySearchNames(){
+  const names=new Map(companyProductNames().map(n=>[n.trim().toLowerCase(),n]));
+  const deleted=new Set(factoryProducts.filter(p=>!p.active).map(p=>p.name.trim().toLowerCase()));
+  for(const r of inventoryStockRows){const name=String(r.product).trim(),key=name.toLowerCase();if(!deleted.has(key))names.set(key,name);}
+  return [...names.values()].sort((a,b)=>a.localeCompare(b));
+}
+function hideInventorySearchOptions(){$('inventorySearchOptions').hidden=true;$('inventorySearch').setAttribute('aria-expanded','false')}
+function showInventorySearchOptions(){
+  const q=$('inventorySearch').value.trim().toLowerCase(),names=inventorySearchNames().filter(n=>!q||n.toLowerCase().includes(q)),box=$('inventorySearchOptions');
+  box.innerHTML=names.length?names.map((name,i)=>'<button type="button" role="option" aria-selected="false" data-inventory-option="'+i+'">'+esc(name)+'</button>').join(''):'<p>No matching products.</p>';
+  box.hidden=false;$('inventorySearch').setAttribute('aria-expanded','true');
+  box.querySelectorAll('[data-inventory-option]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{$('inventorySearch').value=names[Number(b.dataset.inventoryOption)];renderInventoryStock();$('inventorySearch').focus();hideInventorySearchOptions()};b.onkeydown=e=>{if(e.key==='Escape'){$('inventorySearch').focus();hideInventorySearchOptions()}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[...box.querySelectorAll('button')],index=buttons.indexOf(b);buttons[(index+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}}});
+}
+function inventoryPalletCapacity(type){return {five_gallon_pail:36,gallon:120,quart_can:720}[type]||null}
+function inventoryPalletCount(units,type){const capacity=inventoryPalletCapacity(type);return capacity?inventoryNum(units)/capacity:null}
+function inventoryPalletRemainder(units,type){const capacity=inventoryPalletCapacity(type);if(!capacity)return '';if(units<0)return 'Stock shortage: '+Math.abs(units).toLocaleString(locale())+' containers';return Math.floor(units/capacity)+' full pallets + '+(units%capacity).toLocaleString(locale(),{maximumFractionDigits:2})+' containers';}
+function inventoryColorExplanation(key){return {low:'Red: stock is at or below the minimum you set.',warning:'Orange: stock is above minimum but below the safe level.',healthy:'Green: stock is at or above the safe level.'}[key]||'Tap a color to see what it means. Gray means no limits or balance are recorded.'}
 function inventoryLevel(units,limits){
   if(!limits||!Number.isFinite(Number(limits.minimum))||!Number.isFinite(Number(limits.safe)))return {key:'unset',label:'Set stock limits'};
   if(units<=Number(limits.minimum))return {key:'low',label:'Minimum reached'};
@@ -1460,9 +1478,10 @@ function inventoryProductCard(p){
   const packages=[...new Set([...standard,...(p.category==='sport'?[]:rows.map(r=>r.package_type))])];
   return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Settings</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
     const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units),limits=p.stock_limits?.[type];
+    const capacity=inventoryPalletCapacity(type),pallets=inventoryPalletCount(v,type);
     const level=row?inventoryLevel(v,limits):{key:'unset',label:'No recorded balance'};
     const scale=limits?Math.max(Number(limits.safe)*1.5,v,1):Math.max(v,1),fill=Math.max(0,Math.min(100,100*v/scale));
-    return '<div class="inventory-v3-package '+level.key+'"><div class="inventory-v3-number"><span>'+esc(inventoryPackageLabel(type))+'</span><b>'+(row?v.toLocaleString(locale(),{maximumFractionDigits:2}):'—')+'</b></div><div class="inventory-v3-track" aria-hidden="true"><div style="width:'+fill+'%"></div>'+(limits?'<i style="left:'+Math.min(100,100*Number(limits.minimum)/scale)+'%" title="Minimum"></i><i style="left:'+Math.min(100,100*Number(limits.safe)/scale)+'%" title="Safe stock"></i>':'')+'</div><div class="inventory-v3-level">'+esc(level.label)+'</div><small>'+(limits?'Minimum: '+esc(limits.minimum)+' · Safe: '+esc(limits.safe):'Limits not configured')+'</small>'+(row?'<small>Produced '+inventoryNum(row.produced_units).toLocaleString(locale())+' · Shipped '+inventoryNum(row.shipped_units).toLocaleString(locale())+'</small>':'')+(isManager?'<button type="button" data-stock-name="'+esc(p.name)+'" data-stock-type="'+esc(type)+'">Set current stock</button>':'')+'</div>';
+    return '<div class="inventory-v3-package '+level.key+'"><div class="inventory-v3-number"><span>'+esc(inventoryPackageLabel(type))+'</span><b>'+(row?(capacity?pallets:v).toLocaleString(locale(),{maximumFractionDigits:capacity?3:2}):'—')+'</b><em>'+(capacity?'pallets':'units')+'</em></div>'+(row&&capacity?'<div class="inventory-pallet-detail"><strong>'+v.toLocaleString(locale(),{maximumFractionDigits:2})+' containers</strong><span>'+inventoryPalletRemainder(v,type)+'</span></div>':'')+'<div class="inventory-v3-track" aria-hidden="true"><div style="width:'+fill+'%"></div>'+(limits?'<i style="left:'+Math.min(100,100*Number(limits.minimum)/scale)+'%" title="Minimum"></i><i style="left:'+Math.min(100,100*Number(limits.safe)/scale)+'%" title="Safe stock"></i>':'')+'</div><div class="inventory-v3-level">'+esc(level.label)+'</div><small>'+(limits?'Minimum: '+(capacity?(limits.minimum/capacity).toLocaleString(locale(),{maximumFractionDigits:3}):esc(limits.minimum))+' · Safe: '+(capacity?(limits.safe/capacity).toLocaleString(locale(),{maximumFractionDigits:3}):esc(limits.safe))+(capacity?' pallets':' units'):'Limits not configured')+'</small>'+(row?'<small>Produced '+inventoryNum(row.produced_units).toLocaleString(locale())+' · Shipped '+inventoryNum(row.shipped_units).toLocaleString(locale())+'</small>':'')+(isManager?'<button type="button" data-stock-name="'+esc(p.name)+'" data-stock-type="'+esc(type)+'">Set current stock</button>':'')+'</div>';
   }).join('')+'</div></article>';
 }
 function renderInventoryStock(){
@@ -1472,12 +1491,18 @@ function renderInventoryStock(){
   // Preserve visibility of recorded balances awaiting a company classification.
   const known=new Set(factoryProducts.map(p=>p.name.trim().toLowerCase()));
   for(const r of inventoryStockRows){const name=String(r.product).trim();if(!known.has(name.toLowerCase())&&(!q||name.toLowerCase().includes(q))){products.push({name,id:'',category:'unclassified',stock_limits:{}});known.add(name.toLowerCase());}}
-  body.innerHTML='<div class="inventory-legend"><strong>Stock health</strong><span class="low">Red: at or below your minimum</span><span class="warning">Orange: above minimum, below safe stock</span><span class="healthy">Green: at or above safe stock</span><span>Gray: set limits or enter a balance</span></div>'+['sport','residential','cleaner','unclassified'].map(category=>{
+  const summary=['five_gallon_pail','gallon','quart_can'].map(type=>{
+    const matching=inventoryStockRows.filter(r=>r.package_type===type&&products.some(p=>p.name.trim().toLowerCase()===r.product.trim().toLowerCase()&&(p.category!=='sport'||type==='five_gallon_pail')));
+    const units=matching.reduce((sum,r)=>sum+inventoryNum(r.stock_units),0);
+    return '<div><span>'+esc(inventoryPackageLabel(type))+'</span><b>'+(matching.length?inventoryPalletCount(units,type).toLocaleString(locale(),{maximumFractionDigits:3}):'—')+'</b><strong>Pallet equivalents</strong><small>'+units.toLocaleString(locale())+' containers · '+inventoryPalletCapacity(type)+' per pallet</small></div>';
+  }).join('');
+  body.innerHTML='<div class="inventory-pallet-summary">'+summary+'</div><div class="inventory-color-legend"><strong>Stock health</strong><div>'+['low','warning','healthy'].map(key=>'<button type="button" class="inventory-color-dot '+key+'" data-inventory-color="'+key+'" aria-label="'+({low:'Red stock status',warning:'Orange stock status',healthy:'Green stock status'}[key])+'" aria-pressed="'+(inventoryLegendSelection===key)+'"></button>').join('')+'</div><p id="inventoryColorExplanation">'+esc(inventoryColorExplanation(inventoryLegendSelection))+'</p></div>' +['sport','residential','cleaner','unclassified'].map(category=>{
     const list=products.filter(p=>p.category===category).sort((a,b)=>a.name.localeCompare(b.name));
     if(category==='unclassified'&&!list.length)return '';
     const content='<div class="inventory-v3-grid">'+list.map(inventoryProductCard).join('')+'</div>';
     return category==='unclassified'?'<details class="inventory-category"><summary>Needs classification ('+list.length+')</summary>'+content+'</details>':'<section class="inventory-category"><div class="inventory-category-head"><h2>'+inventoryCategoryLabel(category)+'</h2><span>'+list.length+' products</span></div><p>'+(category==='sport'?'5 gallon pails':category==='residential'?'Quarts, gallons, and 5 gallon pails':'Company cleaning products')+'</p>'+(list.length?content:'<div class="inventory-empty-category">Classify products here using Company Products → Settings.</div>')+'</section>';
   }).join('');
+  body.querySelectorAll('[data-inventory-color]').forEach(b=>b.onclick=()=>{inventoryLegendSelection=b.dataset.inventoryColor;$('inventoryColorExplanation').textContent=inventoryColorExplanation(inventoryLegendSelection);body.querySelectorAll('[data-inventory-color]').forEach(dot=>dot.setAttribute('aria-pressed',String(dot===b)))});
   body.querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));
   body.querySelectorAll('[data-stock-name]').forEach(b=>b.onclick=()=>{const row=inventoryStockRows.find(r=>r.product===b.dataset.stockName&&r.package_type===b.dataset.stockType);openInventorySet(row||null);$('inventorySetProduct').value=b.dataset.stockName;$('inventorySetPackage').value=b.dataset.stockType});
 }
@@ -1488,13 +1513,13 @@ async function openProductSettings(id){
   if(!p){const {data,error}=await db.from('factory_products').insert({name:id}).select().single();if(error){toast(error.message);return}await loadFactoryProducts();p=data;}
   productSettingsTarget=p;$('productSettingsTitle').textContent=p.name;$('productCategory').value=p.category;
   const packages=[...new Set(['five_gallon_pail','gallon','quart_can',...inventoryStockRows.filter(r=>r.product===p.name).map(r=>r.package_type)])];
-  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type];return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><b>'+esc(inventoryPackageLabel(type))+'</b><label>Minimum<input data-minimum type="number" min="0" step="any" value="'+esc(limit?.minimum??'')+'" placeholder="Not set"></label><label>Safe stock<input data-safe type="number" min="0" step="any" value="'+esc(limit?.safe??'')+'" placeholder="Not set"></label></div>'}).join('');
+  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type],capacity=inventoryPalletCapacity(type)||1,unit=inventoryPalletCapacity(type)?'pallets':'units';return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><b>'+esc(inventoryPackageLabel(type))+'</b><label>Minimum ('+unit+')<input data-minimum type="number" min="0" step="any" value="'+esc(limit?limit.minimum/capacity:'')+'" placeholder="Not set"></label><label>Safe stock ('+unit+')<input data-safe type="number" min="0" step="any" value="'+esc(limit?limit.safe/capacity:'')+'" placeholder="Not set"></label></div>'}).join('');
   $('productSettingsMessage').textContent='';showModal('productSettingsModal');
 }
 async function saveProductSettings(){
   if(!isManager||!productSettingsTarget)return;
   const limits={};
-  for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const min=row.querySelector('[data-minimum]').value,safe=row.querySelector('[data-safe]').value;if(min===''&&safe==='')continue;if(min===''||safe===''||!Number.isFinite(Number(min))||!Number.isFinite(Number(safe))||Number(min)<0||Number(safe)<=Number(min)){$('productSettingsMessage').textContent='Safe stock must be greater than minimum. Fill both values, or leave both blank.';return}limits[row.dataset.limitType]={minimum:Number(min),safe:Number(safe)};}
+  for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const min=row.querySelector('[data-minimum]').value,safe=row.querySelector('[data-safe]').value;if(min===''&&safe==='')continue;if(min===''||safe===''||!Number.isFinite(Number(min))||!Number.isFinite(Number(safe))||Number(min)<0||Number(safe)<=Number(min)){$('productSettingsMessage').textContent='Safe stock must be greater than minimum. Fill both values, or leave both blank.';return}const capacity=inventoryPalletCapacity(row.dataset.limitType)||1;limits[row.dataset.limitType]={minimum:Number(min)*capacity,safe:Number(safe)*capacity};}
   $('saveProductSettingsBtn').disabled=true;
   try{const {error}=await db.from('factory_products').update({category:$('productCategory').value,stock_limits:limits}).eq('id',productSettingsTarget.id);if(error)throw error;await loadFactoryProducts();hideModal('productSettingsModal');renderInventoryStock();}catch(e){$('productSettingsMessage').textContent=e.message}finally{$('saveProductSettingsBtn').disabled=false}
 }
@@ -1657,9 +1682,7 @@ async function loadMonthlyAnalytics(){
       '</div>'+
       '<div class="analytics-chart">'+rows.map((r,i)=>{
         const pct=total?100*r.gallons/total:0,bar=100*r.gallons/max;
-        const ratio=rows.length<=1?0:i/(rows.length-1);
-        const level=ratio<0.34?'green':ratio<0.67?'orange':'red';
-        return '<div class="analytics-row analytics-level-'+level+'">'+
+        return '<div class="analytics-row">'+
           '<div class="analytics-rank">'+(i+1)+'</div>'+
           '<div class="analytics-product"><b>'+esc(r.product)+'</b><small>'+r.batches.size+' '+esc(t('batches'))+'</small></div>'+
           '<div class="analytics-barwrap"><div class="analytics-bar" style="width:'+bar.toFixed(2)+'%"></div></div>'+
@@ -1835,7 +1858,12 @@ if($('shippingSearch'))$('shippingSearch').oninput=renderShippingList;
 document.querySelectorAll('[data-shipping-filter]').forEach(b=>b.onclick=()=>{shippingFilter=b.dataset.shippingFilter;document.querySelectorAll('[data-shipping-filter]').forEach(x=>x.classList.toggle('active',x===b));renderShippingList()});
 if($('setInventoryBtn'))$('setInventoryBtn').onclick=()=>openInventorySet();
 if($('saveInventorySetBtn'))$('saveInventorySetBtn').onclick=saveInventorySet;
-if($('inventorySearch'))$('inventorySearch').oninput=renderInventoryStock;
+if($('inventorySearch')){
+  $('inventorySearch').oninput=()=>{renderInventoryStock();showInventorySearchOptions()};
+  $('inventorySearch').onfocus=showInventorySearchOptions;$('inventorySearch').onclick=showInventorySearchOptions;
+  $('inventorySearch').onkeydown=e=>{if(e.key==='Escape')hideInventorySearchOptions();if(e.key==='ArrowDown'){e.preventDefault();if($('inventorySearchOptions').hidden)showInventorySearchOptions();$('inventorySearchOptions').querySelector('button')?.focus()}};
+  document.addEventListener('click',e=>{if(!e.target.closest?.('.inventory-search-picker'))hideInventorySearchOptions()});
+}
 if($('shippingAnalyticsLoadBtn'))$('shippingAnalyticsLoadBtn').onclick=loadShippingAnalytics;
 if($('shippingAnalyticsMonth'))$('shippingAnalyticsMonth').onchange=loadShippingAnalytics;
 if($('analyticsLoadBtn'))$('analyticsLoadBtn').onclick=loadMonthlyAnalytics;
