@@ -1,3 +1,4 @@
+import {ShippingStatusTabs} from "./shipping-status-tabs";
 import { account,db,persistDesk,deskStatus,shipDesk,confirmDeskPrint } from "@/lib/pallet/api";
 import {readSlipPhoto} from "@/lib/pallet/scan";
 import {scanPage} from "@/document-scan.mjs";
@@ -333,10 +334,12 @@ export function PalletDesk() {
   const [printError,setPrintError]=useState('');
   const printLock=useRef(false);
   const autoSaveTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const skipNextAutoSave=useRef(false);
   const cloudQueue=useRef<Promise<unknown>>(Promise.resolve());
   useEffect(()=>{db.from('inventory_current_stock').select('product').then(({data})=>setStockProducts([...new Set((data||[]).map(r=>r.product as string))]));},[]);
   function deskState(){return {id:activeOpenId,orderName,customer,notes,date,salespersonName,salespersonEmail,bol,carrier,shipMethod,mixSmall,palletTareLb,rules,lines,loaded,batchCodes,headerOk,inventoryProducts,slipText:scanText,worker:account?.display_name,workerSession:workSessionId()};}
   useEffect(()=>{
+    if(skipNextAutoSave.current){skipNextAutoSave.current=false;return;}
     if(printLock.current||!activeOpenId||!lines.some(l=>l.qty>0)||['SHIPPED','CANCELED'].includes(cloudStatus))return;
     setCloudStatus('DRAFT');
     const state=deskState();const timer=setTimeout(()=>{
@@ -1125,6 +1128,7 @@ export function PalletDesk() {
       void releaseDeskOrder({ data: { id: activeOpenId, session: workSessionId() } }).catch(() => undefined);
     }
     const saved=await deskStatus(order.id);const floor=saved.pallet_plan?.floor||{};
+    skipNextAutoSave.current=true;
     setCloudStatus(saved.status);setInventoryProducts(floor.inventoryProducts||{});
     setActiveOpenId(order.id);
     setOrderName(order.orderName);
@@ -1145,10 +1149,21 @@ export function PalletDesk() {
     setFocus(0);
     setTaskMode(false);
     setStage("build");
-    if(floor.lines)setLines(floor.lines);setBatchCodes(floor.batchCodes||{});setLoaded(floor.loaded||{});setHeaderOk(!!floor.headerOk);setBol(floor.bol||'');setCarrier(floor.carrier||'');setSalespersonName(floor.salespersonName||'');setSalespersonEmail(floor.salespersonEmail||'');
+    if(floor.lines)setLines(floor.lines);if(floor.rules)setRules(floor.rules);if(typeof floor.mixSmall==='boolean')setMixSmall(floor.mixSmall);if(typeof floor.palletTareLb==='number')setPalletTareLb(floor.palletTareLb);if(floor.date)setDate(floor.date);setScanText(floor.slipText||'');setBatchCodes(floor.batchCodes||{});setLoaded(floor.loaded||{});setHeaderOk(!!floor.headerOk);setBol(floor.bol||'');setCarrier(floor.carrier||'');setSalespersonName(floor.salespersonName||'');setSalespersonEmail(floor.salespersonEmail||'');
     const worker = account?.display_name||'Shipping';
     void claimDeskOrder({ data: { id: order.id, session: workSessionId(), worker } }).catch(() => undefined);
     setStatus(`${order.orderName || "Order"} is open. Check each product, then mark it complete.`);
+  }
+
+  async function openSavedShipment(id:string){
+    try{
+      await cloudQueue.current.catch(()=>{});
+      const saved=await deskStatus(id),floor=saved.pallet_plan?.floor||{};
+      let savedLines=floor.lines;
+      if(!savedLines){const r=await db.from('shipping_lines').select('id,sku,description,size,qty').eq('shipment_id',id).order('line_order');if(r.error)throw r.error;savedLines=r.data||[];}
+      await loadOpen({id,orderName:saved.shipment_number||saved.packing_slip||'',customer:saved.customer||'',notes:saved.notes||'',lines:savedLines,openedAt:Date.parse(saved.created_at),worker:floor.worker||'',workerSession:floor.workerSession||'',claimedAt:floor.claimedAt||0,checked:floor.checked||0,total:floor.total||0,ready:saved.status==='READY'});
+      setCloudMessage(saved.status==='SHIPPED'?'Finished / shipped — reprints do not deduct inventory again.':saved.status+' — saved order opened.');
+    }catch(e){setCloudMessage(e instanceof Error?e.message:'Could not open saved order.');}
   }
 
   async function markComplete() {
@@ -1399,6 +1414,7 @@ export function PalletDesk() {
           {hasOrder&&<details className="mx-auto max-w-6xl mt-2"><summary>Inventory products — review before shipping</summary><datalist id="factory-stock-products">{stockProducts.map(p=><option key={p} value={p}/>)}</datalist>{lines.filter(l=>l.qty>0&&l.size!=='drawdown').map(l=><label key={l.id} className="block my-2">{l.sku} · {l.description}<input className="ml-2 border border-line bg-card p-2" list="factory-stock-products" value={inventoryProducts[l.id]??productLabel(l.sku,l.description,l.size)} onChange={e=>setInventoryProducts(p=>({...p,[l.id]:e.target.value}))}/></label>)}</details>}
           {dayOrders.length>0&&<details className="mx-auto max-w-6xl mt-2"><summary>Completed loading — dispatch status</summary>{dayOrders.map(d=><DispatchRow key={d.id} id={d.id} name={d.orderName} ship={()=>markFactoryShipped(d.id)}/>)}</details>}
         </section>
+        <ShippingStatusTabs onOpen={openSavedShipment}/>
         {(printPending||printBusy)&&<div className="no-print fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-5"><div role="dialog" aria-modal="true" aria-labelledby="print-confirm-title" className="bg-card border border-line rounded-xl p-6 max-w-lg w-full">
           <h2 id="print-confirm-title" className="text-xl font-bold">{printPending?'Was the breakdown printed?':'Preparing breakdown…'}</h2>
           {printPending&&<><p className="my-4">Packing Slip: <strong>{printPending.state.orderName}</strong>. Confirm only after the breakdown was printed. Inventory is deducted once for this slip, including reprints.</p>
