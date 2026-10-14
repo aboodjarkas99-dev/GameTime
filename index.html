@@ -9,11 +9,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
 <link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261012b">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261014a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
-<!-- SECURE_V2_20261012b employee-name-login company-logo -->
+<!-- SECURE_V2_20261014a employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -326,7 +326,7 @@
     <div class="dialoghead"><h2 id="editorTitle">Add Work Order</h2><button data-close="editorModal">✕</button></div>
     <input type="hidden" id="editId"><input type="hidden" id="editVersion">
     <div class="grid">
-      <label class="full">Product Name<input id="product" autocomplete="off"></label>
+      <div class="full product-picker"><label for="product">Product Name</label><input id="product" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="productOptions"><div id="productOptions" class="product-options" role="listbox" hidden></div><small>Choose a company product or type a new name.</small></div>
       <div id="dateField" class="schedule-dates">
         <label>Batch Maker Date<input id="workDate" type="date"></label>
         <label>Production Date<input id="prodWorkDate" type="date"></label>
@@ -493,14 +493,16 @@
     <div class="inventorytop">
       <div>
         <b>Live Storage Stock</b>
-        <small>Includes recorded past production. Earlier shipments are not recorded: verify the opening balance with Set Current Stock. Production adds and Mark Shipped subtracts automatically.</small>
+        <small>Includes recorded past production. Earlier shipments are not recorded: verify the opening balance with Set Current Stock. Production adds stock; confirmed breakdown printing or Mark Shipped subtracts once.</small>
       </div>
-      <button id="setInventoryBtn" class="primary" type="button">Set Current Stock</button>
+      <div class="inventory-actions"><button id="catalogBtn" type="button">Company Products</button><button id="setInventoryBtn" class="primary" type="button">Set Current Stock</button></div>
     </div>
     <div class="inventorysearch"><span>⌕</span><input id="inventorySearch" placeholder="Search product"></div>
-    <div id="inventoryBody" class="analyticsbody inventorybody"></div>
+    <div class="inventory-view-controls"><label>Chart package <select id="inventoryChartPackage"><option value="five_gallon_pail">5 Gallon Pails</option><option value="gallon">1 Gallon Cans</option><option value="quart_can">Quart Cans</option><option value="jerry_1_25">Jerry Cans 1.25G</option></select></label><span>Bars compare remaining units of the same package.</span></div><div id="inventoryBody" class="analyticsbody inventorybody"></div>
   </div>
 </div>
+
+<div class="modal" id="catalogModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Company Products</h2><button data-close="catalogModal">✕</button></div><p class="inventoryhelp">Products from past production are included. Add the products we manufacture here; they appear in new orders and inventory. Editing a name changes future suggestions; past stock and records keep their original name.</p><div id="catalogEditControls"><label for="catalogNames">Add products — one name per line</label><textarea id="catalogNames" rows="4" placeholder="Alpha Satin&#10;Phoenix"></textarea><button id="catalogAddBtn" class="primary" type="button">Add to company list</button></div><div id="catalogMessage" role="status"></div><div id="catalogList"></div></div></div>
 
 <div class="modal" id="inventorySetModal">
   <div class="dialog inventorystockdialog">
@@ -609,9 +611,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261012b"></script>
+<script src="app.js?v=SECURE_V2_20261014a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261012b').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261014a').catch(()=>{});}
 </script>
 </body>
 </html>

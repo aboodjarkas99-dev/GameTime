@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const src=fs.readFileSync('app.js','utf8');
+const nodes={inventoryBody:{innerHTML:''},inventorySearch:{value:''},inventoryChartPackage:{value:'five_gallon_pail'},inventoryProductList:{innerHTML:''},product:{value:'',setAttribute(){}},productOptions:{innerHTML:'',hidden:true,querySelectorAll(){return []}}};
+const ctx={factoryProducts:[{name:'Alpha Satin',active:true},{name:'Phoenix Satin',active:true},{name:'Archived',active:false},{name:'<New>',active:true}],inventoryStockRows:[{product:'Alpha Satin',package_type:'five_gallon_pail',stock_units:20,stock_gallons:100},{product:'Alpha Satin',package_type:'gallon',stock_units:70,stock_gallons:70},{product:'Phoenix Satin',package_type:'five_gallon_pail',stock_units:-2,stock_gallons:-10}],orders:[],isManager:true,$:id=>nodes[id],locale:()=> 'en-US',esc:s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])),document:{querySelectorAll:()=>[]}};
+vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function companyProductNames()'),src.indexOf('function shippingGroupRows(')),ctx);
+ctx.renderInventoryStock();let html=nodes.inventoryBody.innerHTML;
+assert.match(html,/No recorded balance yet/);assert.match(html,/&lt;New&gt;/);assert.doesNotMatch(html,/<New>/);assert.doesNotMatch(html,/Archived/);assert.match(html,/width:100%/);assert.match(html,/class="negative">-2/);
+nodes.inventoryChartPackage.value='gallon';ctx.renderInventoryStock();assert.match(nodes.inventoryBody.innerHTML,/Remaining 1 Gallon — units/);
+nodes.inventorySearch.value='phoenix';ctx.renderInventoryStock();assert.doesNotMatch(nodes.inventoryBody.innerHTML,/Alpha Satin/);assert.match(nodes.inventoryBody.innerHTML,/Phoenix Satin/);
+ctx.showProductOptions();assert.equal(nodes.productOptions.hidden,false);assert.match(nodes.productOptions.innerHTML,/Alpha Satin/);assert.match(nodes.productOptions.innerHTML,/Phoenix Satin/);assert.doesNotMatch(nodes.productOptions.innerHTML,/Archived/);
+nodes.product.value='alpha';ctx.showProductOptions();assert.match(nodes.productOptions.innerHTML,/Alpha Satin/);assert.doesNotMatch(nodes.productOptions.innerHTML,/Phoenix Satin/);
+console.log('Product search, stock charts, missing balances, negative balances, filtering, and escaped names passed.');
