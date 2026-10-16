@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const src=fs.readFileSync('app.js','utf8');
-const nodes={inventoryBody:{innerHTML:'',querySelectorAll:()=>[]},inventorySearch:{value:''},inventoryProductList:{innerHTML:''},product:{value:'',setAttribute(){}},productOptions:{innerHTML:'',hidden:true,querySelectorAll(){return []}}};
+const nodes={inventoryBody:{innerHTML:'',querySelector:()=>null,querySelectorAll:()=>[]},inventorySearch:{value:''},inventoryProductList:{innerHTML:''},product:{value:'',setAttribute(){}},productOptions:{innerHTML:'',hidden:true,querySelectorAll(){return []}}};
 nodes.inventorySearchOptions={hidden:true,innerHTML:'',querySelectorAll:()=>[]};nodes.inventorySearch.setAttribute=()=>{};
 const ctx={canEditInventoryStock:()=>true,shippingSizeLabel:s=>s,factoryProducts:[{id:'a',name:'Alpha Satin',active:true,category:'sport',stock_limits:{five_gallon_pail:{minimum:20,safe:40}}},{id:'p',name:'Phoenix Satin',active:true,category:'residential',stock_limits:{five_gallon_pail:{minimum:1,safe:10}}},{name:'Archived',active:false,category:'residential'},{name:'<New>',active:true,category:'cleaner',stock_limits:{}}],inventoryStockRows:[{product:'Alpha Satin',package_type:'five_gallon_pail',stock_units:20,stock_gallons:100},{product:'Phoenix Satin',package_type:'five_gallon_pail',stock_units:-2,stock_gallons:-10},{product:'Archived',package_type:'gallon',stock_units:50}],orders:[],isManager:true,$:id=>nodes[id],locale:()=> 'en-US',esc:s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])),document:{querySelectorAll:()=>[]},confirm:()=>false};
 vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function companyProductNames()'),src.indexOf('function shippingGroupRows(')),ctx);
@@ -18,3 +18,16 @@ ctx.renderManagerShippingDetails();assert.match(nodes.managerShippingBody.innerH
 vm.runInContext("managerShippingFilter='READY'",ctx);ctx.renderManagerShippingDetails();assert.doesNotMatch(nodes.managerShippingBody.innerHTML,/ORDER1/);
 let changed=false;ctx.updateCatalogProduct=async()=>{changed=true};
 (async()=>{await ctx.deleteCompanyProduct('a');assert.equal(changed,false);ctx.confirm=()=>true;await ctx.deleteCompanyProduct('a');assert.equal(changed,true);console.log('Category dashboards, threshold boundaries, safe deletion confirmation, filtering, and escaped names passed.');})().catch(e=>{console.error(e);process.exitCode=1});
+
+// Live refresh must preserve the classification accordion, including quick toggles.
+nodes.inventorySearch.value='';
+ctx.inventoryStockRows.push({product:'Unknown Product',package_type:'gallon',stock_units:12});
+nodes.inventoryBody.querySelector=()=>({open:true});
+ctx.renderInventoryStock();
+assert.match(nodes.inventoryBody.innerHTML,/data-inventory-unclassified open/);
+ctx.renderInventoryStock();
+assert.match(nodes.inventoryBody.innerHTML,/data-inventory-unclassified open/);
+nodes.inventoryBody.querySelector=()=>({open:false});
+ctx.renderInventoryStock();
+assert.doesNotMatch(nodes.inventoryBody.innerHTML,/data-inventory-unclassified open/);
+console.log('Classification accordion remains open across live refresh and honors closing.');

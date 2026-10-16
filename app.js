@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261016d';
+const BUILD='SECURE_V2_20261016e';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -1032,7 +1032,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261016d':'batch-maker.html?build=SECURE_V2_20261016d'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261016e':'batch-maker.html?build=SECURE_V2_20261016e'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1474,6 +1474,7 @@ function populateInventoryProducts(){
   const list=$('inventoryProductList');if(list)list.innerHTML=[...names.values()].sort((a,b)=>a.localeCompare(b)).map(x=>'<option value="'+esc(x)+'"></option>').join('');
 }
 let inventoryLegendSelection='';
+let inventoryUnclassifiedOpen=false;
 function inventorySearchNames(){
   const names=new Map(companyProductNames().map(n=>[n.trim().toLowerCase(),n]));
   const deleted=new Set(factoryProducts.filter(p=>!p.active).map(p=>p.name.trim().toLowerCase()));
@@ -1519,6 +1520,8 @@ function inventoryProductCard(p){
 }
 function renderInventoryStock(){
   const body=$('inventoryBody');if(!body)return;
+  const previousClassification=body.querySelector('[data-inventory-unclassified]');
+  if(previousClassification)inventoryUnclassifiedOpen=previousClassification.open;
   const q=($('inventorySearch')?.value||'').trim().toLowerCase();
   const products=factoryProducts.filter(p=>p.active&&(!q||p.name.toLowerCase().includes(q)));
   // Preserve visibility of recorded balances awaiting a company classification.
@@ -1533,8 +1536,10 @@ function renderInventoryStock(){
     const list=products.filter(p=>p.category===category).sort((a,b)=>a.name.localeCompare(b.name));
     if(category==='unclassified'&&!list.length)return '';
     const content='<div class="inventory-v3-grid">'+list.map(inventoryProductCard).join('')+'</div>';
-    return category==='unclassified'?'<details class="inventory-category"><summary>Needs classification ('+list.length+')</summary>'+content+'</details>':'<section class="inventory-category"><div class="inventory-category-head"><h2>'+inventoryCategoryLabel(category)+'</h2><span>'+list.length+' products</span></div><p>'+(category==='sport'?'5 gallon pails':category==='residential'?'Quarts, gallons, and 5 gallon pails':'Company cleaning products')+'</p>'+(list.length?content:'<div class="inventory-empty-category">Classify products here using Company Products → Settings.</div>')+'</section>';
+    return category==='unclassified'?'<details class="inventory-category" data-inventory-unclassified'+(inventoryUnclassifiedOpen?' open':'')+'><summary>Needs classification ('+list.length+')</summary>'+content+'</details>':'<section class="inventory-category"><div class="inventory-category-head"><h2>'+inventoryCategoryLabel(category)+'</h2><span>'+list.length+' products</span></div><p>'+(category==='sport'?'5 gallon pails':category==='residential'?'Quarts, gallons, and 5 gallon pails':'Company cleaning products')+'</p>'+(list.length?content:'<div class="inventory-empty-category">Classify products here using Company Products → Settings.</div>')+'</section>';
   }).join('');
+  const classification=body.querySelector('[data-inventory-unclassified]');
+  if(classification)classification.ontoggle=()=>{if(classification.isConnected)inventoryUnclassifiedOpen=classification.open};
   body.querySelectorAll('[data-inventory-color]').forEach(b=>b.onclick=()=>{inventoryLegendSelection=b.dataset.inventoryColor;$('inventoryColorExplanation').textContent=inventoryColorExplanation(inventoryLegendSelection);body.querySelectorAll('[data-inventory-color]').forEach(dot=>dot.setAttribute('aria-pressed',String(dot===b)))});
   body.querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));
   body.querySelectorAll('[data-stock-name]').forEach(b=>b.onclick=()=>{const row=inventoryStockRows.find(r=>r.product===b.dataset.stockName&&r.package_type===b.dataset.stockType);openInventorySet(row||null);$('inventorySetProduct').value=b.dataset.stockName;$('inventorySetPackage').value=b.dataset.stockType;syncInventorySetCategory()});
