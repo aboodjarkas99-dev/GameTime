@@ -39,6 +39,8 @@ Deno.serve(async(req)=>{
   let body:any;
   try{body=await req.json()}catch{return json({error:"Invalid JSON"},400)}
   let product=String(body.product||"").trim().replace(/\s+/g," ");
+  const category=String(body.category||"");
+  if(!["sport","residential","cleaner"].includes(category))return json({error:"Choose Sport Floors, Residential, or Cleaner"},400);
   const pkg=packageInfo(body.package_type);
   const target=Number(body.target_units);
   const date=String(body.event_date||"").trim();
@@ -51,7 +53,8 @@ Deno.serve(async(req)=>{
   if(![p.role,...(p.page_roles||[])].some(r=>["manager","chemist"].includes(r))){const {data:productRow}=await caller.from("factory_products").select("id,name").eq("name_key",product.toLowerCase()).eq("active",true).maybeSingle();if(!productRow)return json({error:"Choose an active company product."},400);product=productRow.name;}
 
   const admin=createClient(url,serviceRole);
-  const {data,error}=await admin.rpc("set_inventory_stock_service",{
+  const {data,error}=await admin.rpc("set_inventory_stock_classified_service",{
+    p_category:category,
     p_event_id:"stock_set_"+crypto.randomUUID(),
     p_event_date:date,
     p_product:product,
