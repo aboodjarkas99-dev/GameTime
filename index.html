@@ -6,14 +6,14 @@
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="apple-touch-icon" href="https://gametimewraps.com/wp-content/uploads/2023/05/GameTime-Logo-Light-Version-100px.png">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261014c">
+<link rel="manifest" href="/manifest.webmanifest?v=20261016">
+<link rel="icon" href="/app-icon-180.png?v=20261016">
+<link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261016a">
 <title>GameTime Factory Work Board</title>
 </head>
 <body>
-<!-- SECURE_V2_20261014c employee-name-login company-logo -->
+<!-- SECURE_V2_20261016a employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -122,6 +122,7 @@
           <button id="shareProd" type="button">↗ Production</button>
           <button id="shareBatch" type="button">↗ Batch Maker</button>
           <button id="shareShipping" type="button">↗ Shipping</button>
+          <button id="shareInventory" type="button">↗ Inventory</button>
           <button id="shareManagement" type="button">↗ Management</button>
         </div>
       </div>
@@ -361,7 +362,7 @@
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
-      <label>Role<select id="staffRole"><option value="batch">Batch Maker</option><option value="prod">Production</option><option value="chemist">Chemist</option><option value="shipping">Shipping</option><option value="viewer">View Only</option></select></label>
+      <label>Role<select id="staffRole"><option value="batch">Batch Maker</option><option value="prod">Production</option><option value="chemist">Chemist</option><option value="shipping">Shipping</option><option value="inventory">Inventory — stock counts only</option><option value="viewer">View Only</option></select></label>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
@@ -393,7 +394,7 @@
         <option value="batch">Batch Maker</option>
         <option value="prod">Production</option>
         <option value="chemist">Chemist</option>
-        <option value="shipping">Shipping</option>
+        <option value="shipping">Shipping</option><option value="inventory">Inventory — stock counts only</option>
         <option value="viewer">View Only</option>
       </select></label>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
@@ -508,6 +509,7 @@
 <div class="modal" id="productSettingsModal"><div class="dialog"><div class="dialoghead"><h2 id="productSettingsTitle">Product Settings</h2><button data-close="productSettingsModal">✕</button></div><label>Product category<select id="productCategory"><option value="sport">Sport Floors</option><option value="residential">Residential</option><option value="cleaner">Cleaners</option><option value="unclassified">Needs classification</option></select></label><p>Set limits in pallets for 5G, 1G, and quarts: 36 pails, 120 gallon cans, or 720 quart cans (180 gallons) per pallet. Other packages use units. Safe stock must be higher than minimum.</p><div id="productLimits"></div><div id="productSettingsMessage" role="status"></div><div class="dialogactions"><button data-close="productSettingsModal">Cancel</button><button id="saveProductSettingsBtn" class="primary">Save category &amp; limits</button></div></div></div>
 <div class="modal" id="managerShippingModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Shipping Details</h2><button data-close="managerShippingModal">✕</button></div><p>Live shipping progress inside the management system. Shipped includes confirmed breakdown printing, when inventory is posted.</p><div class="manager-shipping-tabs"><button data-manager-shipping="DRAFT" class="active">Preparing</button><button data-manager-shipping="READY">Ready</button><button data-manager-shipping="SHIPPED">Shipped</button></div><input id="managerShippingSearch" placeholder="Search order / packing slip / customer" aria-label="Search shipping details"><p id="managerShippingMessage" role="status"></p><div id="managerShippingBody"></div></div></div>
 
+<div class="modal" id="managerDispatchModal"><div class="dialog"><div class="dialoghead"><h2 id="managerDispatchTitle">Complete shipment</h2><button data-close="managerDispatchModal">✕</button></div><label>Actual shipping date<input type="date" id="managerDispatchDate"></label><label>Inventory handling<select id="managerDispatchStock"><option value="history">Already shipped — record status only, do not change stock</option><option value="deduct">Ship now — deduct saved quantities once</option></select></label><p>For old orders already reflected in your physical inventory count, use the first option. The second option subtracts the saved order quantities from current stock.</p><label>Note<input id="managerDispatchNote" placeholder="Already dispatched / reconciliation note"></label><label class="dispatch-review"><input type="checkbox" id="managerDispatchReviewed"> I confirm this order shipped and have checked its products and quantities.</label><p id="managerDispatchMessage" role="status"></p><div class="dialogactions"><button data-close="managerDispatchModal">Cancel</button><button class="primary" id="saveManagerDispatchBtn">Confirm shipped</button></div></div></div>
 <div class="modal" id="inventorySetModal">
   <div class="dialog inventorystockdialog">
     <div class="dialoghead"><h2>Set Current Stock</h2><button data-close="inventorySetModal">✕</button></div>
@@ -615,9 +617,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261014c"></script>
+<script src="app.js?v=SECURE_V2_20261016a"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261014c').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261016a').catch(()=>{});}
 </script>
 </body>
 </html>

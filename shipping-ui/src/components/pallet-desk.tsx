@@ -348,7 +348,7 @@ export function PalletDesk() {
     },1000);autoSaveTimer.current=timer;return()=>clearTimeout(timer);
   },[activeOpenId,orderName,customer,notes,date,salespersonName,salespersonEmail,bol,carrier,shipMethod,mixSmall,palletTareLb,rules,lines,loaded,batchCodes,headerOk,inventoryProducts]);
   async function saveFactory(ready=false){try{await cloudQueue.current;const id=await persistDesk(deskState(),ready?'READY':'DRAFT');setActiveOpenId(id);setCloudStatus(ready?'READY':'DRAFT');setCloudMessage(ready?'READY — loading complete. Stock changes after printed confirmation or Mark Shipped.':'Draft saved live');return id}catch(e){setCloudMessage('Could not save: '+(e instanceof Error?e.message:'Error'));return null}}
-  async function markFactoryShipped(id=activeOpenId){if(!id)return;if(!confirm('This shipment has left the factory? Mark Shipped deducts inventory once.'))return;try{await cloudQueue.current;const result=await shipDesk(id);if(id===activeOpenId)setCloudStatus('SHIPPED');setCloudMessage(result.duplicate?'Already shipped — no duplicate deduction.':'SHIPPED — factory inventory updated.')}catch(e){setCloudMessage(e instanceof Error?e.message:'Could not mark shipped')}}
+  async function markFactoryShipped(id=activeOpenId){if(!id)return;if(!confirm('This shipment has left the factory? Mark Shipped deducts inventory once.'))return;try{await cloudQueue.current;const result=await shipDesk(id);if(id===activeOpenId)setCloudStatus('SHIPPED');setCloudMessage(result.duplicate?'Already completed — no additional inventory change.':'SHIPPED — factory inventory updated.')}catch(e){setCloudMessage(e instanceof Error?e.message:'Could not mark shipped')}}
 
 
   async function preparePrintedSnapshot(state:any){
@@ -381,7 +381,7 @@ export function PalletDesk() {
     setPrintBusy(true);setPrintError('');
     try{
       const result=await confirmDeskPrint(printPending.id,printPending.state);
-      setCloudStatus('SHIPPED');setCloudMessage(result.duplicate?'Reprint recorded — inventory was already deducted.':'Printed confirmed — inventory deducted once.');
+      setCloudStatus('SHIPPED');setCloudMessage(result.duplicate?'Reprint recorded — no additional inventory change.':'Printed confirmed — inventory deducted once.');
       setPrintPending(null);printLock.current=false;
     }catch(e){setPrintError(e instanceof Error?e.message:'Could not confirm print. Retry when connected.');}
     finally{setPrintBusy(false);}

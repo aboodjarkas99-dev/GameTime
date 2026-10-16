@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import {db} from '@/lib/pallet/api';
 type Row={id:string;shipment_number:string;packing_slip:string;customer:string;status:string;updated_at:string};
-const tabs=[{key:'DRAFT',title:'Draft',hint:'Saved drafts'},{key:'READY',title:'Ready',hint:'Ready for printing / dispatch'},{key:'SHIPPED',title:'Finished / Shipped',hint:'Inventory deducted — safe to reprint'}];
+const tabs=[{key:'DRAFT',title:'Draft',hint:'Saved drafts'},{key:'READY',title:'Ready',hint:'Ready for printing / dispatch'},{key:'SHIPPED',title:'Finished / Shipped',hint:'Completed shipments — safe to reprint'}];
 export function ShippingStatusTabs({onOpen}:{onOpen:(id:string)=>Promise<void>}){
  const [selected,setSelected]=useState('DRAFT'),[rows,setRows]=useState<Row[]>([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[opening,setOpening]=useState('');
  useEffect(()=>{
