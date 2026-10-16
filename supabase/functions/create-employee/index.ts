@@ -28,6 +28,8 @@ Deno.serve(async (req) => {
   const employeeCode = String(body.employee_code || "").trim().toLowerCase();
   const role = String(body.role || "").trim();
   const pin = String(body.pin || "").trim();
+  const pageRoles = [...new Set(Array.isArray(body.page_roles) ? body.page_roles.map(String) : [role])];
+  if(!pageRoles.length || pageRoles.length>6 || !pageRoles.includes(role) || pageRoles.some(r=>!["batch","prod","viewer","chemist","shipping","inventory"].includes(r)))return json({error:"Choose valid employee pages"},400);
 
   if (displayName.length < 2 || displayName.length > 60) return json({ error: "Enter a valid employee name" }, 400);
   if (!/^[a-z0-9._-]{1,30}$/.test(employeeCode)) return json({ error: "Employee code can be 1-30 letters or numbers" }, 400);
@@ -42,12 +44,12 @@ Deno.serve(async (req) => {
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email, password_hash: passwordHash, email_confirm: true,
-    user_metadata: { display_name: displayName, employee_code: employeeCode, role, job_title: jobTitle },
+    user_metadata: { display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle },
   });
   if (createError || !created.user) return json({ error: createError?.message || "Could not create employee" }, 400);
 
   const { error: insertError } = await admin.from("profiles").insert({
-    id: created.user.id, display_name: displayName, employee_code: employeeCode, role, job_title: jobTitle, active: true,
+    id: created.user.id, display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle, active: true,
   });
 
   if (insertError) {
@@ -55,5 +57,5 @@ Deno.serve(async (req) => {
     return json({ error: insertError.message }, 400);
   }
 
-  return json({ ok: true, employee: { id: created.user.id, display_name: displayName, employee_code: employeeCode, role, job_title: jobTitle } });
+  return json({ ok: true, employee: { id: created.user.id, display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle } });
 });

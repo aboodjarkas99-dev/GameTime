@@ -1409,7 +1409,7 @@ export function PalletDesk() {
         </header>
         <div className="brand-rule" />
         <section className="no-print border-b border-line bg-card px-5 py-3 text-sm">
-          <div className="mx-auto max-w-6xl flex flex-wrap items-center gap-3"><a href="/index.html">Factory board</a><span>{account?.display_name} · {cloudMessage}</span>
+          <div className="mx-auto max-w-6xl flex flex-wrap items-center gap-3"><a href="/index.html">Factory board</a>{[account?.role,...(account?.page_roles||[])].some(r=>["inventory","manager","chemist"].includes(r||""))&&<a href="/inventory.html">Inventory</a>}<span>{account?.display_name} · {cloudMessage}</span>
           {hasOrder&&<><button className="katchup-btn" disabled={cloudStatus==='SHIPPED'} onClick={()=>void saveFactory()}>Save live draft</button><button className="katchup-btn" disabled={!recordReady||cloudStatus==='SHIPPED'} onClick={()=>void saveFactory(true)}>Save Ready</button><button className="katchup-btn is-lit" disabled={cloudStatus!=='READY'} onClick={()=>void markFactoryShipped()}>Mark Shipped</button></>}
           </div>
           {hasOrder&&<details className="mx-auto max-w-6xl mt-2"><summary>Inventory products — review before shipping</summary><datalist id="factory-stock-products">{stockProducts.map(p=><option key={p} value={p}/>)}</datalist>{lines.filter(l=>l.qty>0&&l.size!=='drawdown').map(l=><label key={l.id} className="block my-2">{l.sku} · {l.description}<input className="ml-2 border border-line bg-card p-2" list="factory-stock-products" value={inventoryProducts[l.id]??productLabel(l.sku,l.description,l.size)} onChange={e=>setInventoryProducts(p=>({...p,[l.id]:e.target.value}))}/></label>)}</details>}

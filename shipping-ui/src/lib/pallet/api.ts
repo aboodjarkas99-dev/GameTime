@@ -9,8 +9,8 @@ export type OpenOrder={id:string;orderName:string;customer:string;notes:string;l
 export type DoneOrder={id:string;orderName:string;customer:string;notes:string;finishedBy:string;finishedAt:number;day:string;pallets:number;pails:number;boxes:number;lines:ReturnLine[]};
 export type ReturnSlip=Omit<DoneOrder,'day'>;
 type Request={data:any};
-export let account:{id:string;display_name:string;role:string}|null=null;
-export async function authorize(){const {data:{session}}=await db.auth.getSession();if(!session)return null;const {data,error}=await db.from('profiles').select('id,display_name,role,active').eq('id',session.user.id).single();if(error||!data?.active||!['manager','chemist','shipping'].includes(data.role))return null;account=data;return data;}
+export let account:{id:string;display_name:string;role:string;page_roles?:string[]}|null=null;
+export async function authorize(){const {data:{session}}=await db.auth.getSession();if(!session)return null;const {data,error}=await db.from('profiles').select('id,display_name,role,page_roles,active').eq('id',session.user.id).single();if(error||!data?.active||![data.role,...(data.page_roles||[])].some(r=>['manager','chemist','shipping'].includes(r)))return null;account=data;return data;}
 async function rpc(name:string,params:any){const {data,error}=await db.rpc(name,params);if(error)throw new Error(error.message.includes('shipping_packing_slip_unique')?'Packing Slip number already exists. Open the existing order to reprint; inventory will not be deducted twice.':error.message);return data;}
 export async function deskStatus(id:string){const {data,error}=await db.from('shipping_shipments').select('*').eq('id',id).single();if(error)throw new Error(error.message);return data;}
 export function storagePlan(lines:OrderLine[],rules=DEFAULT_RULES,mixSmall=true,palletTareLb=45){const plan=buildPlan(lines,rules,{mixSmall,palletTareLb});if(!isPlan(plan))throw new Error(plan.error);return {ok:true,...plan,pallets:plan.pallets.map(p=>({...p,items:p.lines.map(l=>({product:productLabel(l.sku,l.description,l.size),sku:l.sku,size:l.size,units:l.units,boxes:l.size==='gal5'?null:l.packs,onTop:l.onTop}))}))};}

@@ -6,14 +6,14 @@
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GameTime">
-<link rel="manifest" href="/manifest.webmanifest?v=20261016">
-<link rel="icon" href="/app-icon-180.png?v=20261016">
-<link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261016a">
+<link rel="manifest" href="/manifest.webmanifest?v=20261016b">
+<link rel="icon" href="/app-icon-180.png?v=20261016b">
+<link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261016b">
 <title>GameTime Factory Work Board</title>
-</head>
+<script defer src="/app-update.js?v=20261016b"></script></head>
 <body>
-<!-- SECURE_V2_20261016a employee-name-login company-logo -->
+<!-- SECURE_V2_20261016b employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -362,7 +362,7 @@
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
-      <label>Role<select id="staffRole"><option value="batch">Batch Maker</option><option value="prod">Production</option><option value="chemist">Chemist</option><option value="shipping">Shipping</option><option value="inventory">Inventory — stock counts only</option><option value="viewer">View Only</option></select></label>
+      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Production</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">View Only</label></fieldset>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
@@ -390,13 +390,7 @@
     <div class="staffeditgrid">
       <label>Name<input id="editStaffName" autocomplete="off"></label>
       <label>Employee Code<input id="editStaffCode" autocapitalize="none" autocomplete="off"></label>
-      <label>Role<select id="editStaffRole">
-        <option value="batch">Batch Maker</option>
-        <option value="prod">Production</option>
-        <option value="chemist">Chemist</option>
-        <option value="shipping">Shipping</option><option value="inventory">Inventory — stock counts only</option>
-        <option value="viewer">View Only</option>
-      </select></label>
+      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Production</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">View Only</label></fieldset>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
     </div>
     <div id="editStaffMessage" class="authmessage"></div>
@@ -617,9 +611,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261016a"></script>
+<script src="app.js?v=SECURE_V2_20261016b"></script>
 <script>
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=SECURE_V2_20261016a').catch(()=>{});}
+// Service worker updates are registered by app-update.js.
 </script>
 </body>
 </html>

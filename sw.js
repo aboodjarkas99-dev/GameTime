@@ -1,3 +1,4 @@
+// GameTime release 20261016b — refresh branding metadata without reloading active work.
 self.addEventListener('install', event => {
   self.skipWaiting();
 });

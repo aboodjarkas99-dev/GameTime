@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261016a';
+const BUILD='SECURE_V2_20261016b';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -183,6 +183,7 @@ let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
 let deviceName='';
 function roleLabel(){
+  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Production',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',chemist:'Chemist',viewer:'View Only',manager:'Management'}[r]||r)).join(' + ');
   if(profile?.job_title)return profile.job_title;
   const r=profile?.role;
   return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='chemist'?'Chemist':r==='shipping'?'Shipping':r==='inventory'?'Inventory':r==='viewer'?t('readOnly'):'';
@@ -222,23 +223,31 @@ function stopSecureSession(){
   managerShippingRows=[];managerShippingLines=[];
   refreshUserLabel();
 }
+function employeeRoles(p=profile){return [...new Set([p?.role,...(p?.page_roles||[])].filter(Boolean))]}
+function hasEmployeeRole(role){return employeeRoles().includes(role)}
+function selectedPageRoles(id){return [...$(id).querySelectorAll('input:checked')].map(i=>i.value)}
+function setPageRoleChecks(id,roles){$(id).querySelectorAll('input').forEach(i=>i.checked=roles.includes(i.value))}
+function hasWorkPages(){return employeeRoles().some(r=>['manager','chemist','prod','batch','viewer'].includes(r))}
+function inventoryOnlyEmployee(){return hasEmployeeRole('inventory')&&!hasWorkPages()&&!hasEmployeeRole('shipping')}
+function shippingOnlyEmployee(){return hasEmployeeRole('shipping')&&!hasWorkPages()&&!hasEmployeeRole('inventory')}
 function applyProfile(p){
   profile=p;
-  isManager=p?.role==='manager'||p?.role==='chemist';
-  view=p?.role==='prod'?'prod':p?.role==='batch'?'batch':'all';
-  document.body.classList.toggle('shipping-only',shippingPortal||p?.role==='shipping');
-  document.body.classList.toggle('inventory-only',inventoryPortal||p?.role==='inventory');
-  if(inventoryPortal||p?.role==='inventory')document.title='GameTime Inventory';
-  if(shippingPortal||p?.role==='shipping'){document.title='GameTime Shipping';$('viewLabel').textContent='SHIPPING'}
+  isManager=hasEmployeeRole('manager')||hasEmployeeRole('chemist');
+  view=hasEmployeeRole('prod')&&!hasEmployeeRole('batch')?'prod':hasEmployeeRole('batch')&&!hasEmployeeRole('prod')?'batch':'all';
+  document.body.classList.toggle('shipping-only',shippingPortal||shippingOnlyEmployee());
+  document.body.classList.toggle('inventory-only',isInventoryWorkspace());
+  document.body.classList.toggle('departments-only',!hasWorkPages());
+  if(inventoryPortal||inventoryOnlyEmployee())document.title='GameTime Inventory';
+  if(shippingPortal||shippingOnlyEmployee()){document.title='GameTime Shipping';$('viewLabel').textContent='SHIPPING'}
   refreshUserLabel();
 }
 function canManageStaff(){return profile?.role==='manager'}
-function isInventoryWorkspace(){return inventoryPortal||profile?.role==='inventory'}
-function canEditInventoryStock(){return isManager||profile?.role==='inventory'}
-function canViewInventory(){return ['manager','chemist','shipping','inventory'].includes(profile?.role)}
-function canUseShipping(){return ['manager','chemist','shipping'].includes(profile?.role)}
+function isInventoryWorkspace(){return (inventoryPortal&&(isManager||employeeRoles().length===1))||inventoryOnlyEmployee()}
+function canEditInventoryStock(){return isManager||hasEmployeeRole('inventory')}
+function canViewInventory(){return employeeRoles().some(r=>['manager','chemist','shipping','inventory'].includes(r))}
+function canUseShipping(){return employeeRoles().some(r=>['manager','chemist','shipping'].includes(r))}
 async function fetchMyProfile(userId){
-  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active').eq('id',userId).maybeSingle();
+  const {data,error}=await db.from('profiles').select('id,display_name,role,page_roles,employee_code,job_title,active').eq('id',userId).maybeSingle();
   if(error)throw error;
   if(!data||!data.active)throw new Error('This account does not have active GameTime access.');
   return data;
@@ -365,7 +374,7 @@ function fillAccountSettings(){
   if($('settingsAccountName'))$('settingsAccountName').textContent=profile?.display_name||'—';
   if($('settingsAccountTitle'))$('settingsAccountTitle').textContent=profile?.job_title||roleLabel()||'—';
   if($('settingsAccountEmail'))$('settingsAccountEmail').textContent=authUser?.email||profile?.employee_code||'—';
-  if($('settingsAccountRole'))$('settingsAccountRole').textContent=profile?.role==='manager'?'Management':profile?.role==='batch'?'Batch Maker':profile?.role==='prod'?'Production':profile?.role==='chemist'?'Chemist':profile?.role==='shipping'?'Shipping':profile?.role==='inventory'?'Inventory':profile?.role==='viewer'?'View Only':'—';
+  if($('settingsAccountRole'))$('settingsAccountRole').textContent=roleLabel()||'—';
   if($('aboutBuild'))$('aboutBuild').textContent='Secure V2 • Build '+BUILD;
 }
 function openSettings(tab='account'){
@@ -413,12 +422,12 @@ async function signOutSecure(){
 }
 async function loadStaff(){
   if(!canManageStaff())return;
-  const {data,error}=await db.from('profiles').select('id,display_name,role,employee_code,job_title,active,created_at').order('display_name');
+  const {data,error}=await db.from('profiles').select('id,display_name,role,page_roles,employee_code,job_title,active,created_at').order('display_name');
   if(error){staffMessage(error.message,true);return}
   staffRows=data||[];
   $('staffList').innerHTML=staffRows.map(p=>{
     const employee=p.role!=='manager';
-    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(p.job_title||p.role)+(p.active?'':' • INACTIVE')+'</small></div>'+
+    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Production',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',chemist:'Chemist',viewer:'View Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
       (employee?'<div class="staffactions"><button type="button" data-staff-edit="'+p.id+'">Edit</button><button type="button" class="danger" data-staff-delete="'+p.id+'">Delete</button></div>':'')+
       '</div>';
   }).join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
@@ -432,11 +441,11 @@ async function openStaff(){
 }
 async function createStaff(){
   if(!canManageStaff())return;
-  const display_name=$('staffName').value.trim(),employee_code=$('staffCode').value.trim().toLowerCase(),role=$('staffRole').value,pin=$('staffPin').value.trim();
-  if(!display_name||!employee_code||!/^[a-z0-9._-]{1,30}$/.test(employee_code)||!/^\d{4,12}$/.test(pin)){staffMessage('Enter a name, any simple employee code (1, 2, 3 are allowed), and a 4–12 digit PIN.',true);return}
+  const display_name=$('staffName').value.trim(),employee_code=$('staffCode').value.trim().toLowerCase(),roles=selectedPageRoles('staffPageRoles'),role=roles[0]||'',pin=$('staffPin').value.trim();
+  if(!role||!display_name||!employee_code||!/^[a-z0-9._-]{1,30}$/.test(employee_code)||!/^\d{4,12}$/.test(pin)){staffMessage('Enter a name, employee code, at least one allowed page, and a 4–12 digit PIN.',true);return}
   $('createStaffBtn').disabled=true;staffMessage('Creating employee…');
   try{
-    const {data,error}=await db.functions.invoke('create-employee',{body:{display_name,employee_code,role,pin}});
+    const {data,error}=await db.functions.invoke('create-employee',{body:{display_name,employee_code,role,page_roles:roles,pin}});
     if(error||data?.error)throw new Error(data?.error||error?.message||'Could not create employee');
     $('staffName').value='';$('staffCode').value='';$('staffPin').value='';
     staffMessage('Employee created.');
@@ -474,7 +483,7 @@ function openStaffEditor(id){
   $('editStaffId').value=p.id;
   $('editStaffName').value=p.display_name||'';
   $('editStaffCode').value=p.employee_code||'';
-  $('editStaffRole').value=p.role||'viewer';
+  setPageRoleChecks('editStaffPageRoles',employeeRoles(p));
   $('editStaffPin').value='';
   editStaffMessage('');
   showModal('editStaffModal');
@@ -484,15 +493,15 @@ async function saveStaffEdit(){
   const id=$('editStaffId').value;
   const display_name=$('editStaffName').value.trim();
   const employee_code=$('editStaffCode').value.trim().toLowerCase();
-  const role=$('editStaffRole').value;
+  const roles=selectedPageRoles('editStaffPageRoles'),role=roles[0]||'';
   const pin=$('editStaffPin').value.trim();
-  if(!display_name||!/^[a-z0-9._-]{1,30}$/.test(employee_code)){
-    editStaffMessage('Enter a valid name and Employee Code.',true);return
+  if(!role||!display_name||!/^[a-z0-9._-]{1,30}$/.test(employee_code)){
+    editStaffMessage('Enter a name, Employee Code, and select at least one allowed page.',true);return
   }
   if(pin&&!/^\d{4,12}$/.test(pin)){editStaffMessage('New PIN must be 4–12 digits, or leave it blank.',true);return}
   $('saveStaffEditBtn').disabled=true;editStaffMessage('Saving employee…');
   try{
-    const {data,error}=await db.functions.invoke('update-employee',{body:{id,display_name,employee_code,role,pin}});
+    const {data,error}=await db.functions.invoke('update-employee',{body:{id,display_name,employee_code,role,page_roles:roles,pin}});
     if(error||data?.error)throw new Error(data?.error||error?.message||'Could not update employee');
     editStaffMessage('Employee updated.');
     await loadStaff();
@@ -613,19 +622,20 @@ async function importLegacyIfNeeded(cloud){
 async function initialLoad(){
   try{
     setSync('syncing','SYNCING');
-    if(isInventoryWorkspace()){orders=[];logs=[];render();await loadFactoryProducts();await loadInventoryStock();openInventory();subscribeLive();setSync('live','LIVE');if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);return;}
+    if(!hasWorkPages()||isInventoryWorkspace()){orders=[];logs=[];render();await loadFactoryProducts();if(canViewInventory())await loadInventoryStock();if(isInventoryWorkspace()||(!shippingPortal&&hasEmployeeRole('inventory')))openInventory();else if(canUseShipping())openShippingWorkspace();subscribeLive();setSync('live','LIVE');if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);return;}
     const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(cached))orders=cached;
     render();
     const cloud=await fetchOrders();orders=cloud;cache();
     logs=await fetchLogs();await loadFactoryProducts();render();subscribeLive();setSync('live','LIVE');
-    if((shippingPortal||profile?.role==='shipping')&&canUseShipping()&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
+    if((shippingPortal||shippingOnlyEmployee())&&canUseShipping()&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
     if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
 }
 async function reconcile(){
   if(!navigator.onLine){setSync('offline','OFFLINE');return}
   try{
-    if(isInventoryWorkspace()){await loadFactoryProducts();await loadInventoryStock(true);return;}
+    const fresh=await fetchMyProfile(authUser.id);if(JSON.stringify(employeeRoles(fresh))!==JSON.stringify(employeeRoles())){applyProfile(fresh);await initialLoad();return;}
+    if(!hasWorkPages()||isInventoryWorkspace()){await loadFactoryProducts();if(canViewInventory())await loadInventoryStock(true);return;}
     const cloud=await fetchOrders();
     if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();render()}
     await refreshShippingData();await loadFactoryProducts();
@@ -711,7 +721,7 @@ function card(o,dept,i){
         prodWaiting=dept==='prod'&&o.batchStatus!=='done',
         hasMade=dept==='prod'&&!!o.batchMadeDate,
         resultDate=dept==='batch'?o.batchDate:o.prodDate,
-        canAct=isManager||(profile?.role==='batch'&&dept==='batch')||(profile?.role==='prod'&&dept==='prod'),
+        canAct=isManager||(hasEmployeeRole('batch')&&dept==='batch')||(hasEmployeeRole('prod')&&dept==='prod'),
         drag=isManager&&!isGlobalSearch()?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
   return '<article class="card '+(prodWaiting?'prod-waiting ':'')+(hasMade?'has-batch-made':'')+'"'+drag+'>'+
     (isManager&&!isGlobalSearch()?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
@@ -732,7 +742,7 @@ function card(o,dept,i){
     '</article>';
 }
 function render(){
-  $('viewLabel').textContent=isInventoryWorkspace()?'INVENTORY':(shippingPortal||profile?.role==='shipping')?'SHIPPING':isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
+  $('viewLabel').textContent=isInventoryWorkspace()?'INVENTORY':(shippingPortal||shippingOnlyEmployee())?'SHIPPING':isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
@@ -1022,7 +1032,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261016a':'batch-maker.html?build=SECURE_V2_20261016a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261016b':'batch-maker.html?build=SECURE_V2_20261016b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1548,7 +1558,7 @@ async function deleteCompanyProduct(id){
 async function loadInventoryStock(quiet=false){
   if(!canViewInventory())return;
   const body=$('inventoryBody');if(body&&!quiet)body.innerHTML='<div class="analytics-empty">Loading factory inventory…</div>';
-  const {data,error}=profile?.role==='inventory'?await db.rpc('get_inventory_stock'):await db.from('inventory_current_stock').select('*').order('product');
+  const {data,error}=await db.rpc('get_inventory_stock');
   if(error){if(body)body.innerHTML='<div class="analytics-empty">Could not load inventory.</div>';throw error}
   inventoryStockRows=data||[];
   populateInventoryProducts();renderInventoryStock();
@@ -1921,7 +1931,7 @@ $('printBtn').onclick=()=>{
 document.querySelectorAll('[data-print-option]').forEach(b=>b.onclick=e=>{
   e.stopPropagation();
   const mode=b.dataset.printOption;
-  if(!isManager&&mode!==view)return;
+  if(!isManager&&mode!==view&&!(mode==='prod'&&hasEmployeeRole('prod'))&&!(mode==='batch'&&hasEmployeeRole('batch')))return;
   $('printMenu')?.classList.remove('show');$('printBtn')?.setAttribute('aria-expanded','false');
   printSheet(mode);
 });

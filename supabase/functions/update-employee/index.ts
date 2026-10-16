@@ -29,6 +29,8 @@ Deno.serve(async (req) => {
   const employeeCode = String(body.employee_code || "").trim().toLowerCase();
   const role = String(body.role || "").trim();
   const pin = String(body.pin || "").trim();
+  const pageRoles = [...new Set(Array.isArray(body.page_roles) ? body.page_roles.map(String) : [role])];
+  if(!pageRoles.length || pageRoles.length>6 || !pageRoles.includes(role) || pageRoles.some(r=>!["batch","prod","viewer","chemist","shipping","inventory"].includes(r)))return json({error:"Choose valid employee pages"},400);
 
   if (!id) return json({ error: "Employee is required" }, 400);
   if (displayName.length < 2 || displayName.length > 60) return json({ error: "Enter a valid employee name" }, 400);
@@ -38,7 +40,7 @@ Deno.serve(async (req) => {
 
   const admin = createClient(supabaseUrl, serviceRole);
   const { data: target, error: targetError } = await admin.from("profiles")
-    .select("id,display_name,employee_code,role,job_title,active").eq("id", id).single();
+    .select("id,display_name,employee_code,role,page_roles,job_title,active").eq("id", id).single();
   if (targetError || !target) return json({ error: "Employee not found" }, 404);
   if (target.role === "manager") return json({ error: "Management accounts cannot be edited here" }, 403);
 
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
   const authAttrs: Record<string, unknown> = {
     email: newEmail,
     email_confirm: true,
-    user_metadata: { display_name: displayName, employee_code: employeeCode, role, job_title: jobTitle },
+    user_metadata: { display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle },
   };
   if (pin) authAttrs.password_hash = await bcrypt.hash(pin, 10);
 
@@ -61,6 +63,7 @@ Deno.serve(async (req) => {
     display_name: displayName,
     employee_code: employeeCode,
     role,
+    page_roles:pageRoles,
     job_title: jobTitle,
   }).eq("id", id);
 

@@ -33,8 +33,8 @@ Deno.serve(async(req)=>{
   const {data:u,error:uerr}=await caller.auth.getUser();
   if(uerr||!u.user)return json({error:"Unauthorized"},401);
 
-  const {data:p,error:perr}=await caller.from("profiles").select("role,active").eq("id",u.user.id).single();
-  if(perr||!p?.active||!["manager","chemist","inventory"].includes(p.role))return json({error:"Full access required"},403);
+  const {data:p,error:perr}=await caller.from("profiles").select("role,page_roles,active").eq("id",u.user.id).single();
+  if(perr||!p?.active||![p.role,...(p.page_roles||[])].some(r=>["manager","chemist","inventory"].includes(r)))return json({error:"Full access required"},403);
 
   let body:any;
   try{body=await req.json()}catch{return json({error:"Invalid JSON"},400)}
@@ -48,7 +48,7 @@ Deno.serve(async(req)=>{
   if(!Number.isFinite(target)||target<0)return json({error:"Current stock must be 0 or higher"},400);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return json({error:"Valid date required"},400);
 
-  if(p.role==="inventory"){const {data:productRow}=await caller.from("factory_products").select("id,name").eq("name_key",product.toLowerCase()).eq("active",true).maybeSingle();if(!productRow)return json({error:"Choose an active company product."},400);product=productRow.name;}
+  if(![p.role,...(p.page_roles||[])].some(r=>["manager","chemist"].includes(r))){const {data:productRow}=await caller.from("factory_products").select("id,name").eq("name_key",product.toLowerCase()).eq("active",true).maybeSingle();if(!productRow)return json({error:"Choose an active company product."},400);product=productRow.name;}
 
   const admin=createClient(url,serviceRole);
   const {data,error}=await admin.rpc("set_inventory_stock_service",{
