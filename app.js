@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261016c';
+const BUILD='SECURE_V2_20261016d';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -1032,7 +1032,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261016c':'batch-maker.html?build=SECURE_V2_20261016c'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'production.html?build=SECURE_V2_20261016d':'batch-maker.html?build=SECURE_V2_20261016d'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1495,7 +1495,7 @@ function inventorySimpleCount(units,type,full=null,loose=null){
  const capacity=inventoryPalletCapacity(type),format=n=>inventoryNum(n).toLocaleString(locale(),{maximumFractionDigits:2});
  if(units<0)return '<div class="inventory-simple-count shortage"><b>'+format(Math.abs(units))+'</b><span>'+inventoryLooseLabel(type)+' short</span></div>';
  if(!capacity)return '<div class="inventory-simple-count"><b>'+format(units)+'</b><span>units</span></div>';
- return '<div class="inventory-simple-count"><b>'+format(full??Math.floor(units/capacity))+'</b><span>pallets</span><i>+</i><b>'+format(loose??units%capacity)+'</b><span>'+inventoryLooseLabel(type)+'</span></div>';
+ return '<div class="inventory-simple-count"><b>'+format(full??Math.floor(units/capacity))+'</b><span>PALLETS</span><i>+</i><b>'+format(loose??units%capacity)+'</b><span>'+inventoryLooseLabel(type).toUpperCase()+'</span></div>';
 }
 function inventoryColorExplanation(key){return {low:'Red: stock is at or below the minimum you set.',warning:'Orange: stock is above minimum but below the safe level.',healthy:'Green: stock is at or above the safe level.'}[key]||'Tap a color to see what it means. Gray means no limits or balance are recorded.'}
 function inventoryLevel(units,limits){
@@ -1546,13 +1546,13 @@ async function openProductSettings(id){
   if(!p){const {data,error}=await db.from('factory_products').insert({name:id}).select().single();if(error){toast(error.message);return}await loadFactoryProducts();p=data;}
   productSettingsTarget=p;$('productSettingsTitle').textContent=p.name;$('productCategory').value=p.category;
   const packages=[...new Set(['five_gallon_pail','gallon','quart_can',...inventoryStockRows.filter(r=>r.product===p.name).map(r=>r.package_type)])];
-  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type],capacity=inventoryPalletCapacity(type)||1,unit=inventoryPalletCapacity(type)?'pallets':'units';return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><b>'+esc(inventoryPackageLabel(type))+'</b><label>Minimum ('+unit+')<input data-minimum type="number" min="0" step="any" value="'+esc(limit?limit.minimum/capacity:'')+'" placeholder="Not set"></label><label>Safe stock ('+unit+')<input data-safe type="number" min="0" step="any" value="'+esc(limit?limit.safe/capacity:'')+'" placeholder="Not set"></label></div>'}).join('');
+  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type],capacity=1,unit=inventoryLooseLabel(type);return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><b>'+esc(inventoryPackageLabel(type))+'</b><label>Minimum ('+unit+')<input data-minimum type="number" min="0" step="any" value="'+esc(limit?limit.minimum/capacity:'')+'" placeholder="Not set"></label><label>Safe stock ('+unit+')<input data-safe type="number" min="0" step="any" value="'+esc(limit?limit.safe/capacity:'')+'" placeholder="Not set"></label></div>'}).join('');
   $('productSettingsMessage').textContent='';showModal('productSettingsModal');
 }
 async function saveProductSettings(){
   if(!isManager||!productSettingsTarget)return;
   const limits={};
-  for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const min=row.querySelector('[data-minimum]').value,safe=row.querySelector('[data-safe]').value;if(min===''&&safe==='')continue;if(min===''||safe===''||!Number.isFinite(Number(min))||!Number.isFinite(Number(safe))||Number(min)<0||Number(safe)<=Number(min)){$('productSettingsMessage').textContent='Safe stock must be greater than minimum. Fill both values, or leave both blank.';return}const capacity=inventoryPalletCapacity(row.dataset.limitType)||1;limits[row.dataset.limitType]={minimum:Number(min)*capacity,safe:Number(safe)*capacity};}
+  for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const min=row.querySelector('[data-minimum]').value,safe=row.querySelector('[data-safe]').value;if(min===''&&safe==='')continue;if(min===''||safe===''||!Number.isFinite(Number(min))||!Number.isFinite(Number(safe))||Number(min)<0||Number(safe)<=Number(min)){$('productSettingsMessage').textContent='Safe stock must be greater than minimum. Fill both values, or leave both blank.';return}const capacity=1;limits[row.dataset.limitType]={minimum:Number(min)*capacity,safe:Number(safe)*capacity};}
   $('saveProductSettingsBtn').disabled=true;
   try{const {error}=await db.from('factory_products').update({category:$('productCategory').value,stock_limits:limits}).eq('id',productSettingsTarget.id);if(error)throw error;await loadFactoryProducts();hideModal('productSettingsModal');renderInventoryStock();}catch(e){$('productSettingsMessage').textContent=e.message}finally{$('saveProductSettingsBtn').disabled=false}
 }
