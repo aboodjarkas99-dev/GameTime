@@ -9,11 +9,11 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261016e">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261016f">
 <title>GameTime Factory Work Board</title>
 <script defer src="/app-update.js?v=20261016b"></script></head>
 <body>
-<!-- SECURE_V2_20261016e employee-name-login company-logo -->
+<!-- SECURE_V2_20261016f employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -85,15 +85,16 @@
           </div>
         </div>
         <button id="shippingWorkspaceBtn" type="button"><span>▣</span><b>Shipping</b></button>
+        <button id="fillSuppliesBtn" type="button" style="display:none"><span>▦</span><b>Fill Line Inventory</b></button>
         <button id="inventoryBtn" type="button"><span>▧</span><b>Inventory</b></button>
         <button id="managerShippingBtn" type="button" style="display:none"><span>⇢</span><b>Shipping Details</b></button>
         <button id="shippingChartBtn" type="button"><span>⇢</span><b>Shipping Chart</b></button>
         <div class="sideaccordion" id="printAccordion">
           <button id="printBtn" class="accordion-toggle" type="button" aria-expanded="false"><span>▤</span><b>Print / Save PDF</b><i>⌄</i></button>
           <div id="printMenu" class="sidesubmenu">
-            <button type="button" data-print-option="all">Full Day — Batch + Production</button>
+            <button type="button" data-print-option="all">Full Day — Batch + Fill Line</button>
             <button type="button" data-print-option="batch">Batch Maker</button>
-            <button type="button" data-print-option="prod">Production / Filling</button>
+            <button type="button" data-print-option="prod">Fill Line</button>
           </div>
         </div>
         <div class="sideaccordion" id="settingsAccordion">
@@ -119,7 +120,7 @@
       <div class="sendbox">
         <b>Send work board to employees</b>
         <div class="sendactions">
-          <button id="shareProd" type="button">↗ Production</button>
+          <button id="shareProd" type="button">↗ Fill Line</button>
           <button id="shareBatch" type="button">↗ Batch Maker</button>
           <button id="shareShipping" type="button">↗ Shipping</button>
           <button id="shareInventory" type="button">↗ Inventory</button>
@@ -150,8 +151,8 @@
       <section class="pagehead">
         <div>
           <div class="pageeyebrow">Factory Work Board</div>
-          <h1>Production Overview</h1>
-          <p>Live schedule for Batch Maker and Production.</p>
+          <h1>Fill Line Overview</h1>
+          <p>Live schedule for Batch Maker and Fill Line.</p>
         </div>
         <button id="addBtn" class="primary">+ Add Work Order</button>
       </section>
@@ -171,7 +172,7 @@
       <section class="stats">
         <div class="stat"><span>Work Orders</span><b id="sOrders">0</b></div>
         <div class="stat"><span>Batch Tasks</span><b id="sBatch">0</b></div>
-        <div class="stat"><span>Production Tasks</span><b id="sProd">0</b></div>
+        <div class="stat"><span>Fill Line Tasks</span><b id="sProd">0</b></div>
         <div class="stat"><span>Completed</span><b id="sDone">0</b></div>
       </section>
 
@@ -187,7 +188,7 @@
           <div id="batchList"></div>
         </section>
         <section class="panel" id="prodPanel">
-          <div class="panelhead"><h2>Production / Filling</h2><small id="prodCount"></small></div>
+          <div class="panelhead"><h2>Fill Line</h2><small id="prodCount"></small></div>
           <div id="prodList"></div>
         </section>
       </section>
@@ -241,12 +242,12 @@
     <section class="settingspane" data-settings-pane="about">
       <div class="settingssection aboutapp">
         <div class="abouthero"><div class="sidebrand-mark">G</div><div><h3>GameTime Factory Work Board</h3><p id="aboutBuild">Secure V2</p></div></div>
-        <p>GameTime is the factory work-board system used to plan Batch Maker and Production work, record live progress, carry unfinished work forward, track actual filling quantities, manage Hold Line items, print the daily sheet, and review monthly production.</p>
+        <p>GameTime is the factory work-board system used to plan Batch Maker and Fill Line work, record live progress, carry unfinished work forward, track actual filling quantities, manage Hold Line items, print the daily sheet, and review monthly Fill Line work.</p>
 
         <h4>What We Use</h4>
         <div class="aboutgrid">
           <div><b>Vercel</b><span>Hosts the web application and publishes the Secure V2 website.</span></div>
-          <div><b>Supabase Postgres</b><span>Stores work orders, production progress, audit history and account profiles.</span></div>
+          <div><b>Supabase Postgres</b><span>Stores work orders, Fill Line progress, audit history and account profiles.</span></div>
           <div><b>Supabase Auth</b><span>Handles secure sign-in, sessions and management-account passwords.</span></div>
           <div><b>Supabase Realtime</b><span>Keeps changes synchronized between factory computers and phones.</span></div>
           <div><b>Row Level Security (RLS)</b><span>Database rules decide what authenticated roles are allowed to read or change.</span></div>
@@ -268,7 +269,7 @@
           <li>The Secure V2 database is separate from the old GameTime database.</li>
           <li>Live synchronization uses Supabase Realtime; the database remains the central source of truth.</li>
           <li>Code backup branches are created before major releases. Database backup availability and retention depend on the Supabase plan and should be reviewed separately from audit history.</li>
-          <li>Automatic rollover moves unfinished scheduled work to the next business day while preserving production progress records.</li>
+          <li>Automatic rollover moves unfinished scheduled work to the next business day while preserving Fill Line progress records.</li>
         </ul>
 
         <h4>Important Source-Code Privacy Note</h4>
@@ -331,7 +332,7 @@
       <div class="full product-picker"><label for="product">Product Name</label><input id="product" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="productOptions"><div id="productOptions" class="product-options" role="listbox" hidden></div><small>Choose a company product or type a new name.</small></div>
       <div id="dateField" class="schedule-dates">
         <label>Batch Maker Date<input id="workDate" type="date"></label>
-        <label>Production Date<input id="prodWorkDate" type="date"></label>
+        <label>Fill Line Date<input id="prodWorkDate" type="date"></label>
       </div>
       <label>Batch Number<input id="batchNumber"></label>
       <label>Total Batch Gallons<input id="tank" inputmode="decimal"></label>
@@ -343,12 +344,14 @@
       <label>Quarts<input id="quart"><small id="qBoxes"></small></label>
       <label>1 Gallon<input id="gallon"><small id="gBoxes"></small></label>
       <label>5 Gallon<input id="five"></label>
+      <label>1 Gallon container<select id="gallonStyle"><option value="standard">Standard 1 Gallon</option><option value="f_style">F Style — 1 Gallon</option></select></label>
+      <label>F Style lid<select id="fStyleLid"><option value="sponge">Sponge liner</option><option value="seal">Seal liner</option></select><small>Applies when F Style is selected.</small></label>
       <label class="full optional-package"><input id="jerryEnabled" type="checkbox"> <span><b>Add Jerry Can 1.25 Gallon</b><small>Only show this package on the work order when selected.</small></span></label>
-      <label class="full optional-package catalyst-option"><input id="catalystEnabled" type="checkbox"> <span><b id="catalystOptionTitle">Catalyst</b><small id="catalystOptionHelp">Mark this Production order as containing Catalyst.</small></span></label>
+      <label class="full optional-package catalyst-option"><input id="catalystEnabled" type="checkbox"> <span><b id="catalystOptionTitle">Catalyst</b><small id="catalystOptionHelp">Mark this Fill Line order as containing Catalyst.</small></span></label>
       <label id="jerryField" style="display:none">Jerry Can 1.25 Gallon<input id="jerry" value="0" inputmode="decimal"></label>
       <div class="full summary" id="calc"></div>
       <label class="full">Batch Maker Note<input id="batchNote"></label>
-      <label class="full">Production Note<input id="prodNote"></label>
+      <label class="full">Fill Line Note<input id="prodNote"></label>
     </div>
     <div class="dialogactions"><button data-close="editorModal">Cancel</button><button id="saveOrderBtn" class="primary">Save Work Order</button></div>
   </div>
@@ -362,7 +365,7 @@
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
-      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Production</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">View Only</label></fieldset>
+      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">View Only</label></fieldset>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
@@ -390,7 +393,7 @@
     <div class="staffeditgrid">
       <label>Name<input id="editStaffName" autocomplete="off"></label>
       <label>Employee Code<input id="editStaffCode" autocapitalize="none" autocomplete="off"></label>
-      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Production</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">View Only</label></fieldset>
+      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">View Only</label></fieldset>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
     </div>
     <div id="editStaffMessage" class="authmessage"></div>
@@ -489,7 +492,7 @@
     <div class="inventorytop">
       <div>
         <b>Live Storage Stock</b>
-        <small>Includes recorded past production. Earlier shipments are not recorded: verify the opening balance with Set Current Stock. Production adds stock; confirmed breakdown printing or Mark Shipped subtracts once.</small>
+        <small>Includes recorded past Fill Line work. Earlier shipments are not recorded: verify the opening balance with Set Current Stock. Fill Line adds stock; confirmed breakdown printing or Mark Shipped subtracts once.</small>
       </div>
       <div class="inventory-actions"><button id="catalogBtn" type="button">Company Products</button><button id="setInventoryBtn" class="primary" type="button">Set Current Stock</button></div>
     </div>
@@ -498,7 +501,7 @@
   </div>
 </div>
 
-<div class="modal" id="catalogModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Company Products</h2><button data-close="catalogModal">✕</button></div><p class="inventoryhelp">Products from past production are included. Add the products we manufacture here; they appear in new orders and inventory. Editing a name changes future suggestions; past stock and records keep their original name.</p><div id="catalogEditControls"><label for="catalogNames">Add products — one name per line</label><textarea id="catalogNames" rows="4" placeholder="Alpha Satin&#10;Phoenix"></textarea><button id="catalogAddBtn" class="primary" type="button">Add to company list</button></div><div id="catalogMessage" role="status"></div><div id="catalogList"></div></div></div>
+<div class="modal" id="catalogModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Company Products</h2><button data-close="catalogModal">✕</button></div><p class="inventoryhelp">Products from past Fill Line work are included. Add the products we manufacture here; they appear in new orders and inventory. Editing a name changes future suggestions; past stock and records keep their original name.</p><div id="catalogEditControls"><label for="catalogNames">Add products — one name per line</label><textarea id="catalogNames" rows="4" placeholder="Alpha Satin&#10;Phoenix"></textarea><button id="catalogAddBtn" class="primary" type="button">Add to company list</button></div><div id="catalogMessage" role="status"></div><div id="catalogList"></div></div></div>
 
 <div class="modal" id="productSettingsModal"><div class="dialog"><div class="dialoghead"><h2 id="productSettingsTitle">Product Settings</h2><button data-close="productSettingsModal">✕</button></div><label>Product category<select id="productCategory"><option value="sport">Sport Floors</option><option value="residential">Residential</option><option value="cleaner">Cleaners</option><option value="unclassified">Needs classification</option></select></label><p>Set limits in pallets for 5G, 1G, and quarts: 36 pails, 120 gallon cans, or 720 quart cans (180 gallons) per pallet. Other packages use units. Safe stock must be higher than minimum.</p><div id="productLimits"></div><div id="productSettingsMessage" role="status"></div><div class="dialogactions"><button data-close="productSettingsModal">Cancel</button><button id="saveProductSettingsBtn" class="primary">Save category &amp; limits</button></div></div></div>
 <div class="modal" id="managerShippingModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Shipping Details</h2><button data-close="managerShippingModal">✕</button></div><p>Live shipping progress inside the management system. Shipped includes confirmed breakdown printing, when inventory is posted.</p><div class="manager-shipping-tabs"><button data-manager-shipping="DRAFT" class="active">Preparing</button><button data-manager-shipping="READY">Ready</button><button data-manager-shipping="SHIPPED">Shipped</button></div><input id="managerShippingSearch" placeholder="Search order / packing slip / customer" aria-label="Search shipping details"><p id="managerShippingMessage" role="status"></p><div id="managerShippingBody"></div></div></div>
@@ -547,7 +550,7 @@
 
 <div class="modal" id="analyticsModal">
   <div class="dialog analyticsdialog">
-    <div class="dialoghead"><h2 id="analyticsTitle">Monthly Production Chart</h2><button data-close="analyticsModal">✕</button></div>
+    <div class="dialoghead"><h2 id="analyticsTitle">Monthly Fill Line Chart</h2><button data-close="analyticsModal">✕</button></div>
     <div class="analyticscontrols">
       <label id="analyticsMonthLabel">Month<input id="analyticsMonth" type="month"></label>
       <button id="analyticsLoadBtn" class="primary">Show Chart</button>
@@ -567,6 +570,7 @@
   <div class="dialog qtydialog">
     <div class="dialoghead"><h2 id="qtyTitle">Actual Quantity</h2><button data-close="qtyModal">✕</button></div>
     <div class="planned" id="qtyPlanned"></div>
+    <div id="qtyPackagingFields" class="inventorysetgrid" style="display:none"><label>1 Gallon container<select id="qtyGallonStyle"><option value="standard">Standard 1 Gallon</option><option value="f_style">F Style — 1 Gallon</option></select></label><label>F Style lid<select id="qtyFStyleLid"><option value="sponge">Sponge liner</option><option value="seal">Seal liner</option></select></label></div>
     <label class="qtylabel">Actual amount filled<input id="qtyInput" inputmode="decimal"></label>
     <div class="dialogactions"><button data-close="qtyModal">Cancel</button><button id="saveQtyBtn" class="primary">Save Actual Quantity</button></div>
   </div>
@@ -575,7 +579,7 @@
 <div class="modal" id="carryModal">
   <div class="dialog carrydialog">
     <div class="dialoghead"><h2>Move Remainder to Next Day</h2><button data-close="carryModal">✕</button></div>
-    <p class="carryhelp">Enter what Production actually filled today. GameTime will calculate the remaining quantities and create a Production-only carryover for the next day.</p>
+    <p class="carryhelp">Enter what Fill Line actually filled today. GameTime will calculate the remaining quantities and create a Fill Line-only carryover for the next day.</p>
     <div id="carryProduct" class="planned"></div>
     <div class="carrygrid">
       <label>Move remainder to<input id="carryDate" type="date"></label>
@@ -612,7 +616,12 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=SECURE_V2_20261016e"></script>
+
+<div class="modal" id="fillSuppliesModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Fill Line Inventory</h2><button data-close="fillSuppliesModal">✕</button></div><p class="inventoryhelp">Empty containers, boxes, lids, and pallets. Set opening physical counts, then record receipts and actual material use here. Filling quantities do not automatically deduct these supplies.</p><input id="fillSuppliesSearch" placeholder="Search all supplies…" aria-label="Search Fill Line supplies"><p id="fillSuppliesMessage" role="status"></p><div id="fillSuppliesBody"></div><details class="fill-supply-history"><summary>Movement history — latest 100</summary><div class="manager-shipping-table"><table><thead><tr><th>Time</th><th>Supply</th><th>Action</th><th>Quantity</th><th>Balance</th><th>By</th><th>Note</th></tr></thead><tbody id="fillSupplyHistory"></tbody></table></div></details></div></div>
+<div class="modal" id="fillSupplyMovementModal"><div class="dialog"><div class="dialoghead"><h2 id="fillSupplyMovementTitle">Update supply</h2><button data-close="fillSupplyMovementModal">✕</button></div><p id="fillSupplyCurrent"></p><div class="inventorysetgrid"><label>Quantity (whole items)<input id="fillSupplyQuantity" type="number" min="0" step="1" inputmode="numeric"></label><label>Note / batch / reference<input id="fillSupplyNote" maxlength="500"></label></div><p id="fillSupplyMovementMessage" role="status"></p><div class="dialogactions"><button data-close="fillSupplyMovementModal">Cancel</button><button id="saveFillSupplyBtn" class="primary">Save movement</button></div></div></div>
+
+<script src="fill-line.js?v=SECURE_V2_20261016f"></script>
+<script src="app.js?v=SECURE_V2_20261016f"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
