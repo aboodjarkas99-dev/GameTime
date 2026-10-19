@@ -7,7 +7,7 @@ vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function companyPro
 assert.equal(ctx.inventoryPalletCount(36,'five_gallon_pail'),1);assert.equal(ctx.inventoryPalletCount(120,'gallon'),1);assert.equal(ctx.inventoryPalletCount(720,'quart_can'),1);assert.equal(ctx.inventoryPalletCount(90,'five_gallon_pail'),2.5);assert.match(ctx.inventorySimpleCount(76,'five_gallon_pail'),/>2<.*>4</);assert.doesNotMatch(ctx.inventorySimpleCount(76,'five_gallon_pail'),/2\.111/);assert.match(ctx.inventoryPalletRemainder(124,'gallon'),/1 pallets \+ 4 cans/);assert.match(ctx.inventoryPalletRemainder(90,'five_gallon_pail'),/2 pallets \+ 18 pails/);
 ctx.showInventorySearchOptions();assert.match(nodes.inventorySearchOptions.innerHTML,/Alpha Satin/);assert.match(nodes.inventorySearchOptions.innerHTML,/Phoenix Satin/);assert.doesNotMatch(nodes.inventorySearchOptions.innerHTML,/Archived/);
 ctx.renderInventoryStock();let html=nodes.inventoryBody.innerHTML;
-assert.match(html,/No recorded balance/);assert.match(html,/&lt;New&gt;/);assert.doesNotMatch(html,/<New>/);assert.doesNotMatch(html,/Archived/);assert.match(html,/Minimum reached/);assert.match(html,/-2 containers/);assert.ok(html.indexOf('<h2>Sport Floors')<html.indexOf('<h2>Residential'));assert.ok(html.indexOf('<h2>Residential')<html.indexOf('<h2>Cleaners'));
+assert.match(html,/No stock currently/);assert.match(html,/&lt;New&gt;/);assert.doesNotMatch(html,/<New>/);assert.doesNotMatch(html,/Archived/);assert.match(html,/Minimum reached/);assert.match(html,/-2 containers/);assert.ok(html.indexOf('<h2>Sport Floors')<html.indexOf('<h2>Residential'));assert.ok(html.indexOf('<h2>Residential')<html.indexOf('<h2>Cleaners'));
 assert.equal(ctx.inventoryLevel(20,{minimum:20,safe:40}).key,'low');assert.equal(ctx.inventoryLevel(21,{minimum:20,safe:40}).key,'warning');assert.equal(ctx.inventoryLevel(40,{minimum:20,safe:40}).key,'healthy');assert.equal(ctx.inventoryLevel(50,undefined).key,'unset');
 nodes.inventorySearch.value='phoenix';ctx.renderInventoryStock();assert.doesNotMatch(nodes.inventoryBody.innerHTML,/Alpha Satin/);assert.match(nodes.inventoryBody.innerHTML,/Phoenix Satin/);
 ctx.showProductOptions();assert.equal(nodes.productOptions.hidden,false);assert.match(nodes.productOptions.innerHTML,/Alpha Satin/);assert.doesNotMatch(nodes.productOptions.innerHTML,/Archived/);
@@ -31,3 +31,14 @@ nodes.inventoryBody.querySelector=()=>({open:false});
 ctx.renderInventoryStock();
 assert.doesNotMatch(nodes.inventoryBody.innerHTML,/data-inventory-unclassified open/);
 console.log('Classification accordion remains open across live refresh and honors closing.');
+// Zero and missing package sizes stay hidden; existing stock and shortages remain visible.
+ctx.inventoryStockRows.push({product:'Sizes Test',package_type:'quart_can',stock_units:0},{product:'Sizes Test',package_type:'gallon',stock_units:7},{product:'Sizes Test',package_type:'five_gallon_pail',stock_units:0});
+const sizes=ctx.inventoryProductCard({name:'Sizes Test',category:'residential',stock_limits:{}});
+assert.equal((sizes.match(/class="inventory-v3-package /g)||[]).length,1);assert.match(sizes,/>7</);assert.match(sizes,/Add \/ update stock/);
+const empty=ctx.inventoryProductCard({name:'Empty Test',category:'residential',stock_limits:{}});assert.equal((empty.match(/class="inventory-v3-package /g)||[]).length,0);assert.match(empty,/No stock currently/);
+nodes.search={value:'',setAttribute(){},focus(){}};nodes.mainSearchOptions={innerHTML:'',hidden:true,querySelectorAll:()=>[]};
+vm.runInContext(src.slice(src.indexOf('function mainSearchNames()'),src.indexOf('function companyProductNames()')),ctx);
+ctx.showMainSearchOptions();assert.equal(nodes.mainSearchOptions.hidden,false);assert.match(nodes.mainSearchOptions.innerHTML,/Alpha Satin/);assert.match(nodes.mainSearchOptions.innerHTML,/Phoenix Satin/);
+nodes.search.value='phoenix';ctx.showMainSearchOptions();assert.match(nodes.mainSearchOptions.innerHTML,/Phoenix Satin/);assert.doesNotMatch(nodes.mainSearchOptions.innerHTML,/Alpha Satin/);
+ctx.hideMainSearchOptions();assert.equal(nodes.mainSearchOptions.hidden,true);
+console.log('Search suggestions open and filter; zero and missing inventory sizes are hidden.');

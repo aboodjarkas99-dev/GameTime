@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261016h';
+const BUILD='SECURE_V2_20261019a';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -1037,7 +1037,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261016h':'batch-maker.html?build=SECURE_V2_20261016h'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261019a':'batch-maker.html?build=SECURE_V2_20261019a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1419,6 +1419,19 @@ async function shippingDownloadPdf(){
     doc.save('GameTime-Shipping-'+name+'.pdf');shippingEditorMessage('PDF downloaded. Open it to print.');
   }catch(e){shippingEditorMessage(e.message||String(e),true)}finally{btn.disabled=false}
 }
+function mainSearchNames(){
+ const names=new Map();
+ for(const name of [...companyProductNames(),...orders.filter(o=>!o.deletedAt).map(o=>o.product)]){const clean=canonicalFactoryProduct(String(name||'').trim());if(clean&&!names.has(clean.toLowerCase()))names.set(clean.toLowerCase(),clean)}
+ return [...names.values()].sort((a,b)=>a.localeCompare(b));
+}
+function hideMainSearchOptions(){if($('mainSearchOptions'))$('mainSearchOptions').hidden=true;$('search').setAttribute('aria-expanded','false')}
+function showMainSearchOptions(){
+ const box=$('mainSearchOptions');if(!box)return;
+ const q=$('search').value.trim().toLowerCase(),names=mainSearchNames().filter(name=>!q||name.toLowerCase().includes(q));
+ box.innerHTML=names.length?names.map((name,i)=>'<button type="button" role="option" data-main-search="'+i+'">'+esc(name)+'</button>').join(''):'<p>No matching products. You can also search by batch number.</p>';
+ box.hidden=false;$('search').setAttribute('aria-expanded','true');
+ box.querySelectorAll('[data-main-search]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{$('search').value=names[Number(b.dataset.mainSearch)];render();$('search').focus();hideMainSearchOptions()};b.onkeydown=e=>{if(e.key==='Escape'){$('search').focus();hideMainSearchOptions()}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[...box.querySelectorAll('button')],i=buttons.indexOf(b);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}}});
+}
 function canonicalFactoryProduct(name){return /^hybild(?:\s+sealer)?$/i.test(String(name).trim())?'Hybild Sealer':name}
 function companyProductNames(){return factoryProducts.filter(p=>p.active).map(p=>p.name).sort((a,b)=>a.localeCompare(b))}
 async function loadFactoryProducts(){
@@ -1431,6 +1444,7 @@ async function loadFactoryProducts(){
   if($('catalogModal')?.classList.contains('show'))renderProductCatalog();
   if($('inventoryModal')?.classList.contains('show'))renderInventoryStock();
   if(document.activeElement===$('product'))showProductOptions();
+  if(document.activeElement===$('search'))showMainSearchOptions();
 }
 function hideProductOptions(){$('productOptions').hidden=true;$('product').setAttribute('aria-expanded','false')}
 function showProductOptions(){
@@ -1516,14 +1530,14 @@ function inventoryCategoryLabel(category){return {sport:'Sport Floors',residenti
 function inventoryProductCard(p){
   const rows=inventoryStockRows.filter(r=>String(r.product).trim().toLowerCase()===p.name.trim().toLowerCase());
   const standard=p.category==='sport'?['five_gallon_pail']:['quart_can','gallon','five_gallon_pail'];
-  const packages=[...new Set([...standard,...(p.category==='sport'?[]:rows.map(r=>r.package_type))])];
+  const packages=[...new Set([...standard,...(p.category==='sport'?[]:rows.map(r=>r.package_type))])].filter(type=>{const row=rows.find(r=>r.package_type===type);return row&&inventoryNum(row.stock_units)!==0});
   return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Settings</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
     const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units),limits=p.stock_limits?.[type];
     const capacity=inventoryPalletCapacity(type),pallets=inventoryPalletCount(v,type);
     const level=row?inventoryLevel(v,limits):{key:'unset',label:'No recorded balance'};
     const scale=limits?Math.max(Number(limits.safe)*1.5,v,1):Math.max(v,1),fill=Math.max(0,Math.min(100,100*v/scale));
     return '<div class="inventory-v3-package '+level.key+'"><div class="inventory-v3-number"><span>'+esc(inventoryPackageLabel(type))+'</span>'+(row?inventorySimpleCount(v,type):'<b>—</b>')+'</div>'+(row&&capacity?'<div class="inventory-pallet-detail"><strong>'+v.toLocaleString(locale(),{maximumFractionDigits:2})+' containers</strong></div>':'')+'<div class="inventory-v3-track" aria-hidden="true"><div style="width:'+fill+'%"></div>'+(limits?'<i style="left:'+Math.min(100,100*Number(limits.minimum)/scale)+'%" title="Minimum"></i><i style="left:'+Math.min(100,100*Number(limits.safe)/scale)+'%" title="Safe stock"></i>':'')+'</div><div class="inventory-v3-level">'+esc(level.label)+'</div><small>'+(limits?'Minimum: '+(capacity?inventoryPalletRemainder(limits.minimum,type):esc(limits.minimum))+' · Safe: '+(capacity?inventoryPalletRemainder(limits.safe,type):esc(limits.safe))+(capacity?'':' units'):'Limits not configured')+'</small>'+(row?'<small>Produced '+inventoryNum(row.produced_units).toLocaleString(locale())+' · Shipped '+inventoryNum(row.shipped_units).toLocaleString(locale())+'</small>':'')+(canEditInventoryStock()?'<button type="button" data-stock-name="'+esc(p.name)+'" data-stock-type="'+esc(type)+'">Set current stock</button>':'')+'</div>';
-  }).join('')+'</div></article>';
+  }).join('')+(!packages.length?'<p class="inventory-empty-stock">No stock currently.</p>':'')+'</div>'+(canEditInventoryStock()?'<button type="button" class="inventory-add-stock" data-stock-name="'+esc(p.name)+'" data-stock-type="five_gallon_pail">Add / update stock</button>':'')+'</article>';
 }
 function renderInventoryStock(){
   const body=$('inventoryBody');if(!body)return;
@@ -1900,7 +1914,10 @@ if($('scheduleNav'))$('scheduleNav').onclick=()=>{setShellNavActive('scheduleNav
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
 $('dateLabel').onclick=openMonth;
-$('search').oninput=render;
+$('search').oninput=()=>{render();showMainSearchOptions()};
+$('search').onfocus=showMainSearchOptions;$('search').onclick=showMainSearchOptions;
+$('search').onkeydown=e=>{if(e.key==='Escape')hideMainSearchOptions();if(e.key==='ArrowDown'){e.preventDefault();showMainSearchOptions();$('mainSearchOptions').querySelector('button')?.focus()}};
+document.addEventListener('click',e=>{if(!e.target.closest?.('.searchwrap'))hideMainSearchOptions()});
 $('addBtn').onclick=()=>openEditor(null,false);
 if($('monthlyChartBtn'))$('monthlyChartBtn').onclick=()=>{setShellNavActive('monthlyChartBtn');openMonthlyAnalytics()};
 if($('fillSuppliesBtn'))$('fillSuppliesBtn').onclick=openFillSupplies;

@@ -9,11 +9,11 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261016h">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261019a">
 <title>GameTime Factory Work Board</title>
 <script defer src="/app-update.js?v=20261016b"></script></head>
 <body>
-<!-- SECURE_V2_20261016h employee-name-login company-logo -->
+<!-- SECURE_V2_20261019a employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -165,7 +165,8 @@
         </div>
         <div class="searchwrap">
           <span>⌕</span>
-          <input id="search" class="grow" placeholder="Search Product or Batch #">
+          <input id="search" class="grow" placeholder="Search Product or Batch #" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="mainSearchOptions">
+          <div id="mainSearchOptions" class="main-search-options" role="listbox" aria-label="Company products" hidden></div>
         </div>
       </section>
 
@@ -620,8 +621,8 @@
 <div class="modal" id="fillSuppliesModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Fill Line Inventory</h2><button data-close="fillSuppliesModal">✕</button></div><p class="inventoryhelp">Empty containers, boxes, lids, and pallets. Set opening physical counts, then record receipts and actual material use here. Filling quantities do not automatically deduct these supplies.</p><input id="fillSuppliesSearch" placeholder="Search all supplies…" aria-label="Search Fill Line supplies"><p id="fillSuppliesMessage" role="status"></p><div id="fillSuppliesBody"></div><details class="fill-supply-history"><summary>Movement history — latest 100</summary><div class="manager-shipping-table"><table><thead><tr><th>Time</th><th>Supply</th><th>Action</th><th>Quantity</th><th>Balance</th><th>By</th><th>Note</th></tr></thead><tbody id="fillSupplyHistory"></tbody></table></div></details></div></div>
 <div class="modal" id="fillSupplyMovementModal"><div class="dialog"><div class="dialoghead"><h2 id="fillSupplyMovementTitle">Update supply</h2><button data-close="fillSupplyMovementModal">✕</button></div><p id="fillSupplyCurrent"></p><div class="inventorysetgrid"><label>Quantity (whole items)<input id="fillSupplyQuantity" type="number" min="0" step="1" inputmode="numeric"></label><label>Note / batch / reference<input id="fillSupplyNote" maxlength="500"></label></div><p id="fillSupplyMovementMessage" role="status"></p><div class="dialogactions"><button data-close="fillSupplyMovementModal">Cancel</button><button id="saveFillSupplyBtn" class="primary">Save movement</button></div></div></div>
 
-<script src="fill-line.js?v=SECURE_V2_20261016h"></script>
-<script src="app.js?v=SECURE_V2_20261016h"></script>
+<script src="fill-line.js?v=SECURE_V2_20261019a"></script>
+<script src="app.js?v=SECURE_V2_20261019a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
