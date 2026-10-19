@@ -337,7 +337,7 @@ export function PalletDesk() {
   const skipNextAutoSave=useRef(false);
   const cloudQueue=useRef<Promise<unknown>>(Promise.resolve());
   useEffect(()=>{db.from('inventory_current_stock').select('product').then(({data})=>setStockProducts([...new Set((data||[]).map(r=>r.product as string))]));},[]);
-  function deskState(){return {id:activeOpenId,orderName,customer,notes,date,salespersonName,salespersonEmail,bol,carrier,shipMethod,mixSmall,palletTareLb,rules,lines,loaded,batchCodes,headerOk,inventoryProducts,slipText:scanText,worker:account?.display_name,workerSession:workSessionId()};}
+  function deskState(){return {id:activeOpenId,orderName,customer,notes,date,salespersonName,salespersonEmail,bol,carrier,shipMethod,mixSmall,palletTareLb,rules,lines,loaded,batchCodes,headerOk,inventoryProducts:Object.fromEntries(Object.entries(inventoryProducts).map(([id,name])=>[id,/^hybild(?:\s+sealer)?$/i.test(name.trim())?'Hybild Sealer':name])),slipText:scanText,worker:account?.display_name,workerSession:workSessionId()};}
   useEffect(()=>{
     if(skipNextAutoSave.current){skipNextAutoSave.current=false;return;}
     if(printLock.current||!activeOpenId||!lines.some(l=>l.qty>0)||['SHIPPED','CANCELED'].includes(cloudStatus))return;

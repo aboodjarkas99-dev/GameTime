@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261016g';
+const BUILD='SECURE_V2_20261016h';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -895,7 +895,7 @@ function recalc(){
 }
 async function saveEditor(){
   if(saveBusy)return;
-  const product=titleCase($('product').value.trim()),
+  const product=canonicalFactoryProduct(titleCase($('product').value.trim())),
         batchDate=editorMode==='hold'?'':$('workDate').value,
         prodDate=editorMode==='hold'?'':$('prodWorkDate').value,
         batchNo=$('batchNumber').value.trim();
@@ -1037,7 +1037,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261016g':'batch-maker.html?build=SECURE_V2_20261016g'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261016h':'batch-maker.html?build=SECURE_V2_20261016h'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1419,13 +1419,15 @@ async function shippingDownloadPdf(){
     doc.save('GameTime-Shipping-'+name+'.pdf');shippingEditorMessage('PDF downloaded. Open it to print.');
   }catch(e){shippingEditorMessage(e.message||String(e),true)}finally{btn.disabled=false}
 }
+function canonicalFactoryProduct(name){return /^hybild(?:\s+sealer)?$/i.test(String(name).trim())?'Hybild Sealer':name}
 function companyProductNames(){return factoryProducts.filter(p=>p.active).map(p=>p.name).sort((a,b)=>a.localeCompare(b))}
 async function loadFactoryProducts(){
   if(!profile)return;
   const {data,error}=await db.from('factory_products').select('id,name,active,category,stock_limits').order('name');
   if(error)throw error;
-  if(JSON.stringify(factoryProducts)===JSON.stringify(data||[]))return;
-  factoryProducts=data||[];populateInventoryProducts();
+  const catalog=(data||[]).filter(p=>String(p.name).trim().toLowerCase()!=='hybild');
+  if(JSON.stringify(factoryProducts)===JSON.stringify(catalog))return;
+  factoryProducts=catalog;populateInventoryProducts();
   if($('catalogModal')?.classList.contains('show'))renderProductCatalog();
   if($('inventoryModal')?.classList.contains('show'))renderInventoryStock();
   if(document.activeElement===$('product'))showProductOptions();
@@ -1605,7 +1607,7 @@ function openInventorySet(row=null){
 }
 async function saveInventorySet(){
   if(!canEditInventoryStock())return;
-  const product=$('inventorySetProduct').value.trim().replace(/\s+/g,' ');
+  const product=canonicalFactoryProduct($('inventorySetProduct').value.trim().replace(/\s+/g,' '));
   const package_type=$('inventorySetPackage').value;
   const category=$('inventorySetCategory').value;
   const raw=$('inventorySetQty').value.trim(),target_units=Number(raw);

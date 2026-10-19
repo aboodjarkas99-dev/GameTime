@@ -1241,7 +1241,7 @@ export function productLabel(sku: string, description: string, size?: SizeKey): 
       const base = /seal/i.test(text) ? "Hybild Tinted Sealer" : "Tinted Hybild";
       return tint ? `${base} · ${tint}` : base;
     }
-    return sealer ? "Hybild Sealer" : "Hybild";
+    return "Hybild Sealer";
   }
   if (code && kind) return `${code} ${kind}`;
   if (/over\s*time|\bgtot/i.test(text)) return catalyst ? "OverTime Catalyst" : "OverTime Finish";
