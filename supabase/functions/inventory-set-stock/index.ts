@@ -9,6 +9,7 @@ function packageInfo(raw:string){
   const p=String(raw||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
   const map:Record<string,string>={
     "5_gallon":"five_gallon_pail","5_gallon_pail":"five_gallon_pail","five":"five_gallon_pail","five_gallon":"five_gallon_pail","five_gallon_pail":"five_gallon_pail","pail":"five_gallon_pail",
+    "gallon_1_5":"gallon_1_5","1_5_gallon":"gallon_1_5",
     "gallon":"gallon","gallons":"gallon","1_gallon":"gallon","one_gallon":"gallon",
     "quart":"quart_can","quarts":"quart_can","quart_can":"quart_can",
     "pint":"pint_can","pints":"pint_can","pint_can":"pint_can",
@@ -17,7 +18,7 @@ function packageInfo(raw:string){
   };
   const type=map[p];
   if(!type)return null;
-  const gpu:Record<string,number|null>={five_gallon_pail:5,gallon:1,quart_can:.25,pint_can:.125,jerry_1_25:1.25,vinyl_box:null,drawdown_box:null,box:null,unit:null};
+  const gpu:Record<string,number|null>={five_gallon_pail:5,gallon:1,gallon_1_5:1.5,quart_can:.25,pint_can:.125,jerry_1_25:1.25,vinyl_box:null,drawdown_box:null,box:null,unit:null};
   return {type,gpu:gpu[type]};
 }
 

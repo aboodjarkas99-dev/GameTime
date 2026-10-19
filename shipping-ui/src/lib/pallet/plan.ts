@@ -1245,7 +1245,7 @@ export function productLabel(sku: string, description: string, size?: SizeKey): 
   }
   if (code && kind) return `${code} ${kind}`;
   if (/over\s*time|\bgtot/i.test(text)) return catalyst ? "OverTime Catalyst" : "OverTime Finish";
-  if (/xcel|excel/i.test(text)) return /part\s*b/i.test(text) ? "Xcel Part B" : "Xcel";
+  if (/x[ -]?cel|excel/i.test(text)) return /(?:part\s*b|x[ -]?cel\s*b|catalyst)/i.test(text) ? "X-cel Catalyst Part B" : "X-cel 2k High Solids Part A";
   const paintLine = paintDetail(sku, description);
   const marked = slipColor(description);
   if (marked) return marked;

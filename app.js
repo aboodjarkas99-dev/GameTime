@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261019a';
+const BUILD='SECURE_V2_20261019b';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -1037,7 +1037,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261019a':'batch-maker.html?build=SECURE_V2_20261019a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261019b':'batch-maker.html?build=SECURE_V2_20261019b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1432,13 +1432,16 @@ function showMainSearchOptions(){
  box.hidden=false;$('search').setAttribute('aria-expanded','true');
  box.querySelectorAll('[data-main-search]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{$('search').value=names[Number(b.dataset.mainSearch)];render();$('search').focus();hideMainSearchOptions()};b.onkeydown=e=>{if(e.key==='Escape'){$('search').focus();hideMainSearchOptions()}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[...box.querySelectorAll('button')],i=buttons.indexOf(b);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}}});
 }
-function canonicalFactoryProduct(name){return /^hybild(?:\s+sealer)?$/i.test(String(name).trim())?'Hybild Sealer':name}
+function canonicalFactoryProduct(name){
+ const key=String(name||'').trim().toLowerCase().replace(/[\s-]+/g,'');
+ return ({hybild:'Hybild Sealer',hybildsealer:'Hybild Sealer',overtime:'OverTime Finish',overtimefinish:'OverTime Finish',overtimecatalyst:'OverTime Catalyst',xcela:'X-cel 2k High Solids Part A',xcelparta:'X-cel 2k High Solids Part A',xcel2khighsolidsparta:'X-cel 2k High Solids Part A',xcelb:'X-cel Catalyst Part B',xcelpartb:'X-cel Catalyst Part B',xcelcatalystpartb:'X-cel Catalyst Part B'})[key]||name;
+}
 function companyProductNames(){return factoryProducts.filter(p=>p.active).map(p=>p.name).sort((a,b)=>a.localeCompare(b))}
 async function loadFactoryProducts(){
   if(!profile)return;
   const {data,error}=await db.from('factory_products').select('id,name,active,category,stock_limits').order('name');
   if(error)throw error;
-  const catalog=(data||[]).filter(p=>String(p.name).trim().toLowerCase()!=='hybild');
+  const catalog=(data||[]).filter(p=>!['hybild','overtime','xcel a','xcel b','xcel part a','xcel part b'].includes(String(p.name).trim().toLowerCase()));
   if(JSON.stringify(factoryProducts)===JSON.stringify(catalog))return;
   factoryProducts=catalog;populateInventoryProducts();
   if($('catalogModal')?.classList.contains('show'))renderProductCatalog();
@@ -1530,7 +1533,7 @@ function inventoryCategoryLabel(category){return {sport:'Sport Floors',residenti
 function inventoryProductCard(p){
   const rows=inventoryStockRows.filter(r=>String(r.product).trim().toLowerCase()===p.name.trim().toLowerCase());
   const standard=p.category==='sport'?['five_gallon_pail']:['quart_can','gallon','five_gallon_pail'];
-  const packages=[...new Set([...standard,...(p.category==='sport'?[]:rows.map(r=>r.package_type))])].filter(type=>{const row=rows.find(r=>r.package_type===type);return row&&inventoryNum(row.stock_units)!==0});
+  const packages=[...new Set([...standard,...rows.map(r=>r.package_type)])].filter(type=>{const row=rows.find(r=>r.package_type===type);return row&&inventoryNum(row.stock_units)!==0});
   return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Settings</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
     const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units),limits=p.stock_limits?.[type];
     const capacity=inventoryPalletCapacity(type),pallets=inventoryPalletCount(v,type);
@@ -1549,7 +1552,7 @@ function renderInventoryStock(){
   const known=new Set(factoryProducts.map(p=>p.name.trim().toLowerCase()));
   for(const r of inventoryStockRows){const name=String(r.product).trim();if(!known.has(name.toLowerCase())&&(!q||name.toLowerCase().includes(q))){products.push({name,id:'',category:'unclassified',stock_limits:{}});known.add(name.toLowerCase());}}
   const summary=['five_gallon_pail','gallon','quart_can'].map(type=>{
-    const matching=inventoryStockRows.filter(r=>r.package_type===type&&products.some(p=>p.name.trim().toLowerCase()===r.product.trim().toLowerCase()&&(p.category!=='sport'||type==='five_gallon_pail')));
+    const matching=inventoryStockRows.filter(r=>r.package_type===type&&products.some(p=>p.name.trim().toLowerCase()===r.product.trim().toLowerCase()));
     const capacity=inventoryPalletCapacity(type),full=matching.reduce((sum,r)=>sum+Math.floor(Math.max(0,inventoryNum(r.stock_units))/capacity),0),loose=matching.reduce((sum,r)=>sum+Math.max(0,inventoryNum(r.stock_units))%capacity,0),shortage=matching.reduce((sum,r)=>sum+Math.max(0,-inventoryNum(r.stock_units)),0);
     return '<div><span>'+esc(inventoryPackageLabel(type))+'</span>'+(matching.length?inventorySimpleCount(0,type,full,loose):'<b>—</b>')+'<small>Across products · '+capacity+' '+inventoryLooseLabel(type)+' per pallet</small>'+(shortage?'<small class="stock-shortage">Shortage: '+shortage+' '+inventoryLooseLabel(type)+'</small>':'')+'</div>';
   }).join('');
@@ -1633,7 +1636,11 @@ async function saveInventorySet(){
   $('saveInventorySetBtn').disabled=true;say('Saving current stock…');
   try{
     const {data,error}=await db.functions.invoke('inventory-set-stock',{body:{product,category,package_type,target_units,event_date,note}});
-    if(error||data?.error)throw new Error(data?.error||error?.message||'Could not save stock');
+    if(error||data?.error){
+      let detail=data?.error;
+      if(!detail&&error?.context){try{const response=await error.context.clone().json();detail=response?.error||response?.message}catch{}}
+      throw new Error(detail||error?.message||'Could not save stock');
+    }
     say(data?.no_change?'Stock already matches this quantity.':'Current stock saved.');
     await loadFactoryProducts();
     await loadInventoryStock();
