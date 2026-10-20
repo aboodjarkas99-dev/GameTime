@@ -42,3 +42,14 @@ ctx.showMainSearchOptions();assert.equal(nodes.mainSearchOptions.hidden,false);a
 nodes.search.value='phoenix';ctx.showMainSearchOptions();assert.match(nodes.mainSearchOptions.innerHTML,/Phoenix Satin/);assert.doesNotMatch(nodes.mainSearchOptions.innerHTML,/Alpha Satin/);
 ctx.hideMainSearchOptions();assert.equal(nodes.mainSearchOptions.hidden,true);
 console.log('Search suggestions open and filter; zero and missing inventory sizes are hidden.');
+const limitRow=(type,pallets,loose)=>({dataset:{limitType:type},querySelector:selector=>selector.endsWith('-pallets]')?(pallets===undefined?null:{value:pallets}):{value:loose}});
+assert.equal(ctx.inventoryReadLimit(limitRow('five_gallon_pail','2','4'),'minimum'),76);
+assert.equal(ctx.inventoryReadLimit(limitRow('gallon','2','4'),'minimum'),244);
+assert.equal(ctx.inventoryReadLimit(limitRow('quart_can','1','8'),'minimum'),728);
+assert.equal(ctx.inventoryReadLimit(limitRow('five_gallon_pail','',''),'minimum'),null);
+assert.equal(ctx.inventoryReadLimit(limitRow('five_gallon_pail','0','0'),'minimum'),0);
+assert.throws(()=>ctx.inventoryReadLimit(limitRow('five_gallon_pail','2.5','0'),'minimum'),/whole/);
+assert.throws(()=>ctx.inventoryReadLimit(limitRow('five_gallon_pail','-1','0'),'minimum'),/whole/);
+assert.match(ctx.inventoryLimitInputs('five_gallon_pail',90,'minimum','Minimum stock'),/value="2"/);
+assert.match(ctx.inventoryLimitInputs('five_gallon_pail',90,'minimum','Minimum stock'),/value="18"/);
+console.log('Pallet stock limits convert correctly, preserve existing limits, and reject fractions.');

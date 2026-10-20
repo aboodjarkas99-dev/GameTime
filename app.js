@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261020a';
+const BUILD='SECURE_V2_20261020b';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -1037,7 +1037,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261020a':'batch-maker.html?build=SECURE_V2_20261020a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261020b':'batch-maker.html?build=SECURE_V2_20261020b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1534,7 +1534,7 @@ function inventoryProductCard(p){
   const rows=inventoryStockRows.filter(r=>String(r.product).trim().toLowerCase()===p.name.trim().toLowerCase());
   const standard=p.category==='sport'?['five_gallon_pail']:['quart_can','gallon','five_gallon_pail'];
   const packages=[...new Set([...standard,...rows.map(r=>r.package_type)])].filter(type=>{const row=rows.find(r=>r.package_type===type);return row&&inventoryNum(row.stock_units)!==0});
-  return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Settings</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
+  return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Minimum / Safe</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
     const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units),limits=p.stock_limits?.[type];
     const capacity=inventoryPalletCapacity(type),pallets=inventoryPalletCount(v,type);
     const level=row?inventoryLevel(v,limits):{key:'unset',label:'No recorded balance'};
@@ -1568,20 +1568,31 @@ function renderInventoryStock(){
   body.querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));
   body.querySelectorAll('[data-stock-name]').forEach(b=>b.onclick=()=>{const row=inventoryStockRows.find(r=>r.product===b.dataset.stockName&&r.package_type===b.dataset.stockType);openInventorySet(row||null);$('inventorySetProduct').value=b.dataset.stockName;$('inventorySetPackage').value=b.dataset.stockType;syncInventorySetCategory()});
 }
+function inventoryLimitInputs(type,value,key,title){
+ const capacity=inventoryPalletCapacity(type),set=value!=null;
+ const pallets=set&&capacity?Math.floor(Number(value)/capacity):'',loose=set?(capacity?Number(value)%capacity:Number(value)):'';
+ return '<fieldset class="stock-limit-fields"><legend>'+esc(title)+'</legend>'+(capacity?'<label>Pallets<input data-'+key+'-pallets type="number" min="0" step="1" inputmode="numeric" value="'+esc(pallets)+'" placeholder="Not set"></label>':'')+'<label>'+(capacity?'Extra ':'')+esc(inventoryLooseLabel(type))+'<input data-'+key+'-loose type="number" min="0" step="1" inputmode="numeric" value="'+esc(loose)+'" placeholder="'+(capacity?'0':'Not set')+'"></label></fieldset>';
+}
+function inventoryReadLimit(row,key){
+ const pallet=row.querySelector('[data-'+key+'-pallets]')?.value.trim()||'',loose=row.querySelector('[data-'+key+'-loose]')?.value.trim()||'';
+ if(pallet===''&&loose==='')return null;
+ if([pallet,loose].some(v=>v!==''&&(!Number.isSafeInteger(Number(v))||Number(v)<0)))throw new Error('Enter whole pallets and whole containers, 0 or higher.');
+ return Number(pallet||0)*(inventoryPalletCapacity(row.dataset.limitType)||1)+Number(loose||0);
+}
 let productSettingsTarget=null;
 async function openProductSettings(id){
   if(!isManager)return;
   let p=factoryProducts.find(p=>p.id===id);
   if(!p){const {data,error}=await db.from('factory_products').insert({name:id}).select().single();if(error){toast(error.message);return}await loadFactoryProducts();p=data;}
   productSettingsTarget=p;$('productSettingsTitle').textContent=p.name;$('productCategory').value=p.category;
-  const packages=[...new Set(['five_gallon_pail','gallon','quart_can',...inventoryStockRows.filter(r=>r.product===p.name).map(r=>r.package_type)])];
-  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type],capacity=1,unit=inventoryLooseLabel(type);return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><b>'+esc(inventoryPackageLabel(type))+'</b><label>Minimum ('+unit+')<input data-minimum type="number" min="0" step="any" value="'+esc(limit?limit.minimum/capacity:'')+'" placeholder="Not set"></label><label>Safe stock ('+unit+')<input data-safe type="number" min="0" step="any" value="'+esc(limit?limit.safe/capacity:'')+'" placeholder="Not set"></label></div>'}).join('');
+  const packages=[...new Set(['five_gallon_pail','gallon','quart_can',...inventoryStockRows.filter(r=>r.product===p.name).map(r=>r.package_type),...Object.keys(p.stock_limits||{})])];
+  $('productLimits').innerHTML=packages.map(type=>{const limit=p.stock_limits?.[type],capacity=inventoryPalletCapacity(type);return '<div class="product-limit-row" data-limit-type="'+esc(type)+'"><div class="stock-limit-package"><b>'+esc(inventoryPackageLabel(type))+'</b>'+(capacity?'<small>1 pallet = '+capacity+' '+esc(inventoryLooseLabel(type))+'</small>':'')+'</div>'+inventoryLimitInputs(type,limit?.minimum,'minimum','Minimum stock')+inventoryLimitInputs(type,limit?.safe,'safe','Safe stock')+'</div>'}).join('');
   $('productSettingsMessage').textContent='';showModal('productSettingsModal');
 }
 async function saveProductSettings(){
   if(!isManager||!productSettingsTarget)return;
   const limits={};
-  for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const min=row.querySelector('[data-minimum]').value,safe=row.querySelector('[data-safe]').value;if(min===''&&safe==='')continue;if(min===''||safe===''||!Number.isFinite(Number(min))||!Number.isFinite(Number(safe))||Number(min)<0||Number(safe)<=Number(min)){$('productSettingsMessage').textContent='Safe stock must be greater than minimum. Fill both values, or leave both blank.';return}const capacity=1;limits[row.dataset.limitType]={minimum:Number(min)*capacity,safe:Number(safe)*capacity};}
+  try{for(const row of $('productLimits').querySelectorAll('[data-limit-type]')){const minimum=inventoryReadLimit(row,'minimum'),safe=inventoryReadLimit(row,'safe');if(minimum==null&&safe==null)continue;if(minimum==null||safe==null||safe<=minimum)throw new Error('Set both minimum and safe stock. Safe stock must be higher than minimum.');limits[row.dataset.limitType]={minimum,safe};}}catch(e){$('productSettingsMessage').textContent=e.message;return}
   $('saveProductSettingsBtn').disabled=true;
   try{const {error}=await db.from('factory_products').update({category:$('productCategory').value,stock_limits:limits}).eq('id',productSettingsTarget.id);if(error)throw error;await loadFactoryProducts();hideModal('productSettingsModal');renderInventoryStock();}catch(e){$('productSettingsMessage').textContent=e.message}finally{$('saveProductSettingsBtn').disabled=false}
 }
