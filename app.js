@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261019b';
+const BUILD='SECURE_V2_20261020a';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -1037,7 +1037,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261019b':'batch-maker.html?build=SECURE_V2_20261019b'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261020a':'batch-maker.html?build=SECURE_V2_20261020a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1434,14 +1434,14 @@ function showMainSearchOptions(){
 }
 function canonicalFactoryProduct(name){
  const key=String(name||'').trim().toLowerCase().replace(/[\s-]+/g,'');
- return ({hybild:'Hybild Sealer',hybildsealer:'Hybild Sealer',overtime:'OverTime Finish',overtimefinish:'OverTime Finish',overtimecatalyst:'OverTime Catalyst',xcela:'X-cel 2k High Solids Part A',xcelparta:'X-cel 2k High Solids Part A',xcel2khighsolidsparta:'X-cel 2k High Solids Part A',xcelb:'X-cel Catalyst Part B',xcelpartb:'X-cel Catalyst Part B',xcelcatalystpartb:'X-cel Catalyst Part B'})[key]||name;
+ return ({'1k':'AND1k',and1k:'AND1k',hybild:'Hybild Sealer',hybildsealer:'Hybild Sealer',overtime:'OverTime Finish',overtimefinish:'OverTime Finish',overtimecatalyst:'OverTime Catalyst',xcela:'X-cel 2k High Solids Part A',xcelparta:'X-cel 2k High Solids Part A',xcel2khighsolidsparta:'X-cel 2k High Solids Part A',xcelb:'X-cel Catalyst Part B',xcelpartb:'X-cel Catalyst Part B',xcelcatalystpartb:'X-cel Catalyst Part B'})[key]||name;
 }
 function companyProductNames(){return factoryProducts.filter(p=>p.active).map(p=>p.name).sort((a,b)=>a.localeCompare(b))}
 async function loadFactoryProducts(){
   if(!profile)return;
   const {data,error}=await db.from('factory_products').select('id,name,active,category,stock_limits').order('name');
   if(error)throw error;
-  const catalog=(data||[]).filter(p=>!['hybild','overtime','xcel a','xcel b','xcel part a','xcel part b'].includes(String(p.name).trim().toLowerCase()));
+  const catalog=(data||[]).filter(p=>!['1k','hybild','overtime','xcel a','xcel b','xcel part a','xcel part b'].includes(String(p.name).trim().toLowerCase()));
   if(JSON.stringify(factoryProducts)===JSON.stringify(catalog))return;
   factoryProducts=catalog;populateInventoryProducts();
   if($('catalogModal')?.classList.contains('show'))renderProductCatalog();

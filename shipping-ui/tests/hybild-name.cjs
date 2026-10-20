@@ -14,3 +14,6 @@ assert.equal(productLabel('TEST','X-cel Catalyst Part B','gal1'),'X-cel Catalyst
 assert.equal(canonicalProductName('Xcel Part B'),'X-cel Catalyst Part B');
 assert.equal(canonicalProductName('OverTime Catalyst'),'OverTime Catalyst');
 console.log('OverTime Finish, X-cel A/B and inventory mappings resolve correctly; catalyst stays separate.');
+assert.equal(productLabel('TEST','1K','gal5'),'AND1k');
+assert.equal(productLabel('TEST','AND1k','gal5'),'AND1k');
+assert.equal(canonicalProductName('1K'),'AND1k');

@@ -1221,6 +1221,7 @@ export function paintDetail(sku: string, description: string): { title: string; 
 
 export function productLabel(sku: string, description: string, size?: SizeKey): string {
   const text = `${sku} ${description}`;
+  if (/\b(?:and[\s-]*)?1k\b/i.test(text)) return "AND1k";
   const code = sku.match(/(?:^|[^0-9])(275|450|500)(?:[^0-9]|$)/)?.[1] ?? description.match(/\b(275|450|500)\b/)?.[1] ?? "";
   const sealer = /seal/i.test(text);
   const finish = /finish|sport\s*poly/i.test(text) || /(?:^|[-_])F(?:$|[^A-Z0-9])/i.test(sku);
