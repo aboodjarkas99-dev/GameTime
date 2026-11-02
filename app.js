@@ -1,7 +1,8 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261102a';
+const BUILD='SECURE_V2_20261102c';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
+const labelsPortal=new URLSearchParams(location.search).get('workspace')==='labels';
 const ownerPortal=new URLSearchParams(location.search).get('workspace')==='owner';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
 let shippingRefreshTimer=null;
@@ -184,7 +185,7 @@ let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
 let deviceName='';
 function roleLabel(){
-  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',chemist:'Chemist',viewer:'Owner / Read Only',manager:'Management'}[r]||r)).join(' + ');
+  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Owner / Read Only',manager:'Management'}[r]||r)).join(' + ');
   if(profile?.job_title)return profile.job_title.replace(/production/gi,'Fill Line');
   const r=profile?.role;
   return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='chemist'?'Chemist':r==='shipping'?'Shipping':r==='inventory'?'Inventory':r==='viewer'?t('readOnly'):'';
@@ -302,6 +303,7 @@ async function activateSession(user){
   authUser=user;
   const p=await fetchMyProfile(user.id);
   applyProfile(p);
+  if((labelsPortal||employeeRoles().every(r=>r==='labels'))&&employeeRoles().some(r=>['manager','chemist','labels','prod'].includes(r))){location.replace('/labels.html');return}
   if((ownerPortal||employeeRoles().every(r=>r==='viewer'))&&employeeRoles().some(r=>['manager','chemist','viewer'].includes(r))){location.replace('/owner.html');return}
   if(inventoryPortal&&!canViewInventory())throw new Error('Inventory access required. Ask Management for an Inventory account.');
   hideAuthScreen();
@@ -430,7 +432,7 @@ async function loadStaff(){
   staffRows=data||[];
   $('staffList').innerHTML=staffRows.map(p=>{
     const employee=p.role!=='manager';
-    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',chemist:'Chemist',viewer:'Owner / Read Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
+    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Owner / Read Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
       (employee?'<div class="staffactions"><button type="button" data-staff-edit="'+p.id+'">Edit</button><button type="button" class="danger" data-staff-delete="'+p.id+'">Delete</button></div>':'')+
       '</div>';
   }).join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
@@ -557,7 +559,7 @@ function titleCase(s){return String(s||'').replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b
 function statusText(s){return s==='done'?t('completedStatus'):s==='progress'?t('inProgress'):t('notStarted')}
 function statusClass(s){return s==='done'?'done-status':s==='progress'?'progress':'ready'}
 function deptText(d){return d==='prod'?t('productionRole'):d==='batch'?t('batchMakerRole'):d==='all'?t('allWork'):String(d||'')}
-function eventTypeText(v){const s=String(v||'');const names=lang==='es'?{done:'Terminó el trabajo',progress:'Inició el trabajo',reopened:'Reabrió el trabajo',package:'Actualizó cantidades',precheck:'Actualizó pre-check',hold:'Puso en espera',resume:'Reanudó',edit:'Actualizó la orden',schedule:'Cambió la fecha',delete:'Eliminó la orden'}:{done:'Completed work',progress:'Started work',reopened:'Reopened work',package:'Updated quantities',precheck:'Updated pre-check',hold:'Put work on hold',resume:'Resumed work',edit:'Updated the order',schedule:'Changed the schedule',delete:'Deleted the order'};return names[s]||s.replace(/_/g,' ')}
+function eventTypeText(v){const s=String(v||'');const names=lang==='es'?{done:'Terminó el trabajo',progress:'Inició el trabajo',reopened:'Reabrió el trabajo',package:'Actualizó cantidades',precheck:'Actualizó pre-check',hold:'Puso en espera',resume:'Reanudó',edit:'Actualizó la orden',schedule:'Cambió la fecha',delete:'Eliminó la orden'}:{done:'Completed work',progress:'Started work',reopened:'Reopened work',start_cleared:'Cleared Start Work',labels:'Updated labels',package:'Updated quantities',precheck:'Updated pre-check',hold:'Put work on hold',resume:'Resumed work',edit:'Updated the order',schedule:'Changed the schedule',delete:'Deleted the order'};return names[s]||s.replace(/_/g,' ')}
 function setSync(state,label){const el=$('syncStatus');el.className='sync '+state;const k={LIVE:'syncLive',SYNCING:'syncSyncing',SAVING:'syncSaving',OFFLINE:'syncOffline',RETRYING:'syncRetrying',RECONNECTING:'syncReconnecting',IMPORTING:'syncImporting'}[label||state.toUpperCase()];el.textContent=k?t(k):(label||state.toUpperCase())}
 let toastTimer=null;function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
 function cache(){localStorage.setItem(CACHE_KEY,JSON.stringify(orders))}
@@ -741,7 +743,7 @@ function card(o,dept,i){
       :(note?'<div class="note work-note"><b>'+esc(t('batchNote'))+'</b> '+esc(note)+'</div>':'<div class="note">'+esc(t('prepareBatch'))+'</div>'))+
     '<label class="precheck '+(checked?'ok ':'')+(prodWaiting?'locked-wait ':'')+(!canAct?'readonly-control':'')+'" '+(canAct?'data-check="'+o.id+'" data-dept="'+dept+'" data-waiting="'+(prodWaiting?'1':'0')+'"':'')+'><span class="sq">'+(checked?'✓':'')+'</span><span class="checktxt"><b>'+esc(t('precheck'))+'</b><small>'+esc(dept==='prod'?t('prodCheckHint'):t('batchCheckHint'))+'</small></span></label>'+
     '<div class="status '+statusClass(st)+'">'+esc(statusText(st))+'</div>'+(isManager&&o.updatedBy?'<div class="work-actor">'+(lang==='es'?'Última actualización: ':'Last update: ')+'<strong>'+esc(o.updatedBy)+'</strong></div>':'')+
-    (canAct?'<div class="actions"><button class="start '+(checked&&!prodWaiting?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'" '+(prodWaiting?'disabled':'')+'>'+esc(t('startWork'))+'</button><button class="finish '+(st==='done'?'can-undo':checked&&!prodWaiting?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'" aria-pressed="'+(st==='done')+'" '+(prodWaiting&&st!=='done'?'disabled':'')+'>'+esc(st==='done'?(lang==='es'?'✓ TERMINADO · Deshacer':'✓ WORK DONE · Undo'):t('workDone'))+'</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+esc(o.held?t('resumeWork'):t('putOnHold'))+'</button></div>':'<div class="readonlytag inline-readonly">'+esc(t('readOnly'))+'</div>')+
+    (canAct?'<div class="actions"><button class="start '+(checked&&!prodWaiting?'':'locked')+'" data-action="start" data-id="'+o.id+'" data-dept="'+dept+'" '+((st==='done'||prodWaiting&&st!=='progress')?'disabled':'')+' aria-pressed="'+(st==='progress')+'">'+esc(st==='progress'?'● STARTED · Undo':t('startWork'))+'</button><button class="finish '+(st==='done'?'can-undo':checked&&!prodWaiting?'':'locked')+'" data-action="done" data-id="'+o.id+'" data-dept="'+dept+'" aria-pressed="'+(st==='done')+'" '+(prodWaiting&&st!=='done'?'disabled':'')+'>'+esc(st==='done'?(lang==='es'?'✓ TERMINADO · Deshacer':'✓ WORK DONE · Undo'):t('workDone'))+'</button><button class="hold" data-action="hold" data-id="'+o.id+'">'+esc(o.held?t('resumeWork'):t('putOnHold'))+'</button></div>':'<div class="readonlytag inline-readonly">'+esc(t('readOnly'))+'</div>')+
     (isManager?'<div class="manage"><button data-edit="'+o.id+'">'+esc(t('edit'))+'</button><button data-tohold="'+o.id+'">'+esc(t('moveToHold'))+'</button><button data-delete="'+o.id+'">'+esc(t('delete'))+'</button></div>':'')+
     (hasMade?'<div class="batchmade-corner">'+esc(t('batchMadeOn'))+' <b>'+esc(usDate(o.batchMadeDate))+'</b></div>':'')+
     '</article>';
@@ -752,6 +754,7 @@ function render(){
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
   if($('inventoryBtn'))$('inventoryBtn').style.display=canViewInventory()?'':'none';
+  if($('labelsNav'))$('labelsNav').style.display=labelRoles().some(r=>['manager','chemist','labels','prod'].includes(r))?'':'none';
   if($('fillSuppliesBtn'))$('fillSuppliesBtn').style.display=canUseFillSupplies()?'':'none';
   if($('shippingChartBtn'))$('shippingChartBtn').style.display=canViewInventory()?'':'none';
   if($('managerShippingBtn'))$('managerShippingBtn').style.display=isManager?'':'none';
@@ -791,9 +794,9 @@ async function handleAction(btn){
   try{
     if(btn.dataset.action==='hold'){await patchOrder(id,{held:!o.held});return}
     const dept=btn.dataset.dept;
-    if(btn.dataset.action==='done'){
+    if(['done','start'].includes(btn.dataset.action)){
       const key=id+':'+dept;if(workDonePending.has(key))return;workDonePending.add(key);btn.disabled=true;
-      try{const {data,error}=await db.rpc('toggle_work_done',{p_order_id:id,p_department:dept,p_expected_status:dept==='batch'?o.batchStatus:o.prodStatus});if(error)throw error;if(data?.order){mergeOrder(fromRow(data.order));render()}if(data?.conflict)toast('This order changed on another screen. Latest status loaded.');else if(data?.reopened)toast(lang==='es'?'Trabajo reabierto':'Work reopened');}finally{workDonePending.delete(key);btn.disabled=false}
+      try{const {data,error}=await db.rpc(btn.dataset.action==='start'?'toggle_work_start':'toggle_work_done',{p_order_id:id,p_department:dept,p_expected_status:dept==='batch'?o.batchStatus:o.prodStatus});if(error)throw error;if(data?.order){mergeOrder(fromRow(data.order));render()}if(data?.conflict)toast('This order changed on another screen. Latest status loaded.');else if(data?.reopened)toast(lang==='es'?'Trabajo reabierto':'Work reopened');}finally{workDonePending.delete(key);btn.disabled=false}
       return;
     }
     if(dept==='prod'&&o.batchStatus!=='done'){toast(t('productionLocked'));return}const checked=dept==='batch'?o.batchChecked:o.prodChecked;if(!checked){toast(t('completePrecheck'));return}
@@ -1046,7 +1049,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261102a':'batch-maker.html?build=SECURE_V2_20261102a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261102c':'batch-maker.html?build=SECURE_V2_20261102c'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -2118,3 +2121,4 @@ db.auth.onAuthStateChange((event,session)=>{
   }
 });
 tick();setInterval(tick,30000);secureStart();
+if($('shareLabels'))$('shareLabels').onclick=async()=>{const url=new URL('/labels.html',location.origin).href;try{await navigator.clipboard.writeText(url);toast('Labels link copied. Assign Labels access in Staff.')}catch{prompt('Labels link:',url)}};

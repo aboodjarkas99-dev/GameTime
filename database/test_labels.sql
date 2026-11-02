@@ -1,0 +1,32 @@
+BEGIN;
+SELECT set_config('request.jwt.claim.sub',(SELECT id::text FROM profiles WHERE role='manager' AND active LIMIT 1),true);
+INSERT INTO work_orders(id,product,batch,work_date,prod_work_date,quart,gallon,five,jerry_enabled,jerry,batch_checked,prod_checked,batch_status) VALUES(-990001,'LABEL TEST','TEST',current_date,current_date,'4','8','36',true,'2',true,true,'done');
+DO $$ DECLARE r label_requests%ROWTYPE; op uuid:=gen_random_uuid(); result jsonb; BEGIN
+ IF (SELECT count(*) FROM label_requests WHERE work_order_id=-990001)<>3 THEN RAISE EXCEPTION 'Wrong package count'; END IF;
+ SELECT * INTO r FROM label_requests WHERE work_order_id=-990001 AND package_type='gallon';
+ result:=public.update_label_request(r.id,r.version,'print',8,op);
+ PERFORM public.update_label_request(r.id,r.version,'print',8,op);
+ IF (SELECT stock_units FROM fill_line_label_stock WHERE id=r.stock_id)<>8 OR (SELECT printed_units FROM label_requests WHERE id=r.id)<>8 THEN RAISE EXCEPTION 'Duplicate print credited'; END IF;
+ result:=public.update_label_request(r.id,r.version,'need');
+ IF NOT (result->>'conflict')::boolean THEN RAISE EXCEPTION 'Stale request accepted'; END IF;
+ BEGIN PERFORM public.record_label_stock(gen_random_uuid(),r.stock_id,'use',9); RAISE EXCEPTION 'Negative stock accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM='Negative stock accepted' THEN RAISE; END IF; END;
+ result:=public.toggle_work_start(-990001,'prod','ready');
+ IF result->'order'->>'prod_status'<>'progress' THEN RAISE EXCEPTION 'Start failed'; END IF;
+ result:=public.toggle_work_start(-990001,'prod','ready');IF NOT (result->>'conflict')::boolean THEN RAISE EXCEPTION 'Stale start accepted'; END IF;
+ result:=public.toggle_work_start(-990001,'prod','progress');IF result->'order'->>'prod_status'<>'ready' THEN RAISE EXCEPTION 'Undo start failed'; END IF;
+END $$;
+UPDATE work_orders SET fill_packaging='{"gallon_style":"f_style"}' WHERE id=-990001;
+DO $$ BEGIN IF (SELECT count(*) FROM label_requests WHERE work_order_id=-990001 AND active)<>3 OR NOT EXISTS(SELECT 1 FROM label_requests WHERE work_order_id=-990001 AND package_type='f_style' AND active) OR EXISTS(SELECT 1 FROM label_requests WHERE work_order_id=-990001 AND package_type='gallon' AND active) THEN RAISE EXCEPTION 'F Style sync failed'; END IF; END $$;
+UPDATE work_orders SET hold_line=true WHERE id=-990001;
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM label_requests WHERE work_order_id=-990001 AND active) THEN RAISE EXCEPTION 'Hold requests active'; END IF; END $$;
+UPDATE profiles SET role='labels',page_roles=ARRAY['labels'] WHERE id=auth.uid();
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+ IF EXISTS(SELECT 1 FROM work_orders) THEN RAISE EXCEPTION 'Labels can read orders'; END IF;
+ IF EXISTS(SELECT 1 FROM activity_logs) THEN RAISE EXCEPTION 'Labels can read manager activity'; END IF;
+ BEGIN PERFORM public.toggle_work_start(-990001,'prod','ready'); RAISE EXCEPTION 'Labels can start work'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF NOT EXISTS(SELECT 1 FROM fill_line_label_stock) THEN RAISE EXCEPTION 'Label stock hidden'; END IF;
+END $$;
+RESET ROLE;
+SELECT 'Labels sync, printing idempotency, stock protection, stale request/start protection, Start undo and Labels role isolation passed' AS result;
+ROLLBACK;

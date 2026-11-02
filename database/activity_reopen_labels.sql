@@ -30,12 +30,12 @@ begin
 
   if old.batch_status is distinct from new.batch_status then
     insert into public.activity_logs(product,dept,event_type,extra,actor)
-    values(new.product,'batch',case when old.batch_status='done' and new.batch_status<>'done' then 'reopened' else new.batch_status end,case when old.batch_status='done' and new.batch_status<>'done' then 'Work Done undone' else 'Batch status changed' end,who);
+    values(new.product,'batch',case when old.batch_status='done' and new.batch_status<>'done' then 'reopened' when old.batch_status='progress' and new.batch_status='ready' then 'start_cleared' else new.batch_status end,case when old.batch_status='done' and new.batch_status<>'done' then 'Work Done undone' when old.batch_status='progress' and new.batch_status='ready' then 'Start Work undone' else 'Batch status changed' end,who);
   end if;
 
   if old.prod_status is distinct from new.prod_status then
     insert into public.activity_logs(product,dept,event_type,extra,actor)
-    values(new.product,'prod',case when old.prod_status='done' and new.prod_status<>'done' then 'reopened' else new.prod_status end,case when old.prod_status='done' and new.prod_status<>'done' then 'Work Done undone' else 'Fill Line status changed' end,who);
+    values(new.product,'prod',case when old.prod_status='done' and new.prod_status<>'done' then 'reopened' when old.prod_status='progress' and new.prod_status='ready' then 'start_cleared' else new.prod_status end,case when old.prod_status='done' and new.prod_status<>'done' then 'Work Done undone' when old.prod_status='progress' and new.prod_status='ready' then 'Start Work undone' else 'Fill Line status changed' end,who);
   end if;
 
   if old.batch_checked is distinct from new.batch_checked then

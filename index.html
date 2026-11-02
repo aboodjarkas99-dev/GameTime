@@ -9,11 +9,11 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261102a">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261102c">
 <title>GameTime Factory Work Board</title>
 <script defer src="/app-update.js?v=20261016b"></script></head>
 <body>
-<!-- SECURE_V2_20261102a employee-name-login company-logo -->
+<!-- SECURE_V2_20261102c employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
   <div class="authcard">
     <div class="authbrand">GAMETIME SECURE V2</div>
@@ -85,7 +85,7 @@
           </div>
         </div>
         <button id="shippingWorkspaceBtn" type="button"><span>▣</span><b>Shipping</b></button>
-        <button id="fillSuppliesBtn" type="button" style="display:none"><span>▦</span><b>Fill Line Inventory</b></button>
+        <a href="/labels.html" id="labelsNav" style="display:none;padding:12px">Label Sheet</a><button id="fillSuppliesBtn" type="button" style="display:none"><span>▦</span><b>Fill Line Inventory</b></button>
         <button id="inventoryBtn" type="button"><span>▧</span><b>Inventory</b></button>
         <button id="managerShippingBtn" type="button" style="display:none"><span>⇢</span><b>Shipping Details</b></button>
         <button id="shippingChartBtn" type="button"><span>⇢</span><b>Shipping Chart</b></button>
@@ -125,7 +125,7 @@
           <button id="shareBatch" type="button">↗ Batch Maker</button>
           <button id="shareShipping" type="button">↗ Shipping</button>
           <button id="shareInventory" type="button">↗ Inventory</button>
-          <button id="shareOwner" type="button">↗ Owner View</button>
+          <button id="shareLabels" type="button">↗ Labels</button><button id="shareOwner" type="button">↗ Owner View</button>
           <button id="shareManagement" type="button">↗ Management</button>
         </div>
       </div>
@@ -368,7 +368,7 @@
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
-      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
+      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
@@ -396,7 +396,7 @@
     <div class="staffeditgrid">
       <label>Name<input id="editStaffName" autocomplete="off"></label>
       <label>Employee Code<input id="editStaffCode" autocapitalize="none" autocomplete="off"></label>
-      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
+      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
     </div>
     <div id="editStaffMessage" class="authmessage"></div>
@@ -620,11 +620,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<div class="modal" id="fillSuppliesModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Fill Line Inventory</h2><button data-close="fillSuppliesModal">✕</button></div><p class="inventoryhelp">Empty containers, boxes, lids, and pallets. Set opening physical counts, then record receipts and actual material use here. Filling quantities do not automatically deduct these supplies.</p><input id="fillSuppliesSearch" placeholder="Search all supplies…" aria-label="Search Fill Line supplies"><p id="fillSuppliesMessage" role="status"></p><div id="fillSuppliesBody"></div><details class="fill-supply-history"><summary>Movement history — latest 100</summary><div class="manager-shipping-table"><table><thead><tr><th>Time</th><th>Supply</th><th>Action</th><th>Quantity</th><th>Balance</th><th>By</th><th>Note</th></tr></thead><tbody id="fillSupplyHistory"></tbody></table></div></details></div></div>
+<div class="modal" id="fillSuppliesModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Fill Line Inventory</h2><button data-close="fillSuppliesModal">✕</button></div><p class="inventoryhelp">Empty containers, boxes, lids, and pallets. Set opening physical counts, then record receipts and actual material use here. Filling quantities do not automatically deduct these supplies.</p><input id="fillSuppliesSearch" placeholder="Search all supplies…" aria-label="Search Fill Line supplies"><p id="fillSuppliesMessage" role="status"></p><div id="fillSuppliesBody"></div><div id="fillLineLabelsBody"></div><details class="fill-supply-history"><summary>Movement history — latest 100</summary><div class="manager-shipping-table"><table><thead><tr><th>Time</th><th>Supply</th><th>Action</th><th>Quantity</th><th>Balance</th><th>By</th><th>Note</th></tr></thead><tbody id="fillSupplyHistory"></tbody></table></div></details></div></div>
 <div class="modal" id="fillSupplyMovementModal"><div class="dialog"><div class="dialoghead"><h2 id="fillSupplyMovementTitle">Update supply</h2><button data-close="fillSupplyMovementModal">✕</button></div><p id="fillSupplyCurrent"></p><div class="inventorysetgrid"><label>Quantity (whole items)<input id="fillSupplyQuantity" type="number" min="0" step="1" inputmode="numeric"></label><label>Note / batch / reference<input id="fillSupplyNote" maxlength="500"></label></div><p id="fillSupplyMovementMessage" role="status"></p><div class="dialogactions"><button data-close="fillSupplyMovementModal">Cancel</button><button id="saveFillSupplyBtn" class="primary">Save movement</button></div></div></div>
 
-<script src="fill-line.js?v=SECURE_V2_20261102a"></script>
-<script src="app.js?v=SECURE_V2_20261102a"></script>
+<script src="labels.js?v=20261102c"></script>
+<script src="fill-line.js?v=SECURE_V2_20261102c"></script>
+<script src="app.js?v=SECURE_V2_20261102c"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>

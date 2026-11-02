@@ -1,16 +1,17 @@
 // Packaging supplies have their own physical counts and immutable movement history.
 let fillSupplies=[],fillSupplyMovements=[],fillSupplyLoading=false,fillSupplyRequest=null;
 function canUseFillSupplies(){return isManager||hasEmployeeRole('prod')||hasEmployeeRole('inventory')}
-async function openFillSupplies(){if(!canUseFillSupplies())return;showModal('fillSuppliesModal');await loadFillSupplies()}
+async function openFillSupplies(){if(!canUseFillSupplies())return;showModal('fillSuppliesModal');await loadFillSupplies();await loadLabels()}
 async function loadFillSupplies(quiet=false){
  if(!canUseFillSupplies()||fillSupplyLoading)return;fillSupplyLoading=true;
  try{
   const [items,movements]=await Promise.all([db.from('fill_line_supplies').select('*').order('name'),db.from('fill_line_supply_movements').select('*').order('created_at',{ascending:false}).limit(100)]);
   if(items.error||movements.error)throw items.error||movements.error;
-  fillSupplies=items.data||[];fillSupplyMovements=movements.data||[];renderFillSupplies();$('fillSuppliesMessage').textContent='Live stock · whole items';
+  fillSupplies=items.data||[];fillSupplyMovements=movements.data||[];renderFillSupplies();await loadLabels();$('fillSuppliesMessage').textContent='Live stock · whole items';
  }catch(e){$('fillSuppliesMessage').textContent='Could not load: '+e.message}finally{fillSupplyLoading=false}
 }
 function renderFillSupplies(){
+ if(typeof renderLabelStock==='function')renderLabelStock();
  const q=$('fillSuppliesSearch').value.trim().toLowerCase();
  $('fillSuppliesBody').innerHTML=['boxes','containers','lids','pallets'].map(category=>{
   const items=fillSupplies.filter(r=>r.category===category&&(!q||(r.name+' '+r.description).toLowerCase().includes(q)));
