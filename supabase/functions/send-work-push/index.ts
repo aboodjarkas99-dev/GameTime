@@ -2,9 +2,8 @@ import {createClient} from 'npm:@supabase/supabase-js@2.57.4';
 import webpush from 'npm:web-push@3.6.7';
 Deno.serve(async req=>{
  if(req.method!=='POST')return new Response('Method not allowed',{status:405});
- const secret=req.headers.get('x-gametime-push');if(!secret)return new Response('Unauthorized',{status:401});
  const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
- const batch=await db.rpc('claim_push',{p_secret:secret});if(batch.error||!batch.data)return new Response('Unauthorized',{status:401});
+ const batch=await db.rpc('claim_push',{p_secret:null});if(batch.error||!batch.data)return new Response('Unauthorized',{status:401});
  webpush.setVapidDetails('https://gametime-secure-v2.vercel.app',batch.data.public_key,batch.data.private_key);
  let delivered=0,skipped=0,retried=0;
  for(const job of batch.data.jobs){
