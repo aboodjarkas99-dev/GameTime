@@ -1,0 +1,20 @@
+BEGIN;
+SELECT set_config('request.jwt.claim.sub',(SELECT id::text FROM profiles WHERE role='manager' AND active LIMIT 1),true);
+INSERT INTO work_orders(id,product,batch,work_date,batch_work_date,gallon,quart,five,batch_status) VALUES(-990021,'COMPLETION TEST','B1',current_date,current_date-1,'8','0','36','done');
+DO $$ DECLARE s uuid; snap jsonb; op uuid:=gen_random_uuid(); result jsonb; BEGIN
+ SELECT stock_id INTO s FROM label_requests WHERE work_order_id=-990021 AND package_type='gallon';
+ IF NOT EXISTS(SELECT 1 FROM fill_line_label_stock WHERE product='COMPLETION TEST' AND package_type='quart_can') THEN RAISE EXCEPTION 'Paired stock missing'; END IF;
+ IF (SELECT batch_date FROM label_requests WHERE work_order_id=-990021 AND package_type='gallon')<>current_date-1 THEN RAISE EXCEPTION 'Batch date missing'; END IF;
+ PERFORM public.set_label_minimum(s,20);
+ SELECT jsonb_agg(jsonb_build_object('id',id,'version',version) ORDER BY id) INTO snap FROM label_requests WHERE stock_id=s;
+ UPDATE profiles SET role='labels',page_roles=ARRAY['labels'] WHERE id=auth.uid();
+ result:=public.finish_label_group(s,snap,5,15,op);
+ PERFORM public.finish_label_group(s,snap,5,15,op);
+ IF (SELECT stock_units FROM fill_line_label_stock WHERE id=s)<>15 OR (SELECT sum(printed_units) FROM label_requests WHERE stock_id=s)<>5 OR EXISTS(SELECT 1 FROM label_requests WHERE stock_id=s AND status<>'READY') OR (SELECT count(*) FROM fill_line_label_movements WHERE stock_id=s)<>2 THEN RAISE EXCEPTION 'Completion totals or retry mismatch'; END IF;
+ BEGIN PERFORM public.set_label_minimum(s,99); RAISE EXCEPTION 'Labels account changed minimum'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM public.record_label_stock(gen_random_uuid(),s,'count',12);
+ IF (SELECT stock_units FROM fill_line_label_stock WHERE id=s)<>12 OR (SELECT minimum_units FROM fill_line_label_stock WHERE id=s)<>20 THEN RAISE EXCEPTION 'Count/minimum mismatch'; END IF;
+ result:=public.finish_label_group(s,snap,5,15,gen_random_uuid());IF NOT (result->>'conflict')::boolean THEN RAISE EXCEPTION 'Stale completion accepted'; END IF;
+END $$;
+SELECT 'Labels completion, actual/on-hand counts, retry protection, batch dates, paired sizes and manager-only minimum passed' AS result;
+ROLLBACK;
