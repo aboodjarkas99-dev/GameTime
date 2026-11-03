@@ -223,7 +223,7 @@ function stopSecureSession(){
   document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
   for(const id of ['inventoryBody','catalogList','managerShippingBody'])if($(id))$(id).innerHTML='';
   managerShippingRows=[];managerShippingLines=[];
-  refreshUserLabel();
+  refreshUserLabel();if($('managerStockAlert')){$('managerStockAlert').hidden=!isManager;if(!isManager)$('managerStockAlert').innerHTML=''}
 }
 function employeeRoles(p=profile){return [...new Set([p?.role,...(p?.page_roles||[])].filter(Boolean))]}
 function hasEmployeeRole(role){return employeeRoles().includes(role)}
@@ -235,6 +235,7 @@ function shippingOnlyEmployee(){return hasEmployeeRole('shipping')&&!hasWorkPage
 function applyProfile(p){
   profile=p;
   isManager=hasEmployeeRole('manager')||hasEmployeeRole('chemist');
+  if(!isManager&&$('managerStockAlert')){$('managerStockAlert').hidden=true;$('managerStockAlert').innerHTML=''}
   if(!isManager){logs=[];if($('drawerBackdrop')?.dataset.type==='activity'){closeDrawer();$('drawerBody').innerHTML=''}}
   view=hasEmployeeRole('prod')&&!hasEmployeeRole('batch')?'prod':hasEmployeeRole('batch')&&!hasEmployeeRole('prod')?'batch':'all';
   document.body.classList.toggle('shipping-only',shippingPortal||shippingOnlyEmployee());
@@ -446,14 +447,14 @@ async function openStaff(){
 }
 async function createStaff(){
   if(!canManageStaff())return;
-  const display_name=$('staffName').value.trim(),employee_code=$('staffCode').value.trim().toLowerCase(),roles=selectedPageRoles('staffPageRoles'),role=roles[0]||'',pin=$('staffPin').value.trim();
-  if(!role||!display_name||!employee_code||!/^[a-z0-9._-]{1,30}$/.test(employee_code)||!/^\d{4,12}$/.test(pin)){staffMessage('Enter a name, employee code, at least one allowed page, and a 4–12 digit PIN.',true);return}
+  const display_name=$('staffName').value.trim(),roles=selectedPageRoles('staffPageRoles'),role=roles[0]||'',pin=$('staffPin').value.trim();
+  if(!role||!display_name||!/^\d{4,12}$/.test(pin)){staffMessage('Enter a name, at least one allowed page, and a 4–12 digit PIN.',true);return}
   $('createStaffBtn').disabled=true;staffMessage('Creating employee…');
   try{
-    const {data,error}=await db.functions.invoke('create-employee',{body:{display_name,employee_code,role,page_roles:roles,pin}});
+    const {data,error}=await db.functions.invoke('create-employee',{body:{display_name,role,page_roles:roles,pin}});
     if(error||data?.error)throw new Error(data?.error||error?.message||'Could not create employee');
-    $('staffName').value='';$('staffCode').value='';$('staffPin').value='';
-    staffMessage('Employee created.');
+    $('staffName').value='';$('staffCode').value='Assigned automatically';$('staffPin').value='';
+    staffMessage('Employee created · Code '+(data.employee?.employee_code||''));
     await loadStaff();
   }catch(e){staffMessage(e.message||String(e),true)}
   finally{$('createStaffBtn').disabled=false}
@@ -632,7 +633,7 @@ async function initialLoad(){
     const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(cached))orders=cached;
     render();
     const cloud=await fetchOrders();orders=cloud;cache();
-    logs=await fetchLogs();await loadFactoryProducts();render();subscribeLive();setSync('live','LIVE');
+    logs=await fetchLogs();await loadFactoryProducts();if(isManager)await loadInventoryStock(true);render();subscribeLive();setSync('live','LIVE');
     if((shippingPortal||shippingOnlyEmployee())&&canUseShipping()&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
     if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
@@ -644,7 +645,7 @@ async function reconcile(){
     if(!hasWorkPages()||isInventoryWorkspace()){if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);await loadFactoryProducts();if(canViewInventory())await loadInventoryStock(true);return;}
     const cloud=await fetchOrders();
     if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();render()}
-    await refreshShippingData();await loadFactoryProducts();
+    await refreshShippingData();await loadFactoryProducts();if(isManager&&Date.now()-managerInventoryLoaded>10000)await loadInventoryStock(true);
     if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);
     logPollTick++;if(logPollTick%3===0){logs=await fetchLogs();renderFeedIfOpen()}
     if(!channel)setSync('syncing','SYNCING');
@@ -1623,7 +1624,7 @@ async function loadInventoryStock(quiet=false){
   const {data,error}=await db.rpc('get_inventory_stock');
   if(error){if(body)body.innerHTML='<div class="analytics-empty">Could not load inventory.</div>';throw error}
   inventoryStockRows=data||[];
-  populateInventoryProducts();renderInventoryStock();
+  managerInventoryLoaded=Date.now();populateInventoryProducts();renderInventoryStock();renderManagerStockAlerts();
 }
 function openInventory(){
   if(!canViewInventory())return;
@@ -2125,3 +2126,11 @@ db.auth.onAuthStateChange((event,session)=>{
 });
 tick();setInterval(tick,30000);secureStart();
 if($('shareLabels'))$('shareLabels').onclick=async()=>{const url=new URL('/labels.html',location.origin).href;try{await navigator.clipboard.writeText(url);toast('Labels link copied. Assign Labels access in Staff.')}catch{prompt('Labels link:',url)}};
+
+let managerInventoryLoaded=0;
+function managerLowStock(products,stock){
+ const result=[];for(const p of products.filter(p=>p.active)){for(const [type,limit] of Object.entries(p.stock_limits||{})){const min=Number(limit?.minimum);if(limit?.minimum==null||!Number.isFinite(min)||min<0)continue;const rows=stock.filter(r=>r.product.trim().toLowerCase()===p.name.trim().toLowerCase()&&r.package_type===type),units=rows.reduce((sum,r)=>sum+Number(r.stock_units||0),0);if(units<=min)result.push({product:p.name,type,units,minimum:min})}}return result.sort((a,b)=>a.product.localeCompare(b.product));
+}
+function renderManagerStockAlerts(){
+ const target=$('managerStockAlert');if(!target)return;if(!isManager){target.hidden=true;target.innerHTML='';return}const rows=managerLowStock(factoryProducts,inventoryStockRows);target.hidden=!rows.length;target.innerHTML=rows.length?'<h3>⚠ Low inventory · '+rows.length+' items at or below minimum</h3>'+rows.map((r,i)=>'<button type="button" data-low-stock="'+i+'"><span><strong>'+esc(r.product)+'</strong><small>'+esc(({five_gallon_pail:'5 Gallon',gallon:'1 Gallon',quart_can:'Quart',jerry_1_25:'Jerry Can'}[r.type]||r.type))+' · Minimum '+r.minimum.toLocaleString()+' containers</small></span><b>'+esc(inventoryPalletRemainder(r.units,r.type)||r.units+' units')+'</b></button>').join(''):'';target.querySelectorAll('[data-low-stock]').forEach(b=>b.onclick=()=>{openInventory();$('inventorySearch').value=rows[Number(b.dataset.lowStock)].product;renderInventoryStock()});
+}

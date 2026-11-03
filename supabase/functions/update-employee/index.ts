@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
 
   const id = String(body.id || "").trim();
   const displayName = String(body.display_name || "").trim();
-  const employeeCode = String(body.employee_code || "").trim().toLowerCase();
   const role = String(body.role || "").trim();
   const pin = String(body.pin || "").trim();
   const pageRoles = [...new Set(Array.isArray(body.page_roles) ? body.page_roles.map(String) : [role])];
@@ -34,7 +33,6 @@ Deno.serve(async (req) => {
 
   if (!id) return json({ error: "Employee is required" }, 400);
   if (displayName.length < 2 || displayName.length > 70) return json({ error: "Enter a valid employee name" }, 400);
-  if (!/^[a-z0-9._-]{1,30}$/.test(employeeCode)) return json({ error: "Employee code can be 1-30 letters or numbers" }, 400);
   if (!["batch","prod","viewer","chemist","shipping","inventory","labels"].includes(role)) return json({ error: "Invalid employee role" }, 400);
   if (pin && !/^\d{4,12}$/.test(pin)) return json({ error: "New PIN must be 4-12 digits" }, 400);
 
@@ -44,14 +42,10 @@ Deno.serve(async (req) => {
   if (targetError || !target) return json({ error: "Employee not found" }, 404);
   if (target.role === "manager") return json({ error: "Management accounts cannot be edited here" }, 403);
 
-  const { data: duplicate } = await admin.from("profiles").select("id").eq("employee_code", employeeCode).neq("id", id).maybeSingle();
-  if (duplicate) return json({ error: "That Employee Code is already in use" }, 409);
+  const employeeCode = target.employee_code;
 
   const jobTitle = role === "batch" ? "Batch Maker" : role === "prod" ? "Fill Line" : role === "chemist" ? "Chemist" : role === "shipping" ? "Shipping" : role === "inventory" ? "Inventory" : role === "labels" ? "Labels" : "View Only";
-  const newEmail = employeeCode + "@gametime.local";
   const authAttrs: Record<string, unknown> = {
-    email: newEmail,
-    email_confirm: true,
     user_metadata: { display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle },
   };
   if (pin) authAttrs.password_hash = await bcrypt.hash(pin, 10);

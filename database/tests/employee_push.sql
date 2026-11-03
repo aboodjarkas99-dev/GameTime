@@ -1,0 +1,24 @@
+BEGIN;
+DO $$ DECLARE uid uuid:=gen_random_uuid();pid uuid:=gen_random_uuid();code text;nextcode text;j app_private.push_jobs%ROWTYPE;payload jsonb;c uuid:=gen_random_uuid();n integer;BEGIN
+ INSERT INTO auth.users(id,email,aud,role) VALUES(uid,'code-test-'||uid||'@gametime.local','authenticated','authenticated'),(pid,'code-test-'||pid||'@gametime.local','authenticated','authenticated');
+ INSERT INTO profiles(id,display_name,role,page_roles,employee_code) VALUES(uid,'CODE TEST','batch',ARRAY['batch'],'manual') RETURNING employee_code INTO code;
+ INSERT INTO profiles(id,display_name,role,page_roles) VALUES(pid,'CODE TEST PROD','prod',ARRAY['prod']) RETURNING employee_code INTO nextcode;
+ IF code !~ '^[0-9]{2}$' OR nextcode !~ '^[0-9]{2}$' OR code=nextcode THEN RAISE EXCEPTION 'Codes are not unique two digits'; END IF;
+ IF (app_private.employee_login_identity(lower(code))->0->>'id')::uuid<>uid OR (app_private.employee_login_identity('code test')->0->>'id')::uuid<>uid THEN RAISE EXCEPTION 'Name/code identity mismatch'; END IF;
+ BEGIN UPDATE profiles SET employee_code='99' WHERE id=uid;RAISE EXCEPTION 'Manual code accepted';EXCEPTION WHEN raise_exception THEN IF SQLERRM='Manual code accepted' THEN RAISE; END IF;END;
+ INSERT INTO push_subscriptions(user_id,endpoint,keys) VALUES(uid,'https://fcm.googleapis.com/test-'||uid,'{"p256dh":"test","auth":"test"}'),(pid,'https://fcm.googleapis.com/test-'||pid,'{"p256dh":"test","auth":"test"}');
+ INSERT INTO work_orders(id,product,batch,work_date,quart) VALUES(-990041,'PUSH TEST','PT',current_date,'4');
+ IF (SELECT count(*) FROM app_private.push_jobs WHERE work_id=-990041)<>2 THEN RAISE EXCEPTION 'New work jobs missing'; END IF;
+ SELECT * INTO j FROM app_private.push_jobs WHERE work_id=-990041 AND user_id=uid;
+ UPDATE app_private.push_jobs SET claim=c,state='processing' WHERE id=j.id;
+ payload:=app_private.push_payload(j.id,c);IF payload IS NULL OR payload->>'title'<>'GameTime · New work' THEN RAISE EXCEPTION 'New work payload missing'; END IF;
+ UPDATE work_orders SET batch_status='done' WHERE id=-990041;
+ IF app_private.push_payload(j.id,c) IS NOT NULL THEN RAISE EXCEPTION 'Reminder includes completed department'; END IF;
+ n:=app_private.queue_work_reminders('2026-11-03 16:00:00+00');
+ PERFORM app_private.queue_work_reminders('2026-11-03 16:00:00+00');
+ IF (SELECT count(*) FROM app_private.push_jobs WHERE user_id=uid AND event_key='reminder:2026-11-03-10')<>1 THEN RAISE EXCEPTION 'Reminder duplicate'; END IF;
+ IF app_private.queue_work_reminders('2026-11-07 16:00:00+00')<>0 OR app_private.queue_work_reminders('2026-11-03 21:00:00+00')<>0 THEN RAISE EXCEPTION 'Reminder outside business hours'; END IF;
+ IF has_function_privilege('authenticated','public.claim_push(text)','EXECUTE') OR has_function_privilege('anon','public.employee_login_identity(text)','EXECUTE') THEN RAISE EXCEPTION 'Private endpoint exposed'; END IF;
+END $$;
+SELECT 'Unique automatic codes, immutable assignment, login identity, new-work routing, completed-work suppression, reminder timing/deduplication and access checks passed' AS result;
+ROLLBACK;

@@ -25,37 +25,35 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json({ error: "Invalid request" }, 400); }
 
   const displayName = String(body.display_name || "").trim();
-  const employeeCode = String(body.employee_code || "").trim().toLowerCase();
   const role = String(body.role || "").trim();
   const pin = String(body.pin || "").trim();
   const pageRoles = [...new Set(Array.isArray(body.page_roles) ? body.page_roles.map(String) : [role])];
   if(!pageRoles.length || pageRoles.length>7 || !pageRoles.includes(role) || pageRoles.some(r=>!["batch","prod","viewer","chemist","shipping","inventory","labels"].includes(r)))return json({error:"Choose valid employee pages"},400);
 
   if (displayName.length < 2 || displayName.length > 70) return json({ error: "Enter a valid employee name" }, 400);
-  if (!/^[a-z0-9._-]{1,30}$/.test(employeeCode)) return json({ error: "Employee code can be 1-30 letters or numbers" }, 400);
   if (!["batch","prod","viewer","chemist","shipping","inventory","labels"].includes(role)) return json({ error: "Invalid employee role" }, 400);
   if (!/^\d{4,12}$/.test(pin)) return json({ error: "PIN must be 4-12 digits" }, 400);
 
   const jobTitle = role === "batch" ? "Batch Maker" : role === "prod" ? "Fill Line" : role === "chemist" ? "Chemist" : role === "shipping" ? "Shipping" : role === "inventory" ? "Inventory" : role === "labels" ? "Labels" : "View Only";
 
   const admin = createClient(supabaseUrl, serviceRole);
-  const email = employeeCode + "@gametime.local";
+  const email = "employee-" + crypto.randomUUID() + "@gametime.local";
   const passwordHash = await bcrypt.hash(pin, 10);
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email, password_hash: passwordHash, email_confirm: true,
-    user_metadata: { display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle },
+    user_metadata: { display_name: displayName, role, page_roles:pageRoles, job_title: jobTitle },
   });
   if (createError || !created.user) return json({ error: createError?.message || "Could not create employee" }, 400);
 
-  const { error: insertError } = await admin.from("profiles").insert({
-    id: created.user.id, display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle, active: true,
-  });
+  const { data: employee, error: insertError } = await admin.from("profiles").insert({
+    id: created.user.id, display_name: displayName, role, page_roles:pageRoles, job_title: jobTitle, active: true,
+  }).select("id,display_name,employee_code,role,page_roles,job_title").single();
 
   if (insertError) {
     await admin.auth.admin.deleteUser(created.user.id);
     return json({ error: insertError.message }, 400);
   }
 
-  return json({ ok: true, employee: { id: created.user.id, display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle } });
+  return json({ ok: true, employee });
 });

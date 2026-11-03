@@ -9,7 +9,7 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261103b">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261103e">
 <title>GameTime Factory Work Board</title>
 <script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261103a"><script defer src="/date-picker.js?v=20261103a"></script></head>
 <body>
@@ -172,6 +172,7 @@
         </div>
       </section>
 
+      <section id="managerStockAlert" class="manager-stock-alert" hidden role="status" aria-live="polite"></section>
       <section class="stats">
         <div class="stat"><span>Work Orders</span><b id="sOrders">0</b></div>
         <div class="stat"><span>Batch Tasks</span><b id="sBatch">0</b></div>
@@ -367,7 +368,7 @@
     <div class="staffsectiontitle"><b>Employee Accounts</b><span>Employees sign in with Name + PIN</span></div>
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
-      <label>Employee Code<input id="staffCode" autocapitalize="none" autocomplete="off"></label>
+      <label>Employee Code<input id="staffCode" value="Assigned automatically" readonly aria-describedby="staffCodeHelp"><small id="staffCodeHelp">Two digits · assigned automatically when saved</small></label>
       <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
@@ -395,7 +396,7 @@
     <input id="editStaffId" type="hidden">
     <div class="staffeditgrid">
       <label>Name<input id="editStaffName" autocomplete="off"></label>
-      <label>Employee Code<input id="editStaffCode" autocapitalize="none" autocomplete="off"></label>
+      <label>Employee Code<input id="editStaffCode" readonly></label>
       <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
     </div>
@@ -625,7 +626,7 @@
 
 <script src="labels.js?v=20261103b"></script>
 <script src="fill-line.js?v=SECURE_V2_20261103a"></script>
-<script src="app.js?v=SECURE_V2_20261103a"></script>
+<script src="app.js?v=SECURE_V2_20261103e"></script><script src="/push-client.js?v=20261103a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
