@@ -379,7 +379,7 @@ function switchSettingsTab(tab){
 function fillAccountSettings(){
   if($('settingsAccountName'))$('settingsAccountName').textContent=profile?.display_name||'—';
   if($('settingsAccountTitle'))$('settingsAccountTitle').textContent=profile?.job_title||roleLabel()||'—';
-  if($('settingsAccountEmail'))$('settingsAccountEmail').textContent=authUser?.email||profile?.employee_code||'—';
+  if($('settingsAccountEmail'))$('settingsAccountEmail').textContent=(profile?.role==='manager'?authUser?.email:profile?.employee_code)||'—';
   if($('settingsAccountRole'))$('settingsAccountRole').textContent=roleLabel()||'—';
   if($('aboutBuild'))$('aboutBuild').textContent='Secure V2 • Build '+BUILD;
 }
