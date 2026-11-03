@@ -185,7 +185,7 @@ let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
 let deviceName='';
 function roleLabel(){
-  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Owner / Read Only',manager:'Management'}[r]||r)).join(' + ');
+  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Company Overview / Read Only',manager:'Management'}[r]||r)).join(' + ');
   if(profile?.job_title)return profile.job_title.replace(/production/gi,'Fill Line');
   const r=profile?.role;
   return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='chemist'?'Chemist':r==='shipping'?'Shipping':r==='inventory'?'Inventory':r==='viewer'?t('readOnly'):'';
@@ -433,7 +433,7 @@ async function loadStaff(){
   staffRows=data||[];
   $('staffList').innerHTML=staffRows.map(p=>{
     const employee=p.role!=='manager';
-    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Owner / Read Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
+    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Company Overview / Read Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
       (employee?'<div class="staffactions"><button type="button" data-staff-edit="'+p.id+'">Edit</button><button type="button" class="danger" data-staff-delete="'+p.id+'">Delete</button></div>':'')+
       '</div>';
   }).join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
@@ -1964,7 +1964,7 @@ if($('newShipmentBtn'))$('newShipmentBtn').onclick=openNewShipment;
 if($('shareShipping'))$('shareShipping').onclick=shareShipping;
 if($('shareInventory'))$('shareInventory').onclick=shareInventory;
 if($('shareManagement'))$('shareManagement').onclick=shareManagement;
-if($('shareOwner'))$('shareOwner').onclick=async()=>{const url=new URL('/owner.html',location.origin).href;try{await navigator.clipboard.writeText(url);toast('Owner view link copied — assign Owner / Read Only access.')}catch{prompt('Owner view link:',url)}};
+if($('shareOwner'))$('shareOwner').onclick=async()=>{const url=new URL('/owner.html',location.origin).href;try{await navigator.clipboard.writeText(url);toast('Company Overview link copied — assign Company Overview / Read Only access.')}catch{prompt('Company Overview link:',url)}};
 if($('ownerViewBtn'))$('ownerViewBtn').onclick=()=>location.href='/owner.html';
 if($('shippingPdfBtn'))$('shippingPdfBtn').onclick=shippingDownloadPdf;
 if($('shippingCameraBtn'))$('shippingCameraBtn').onclick=()=>$('shippingCameraInput').click();

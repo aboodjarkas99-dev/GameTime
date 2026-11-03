@@ -112,7 +112,7 @@
     <div id="managerTools" class="manager-tools sidebar-manager">
       <div class="sidelabel">Full Access</div>
       <nav class="sidenav">
-        <button id="ownerViewBtn" type="button"><span>◉</span><b>Owner View</b></button>
+        <button id="ownerViewBtn" type="button"><span>◉</span><b>Company Overview</b></button>
         <button id="monthlyChartBtn" type="button"><span>▥</span><b>Monthly Chart</b></button>
         <button data-drawer="activity" type="button"><span>◉</span><b>Live Activity</b></button>
         <button data-drawer="queue" type="button"><span>☰</span><b>Unfinished Queue</b></button>
@@ -125,7 +125,7 @@
           <button id="shareBatch" type="button">↗ Batch Maker</button>
           <button id="shareShipping" type="button">↗ Shipping</button>
           <button id="shareInventory" type="button">↗ Inventory</button>
-          <button id="shareLabels" type="button">↗ Labels</button><button id="shareOwner" type="button">↗ Owner View</button>
+          <button id="shareLabels" type="button">↗ Labels</button><button id="shareOwner" type="button">↗ Company Overview</button>
           <button id="shareManagement" type="button">↗ Management</button>
         </div>
       </div>
@@ -369,7 +369,7 @@
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" value="Assigned automatically" readonly aria-describedby="staffCodeHelp"><small id="staffCodeHelp">Two digits · assigned automatically when saved</small></label>
-      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
+      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Company Overview / Read Only</label></fieldset>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
@@ -397,7 +397,7 @@
     <div class="staffeditgrid">
       <label>Name<input id="editStaffName" autocomplete="off"></label>
       <label>Employee Code<input id="editStaffCode" readonly></label>
-      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Owner / Read Only</label></fieldset>
+      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Company Overview / Read Only</label></fieldset>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
     </div>
     <div id="editStaffMessage" class="authmessage"></div>
@@ -626,7 +626,7 @@
 
 <script src="labels.js?v=20261103b"></script>
 <script src="fill-line.js?v=SECURE_V2_20261103a"></script>
-<script src="app.js?v=SECURE_V2_20261103e"></script><script src="/push-client.js?v=20261103a"></script>
+<script src="app.js?v=SECURE_V2_20261103f"></script><script src="/push-client.js?v=20261103a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
