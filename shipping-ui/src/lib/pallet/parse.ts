@@ -81,7 +81,7 @@ function stripSize(line: string): string {
 }
 
 function detectQty(line: string): { qty: number; basis: "each" | "case" } | null {
-  const stripped = stripSize(line);
+  const stripped = stripSize(line.replace(/\bper[\s-]+cases?\b/gi, " "));
   const each = stripped.match(/\b(\d{1,6})\s*(?:ea|each|pcs|pc|units?|cans?)\b/i);
   const pack = stripped.match(/\b(\d{1,6})\s*(?:cs|cases?|bx|boxes?|cartons?)\b/i);
   if (each && pack) return { qty: Number(each[1]), basis: "each" };
@@ -439,7 +439,7 @@ export function parseDelimited(text: string): ParseResult | null {
     const qtyRaw = Number((cells[qtyCol] ?? "").replace(/,/g, ""));
     if (!size || !Number.isFinite(qtyRaw) || qtyRaw <= 0) continue;
     const sizeText = sizeCol >= 0 ? (cells[sizeCol] ?? "") : "";
-    const basis: "each" | "case" = /\b(cs|cases?|bx|boxes?|cartons?)\b/i.test(sizeText) ? "case" : "each";
+    const basis: "each" | "case" = /\b(cs|cases?|bx|boxes?|cartons?)\b/i.test(sizeText.replace(/\bper[\s-]+cases?\b/gi, " ")) ? "case" : "each";
     lines.push({
       sku: skuCol >= 0 ? cells[skuCol] ?? "" : detectSku(row),
       description: (descCol >= 0 ? cells[descCol] : cleanupDescription(row, "")) || SIZE_LABEL[size],

@@ -1,3 +1,4 @@
+import { canonicalProductName } from "./product-names";
 import { packNoun, palletType } from "./format";
 import { MAX_STACK, containerHeight, layerGrid } from "./layout";
 import { isOvertime8ozText } from "./parse";
@@ -1220,6 +1221,8 @@ export function paintDetail(sku: string, description: string): { title: string; 
 }
 
 export function productLabel(sku: string, description: string, size?: SizeKey): string {
+  description=canonicalProductName(description);
+  if (/^(Omega|Alpha|Phoenix|Hydra)\s/i.test(description)) return description;
   const text = `${sku} ${description}`;
   if (/\b(?:and[\s-]*)?1k\b/i.test(text)) return "AND1k";
   const code = sku.match(/(?:^|[^0-9])(275|450|500)(?:[^0-9]|$)/)?.[1] ?? description.match(/\b(275|450|500)\b/)?.[1] ?? "";

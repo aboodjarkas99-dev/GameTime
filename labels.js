@@ -1,7 +1,7 @@
 'use strict';
 // Shared label stock view; all mutations are validated atomically by the database.
 let labelStock=[],labelRequests=[],labelBusy=false,labelOperation=null;
-const labelPackage=key=>({quart_can:'Quart',gallon:'1 Gallon',jerry_1_25:'Jerry Can',f_style:'F Style'}[key]||key);
+const labelPackage=key=>({quart_can:'QUART',gallon:'GALLON',jerry_1_25:'Jerry Can',f_style:'F Style'}[key]||key);
 function labelRoles(){return [...new Set([profile?.role,...(profile?.page_roles||[])])]}
 function labelManage(){return labelRoles().some(r=>['manager','chemist','labels'].includes(r))}
 function labelUse(){return labelRoles().some(r=>['manager','chemist','prod','inventory'].includes(r))}
@@ -28,8 +28,8 @@ async function saveLabelOperation(){
  if(!labelOperation)return;const raw=$('labelQuantity').value.trim(),qty=Number(raw);if(!raw||!Number.isSafeInteger(qty)||qty<0||labelOperation.kind==='printed'&&qty===0){$('labelQuantityError').textContent='Enter a whole number'+(labelOperation.kind==='printed'?' greater than zero.':', 0 or higher.');return}
  if(labelOperation.quantity!==undefined&&labelOperation.quantity!==qty)labelOperation.id=crypto.randomUUID();labelOperation.quantity=qty;
  $('labelQuantitySave').disabled=true;
- try{const op=labelOperation;const result=op.request?await db.rpc('update_label_request',{p_request:op.request,p_version:op.version,p_action:op.kind==='count'?'have':'print',p_quantity:qty,p_operation:op.id}):await db.rpc('record_label_stock',{p_operation:op.id,p_stock:op.stock,p_kind:op.kind,p_quantity:qty,p_note:''});if(result.error)throw result.error;if(result.data?.conflict)throw new Error('This request changed. Close this window and refresh before saving.');$('labelQuantityDialog').close();labelOperation=null;await loadLabels()}catch(e){$('labelQuantityError').textContent=e.message}finally{$('labelQuantitySave').disabled=false}
+ try{const op=labelOperation;const result=op.group?await db.rpc('update_label_group',{p_stock:op.stock,p_requests:op.group,p_action:op.kind==='count'?'have':'print',p_quantity:qty,p_operation:op.id}):op.request?await db.rpc('update_label_request',{p_request:op.request,p_version:op.version,p_action:op.kind==='count'?'have':'print',p_quantity:qty,p_operation:op.id}):await db.rpc('record_label_stock',{p_operation:op.id,p_stock:op.stock,p_kind:op.kind,p_quantity:qty,p_note:''});if(result.error)throw result.error;if(result.data?.conflict)throw new Error('This request changed. Close this window and refresh before saving.');$('labelQuantityDialog').close();labelOperation=null;await loadLabels()}catch(e){$('labelQuantityError').textContent=e.message}finally{$('labelQuantitySave').disabled=false}
 }
 function labelDialogHTML(){return '<dialog id="labelQuantityDialog"><form method="dialog"><h3 id="labelQuantityTitle"></h3><label>Number of labels<input id="labelQuantity" type="number" min="0" step="1" required></label><p id="labelQuantityError" role="alert"></p><div class="label-dialog-actions"><button value="cancel">Cancel</button><button id="labelQuantitySave" type="button">Save</button></div></form></dialog>'}
-function initializeLabelControls(){document.body.insertAdjacentHTML('beforeend',labelDialogHTML());$('labelQuantitySave').onclick=saveLabelOperation;$('labelQuantityDialog').addEventListener('close',()=>{labelOperation=null})}
+function initializeLabelControls(){document.body.insertAdjacentHTML('beforeend',labelDialogHTML());document.getElementById('labelQuantitySave').onclick=saveLabelOperation;document.getElementById('labelQuantityDialog').addEventListener('close',()=>{labelOperation=null})}
 initializeLabelControls();

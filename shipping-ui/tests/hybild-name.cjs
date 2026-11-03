@@ -17,3 +17,9 @@ console.log('OverTime Finish, X-cel A/B and inventory mappings resolve correctly
 assert.equal(productLabel('TEST','1K','gal5'),'AND1k');
 assert.equal(productLabel('TEST','AND1k','gal5'),'AND1k');
 assert.equal(canonicalProductName('1K'),'AND1k');
+for(const [raw,expected] of [['Omega Satin - / per Case','Omega Satin'],['Alpha Matte (Per Case)','Alpha Matte'],['Phoenix Satin per case','Phoenix Satin'],['Hydra 1k Matte - / per Case','Hydra Matte'],['Alpha Semi Gloss - / per Case','Alpha Semi Gloss']]){assert.equal(canonicalProductName(raw),expected);assert.equal(productLabel('TEST',raw,'gal1'),expected)}
+const {parseDelimited,toUnits}=require('../src/lib/pallet/parse.ts');
+const {DEFAULT_RULES}=require('../src/lib/pallet/defaults.ts');
+const parsed=parseDelimited('description,size,qty\nOmega Satin - / per Case,1 gallon per case,12');
+assert.equal(parsed.lines[0].basis,'each');assert.equal(toUnits(parsed.lines[0],DEFAULT_RULES),12);assert.equal(productLabel('',parsed.lines[0].description,'gal1'),'Omega Satin');
+console.log('Per Case suffixes merge with the canonical product; Hydra 1k stays Hydra.');

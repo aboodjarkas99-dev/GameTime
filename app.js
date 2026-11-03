@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261102c';
+const BUILD='SECURE_V2_20261103a';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const labelsPortal=new URLSearchParams(location.search).get('workspace')==='labels';
 const ownerPortal=new URLSearchParams(location.search).get('workspace')==='owner';
@@ -1049,7 +1049,7 @@ async function shareShipping(){
   try{if(navigator.share){await navigator.share({title:'GameTime Shipping',url});return}}catch(e){if(e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Shipping link copied')}catch{prompt('Copy Shipping link:',url)}
 }
-async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261102c':'batch-maker.html?build=SECURE_V2_20261102c'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
+async function shareDept(dept){const base=location.href.split('?')[0].replace(/[^/]*$/,''),url=base+(dept==='prod'?'fill-line.html?build=SECURE_V2_20261103a':'batch-maker.html?build=SECURE_V2_20261103a'),title=dept==='prod'?t('productionFilling'):t('batchMaker');try{if(navigator.share){await navigator.share({title,text:'GameTime Factory Work Board',url});return}}catch(e){if(e.name==='AbortError')return}try{await navigator.clipboard.writeText(url);toast(title+' ✓')}catch{prompt(lang==='es'?'Copia este enlace:':'Copy this link:',url)}}
 
 function monthBounds(monthValue){
   const m=/^(\d{4})-(\d{2})$/.exec(monthValue||'');
@@ -1445,15 +1445,18 @@ function showMainSearchOptions(){
  box.querySelectorAll('[data-main-search]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{$('search').value=names[Number(b.dataset.mainSearch)];render();$('search').focus();hideMainSearchOptions()};b.onkeydown=e=>{if(e.key==='Escape'){$('search').focus();hideMainSearchOptions()}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[...box.querySelectorAll('button')],i=buttons.indexOf(b);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}}});
 }
 function canonicalFactoryProduct(name){
- const key=String(name||'').trim().toLowerCase().replace(/[\s-]+/g,'');
- return ({'1k':'AND1k',and1k:'AND1k',hybild:'Hybild Sealer',hybildsealer:'Hybild Sealer',overtime:'OverTime Finish',overtimefinish:'OverTime Finish',overtimecatalyst:'OverTime Catalyst',xcela:'X-cel 2k High Solids Part A',xcelparta:'X-cel 2k High Solids Part A',xcel2khighsolidsparta:'X-cel 2k High Solids Part A',xcelb:'X-cel Catalyst Part B',xcelpartb:'X-cel Catalyst Part B',xcelcatalystpartb:'X-cel Catalyst Part B'})[key]||name;
+ const clean=String(name||'').replace(/\bper[\s-]+cases?\b/gi,' ').replace(/^[\s\-/(),]+|[\s\-/(),]+$/g,'').replace(/\s+/g,' ').trim();
+ const family=clean.match(/^(Omega|Alpha|Phoenix|Hydra)\s+(?:1k\s+)?(Matte|Satin|Gloss|Semi[\s-]*(?:Gloss|Glass))$/i);
+ if(family){const brand=family[1][0].toUpperCase()+family[1].slice(1).toLowerCase(),sheen=family[2].toLowerCase().startsWith('semi')?(brand==='Phoenix'||brand==='Hydra'?'SemiGlass':'Semi Gloss'):family[2][0].toUpperCase()+family[2].slice(1).toLowerCase();return brand+' '+sheen}
+ const key=clean.toLowerCase().replace(/[\s-]+/g,'');
+ return ({'1k':'AND1k',and1k:'AND1k',hybild:'Hybild Sealer',hybildsealer:'Hybild Sealer',overtime:'OverTime Finish',overtimefinish:'OverTime Finish',overtimecatalyst:'OverTime Catalyst',xcela:'X-cel 2k High Solids Part A',xcelparta:'X-cel 2k High Solids Part A',xcel2khighsolidsparta:'X-cel 2k High Solids Part A',xcelb:'X-cel Catalyst Part B',xcelpartb:'X-cel Catalyst Part B',xcelcatalystpartb:'X-cel Catalyst Part B'})[key]||clean;
 }
 function companyProductNames(){return factoryProducts.filter(p=>p.active).map(p=>p.name).sort((a,b)=>a.localeCompare(b))}
 async function loadFactoryProducts(){
   if(!profile)return;
   const {data,error}=await db.from('factory_products').select('id,name,active,category,stock_limits').order('name');
   if(error)throw error;
-  const catalog=(data||[]).filter(p=>!['1k','hybild','overtime','xcel a','xcel b','xcel part a','xcel part b'].includes(String(p.name).trim().toLowerCase()));
+  const catalog=(data||[]).filter(p=>p.name===canonicalFactoryProduct(p.name)).filter(p=>!['1k','hybild','overtime','xcel a','xcel b','xcel part a','xcel part b'].includes(String(p.name).trim().toLowerCase()));
   if(JSON.stringify(factoryProducts)===JSON.stringify(catalog))return;
   factoryProducts=catalog;populateInventoryProducts();
   if($('catalogModal')?.classList.contains('show'))renderProductCatalog();
