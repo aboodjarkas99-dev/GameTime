@@ -1,0 +1,27 @@
+BEGIN;
+SELECT set_config('request.jwt.claim.sub',(SELECT id::text FROM profiles WHERE role='manager' AND active LIMIT 1),true);
+DO $$ DECLARE ship uuid;ship2 uuid;r shipping_product_reviews%ROWTYPE;target uuid;event bigint;ledger_name text;before_units numeric;result jsonb;BEGIN
+ SELECT id INTO target FROM factory_products WHERE name='Omega Satin' AND active;
+ SELECT coalesce(sum(stock_units),0) INTO before_units FROM inventory_current_stock WHERE product='Omega Satin' AND package_type='gallon';
+ ship:=public.save_shipping_shipment(NULL,jsonb_build_object('shipment_number','REVIEW_TEST_'||gen_random_uuid(),'status','READY'),jsonb_build_array(jsonb_build_object('description','Review Test Alt - / per Case','inventory_product','Review Test Alt - / per Case','size','gal1','qty',8)),'{"floor":{"inventoryProducts":{"one":"Review Test Alt - / per Case"}}}'::jsonb,'{}');
+ SELECT * INTO r FROM shipping_product_reviews WHERE alias_key='review test alt' AND status='PENDING';IF NOT FOUND THEN RAISE EXCEPTION 'Review missing';END IF;
+ BEGIN PERFORM public.mark_shipping_shipped(ship,current_date);RAISE EXCEPTION 'Unknown product shipped';EXCEPTION WHEN raise_exception THEN IF SQLERRM NOT LIKE 'Product review required:%' THEN RAISE;END IF;END;
+ INSERT INTO inventory_events(event_id,event_type,event_date,source_system,created_by) VALUES('alias_review_test_'||gen_random_uuid(),'PRODUCTION',current_date,'gametime',auth.uid()) RETURNING id INTO event;
+ INSERT INTO inventory_event_lines(inventory_event_id,product,product_key,package_type,qty_delta,gallons_per_unit) VALUES(event,'Review Test Alt','review test alt','gallon',5,1);
+ result:=public.resolve_shipping_product(r.id,target);
+ IF NOT(result->>'ok')::boolean OR app_private.canonical_factory_product('Review Test Alt - / per Case')<>'Omega Satin' THEN RAISE EXCEPTION 'Alias resolution failed';END IF;
+ IF (SELECT qty FROM shipping_lines WHERE shipment_id=ship)<>8 OR (SELECT inventory_product FROM shipping_lines WHERE shipment_id=ship)<>'Omega Satin' THEN RAISE EXCEPTION 'Shipping quantities or names changed incorrectly';END IF;
+ IF (SELECT pallet_plan#>>'{floor,inventoryProducts,one}' FROM shipping_shipments WHERE id=ship)<>'Omega Satin' THEN RAISE EXCEPTION 'Snapshot not updated';END IF;
+ IF (SELECT product FROM inventory_event_lines WHERE inventory_event_id=event)<>'Review Test Alt' THEN RAISE EXCEPTION 'Original ledger rewritten';END IF;
+ IF (SELECT stock_units FROM inventory_current_stock WHERE product='Omega Satin' AND package_type='gallon')<>before_units+5 THEN RAISE EXCEPTION 'Stock did not consolidate';END IF;
+ PERFORM app_private.assert_shipping_products_approved(ship);
+ PERFORM public.mark_shipping_shipped(ship,current_date);
+ result:=public.mark_shipping_shipped(ship,current_date);
+ IF NOT(result->>'duplicate')::boolean OR (SELECT stock_units FROM inventory_current_stock WHERE product='Omega Satin' AND package_type='gallon')<>before_units-3 THEN RAISE EXCEPTION 'Shipping deduction repeated or used wrong product';END IF;
+ ship2:=public.save_shipping_shipment(NULL,jsonb_build_object('shipment_number','REVIEW_TEST_'||gen_random_uuid()),jsonb_build_array(jsonb_build_object('description','Review Test Alt','inventory_product','Review Test Alt','size','quart','qty',12)),'{}','{}');
+ IF (SELECT inventory_product FROM shipping_lines WHERE shipment_id=ship2)<>'Omega Satin' OR (SELECT qty FROM shipping_lines WHERE shipment_id=ship2)<>12 THEN RAISE EXCEPTION 'Future matching failed';END IF;
+ UPDATE profiles SET role='shipping',page_roles=ARRAY['shipping'] WHERE id=auth.uid();
+ BEGIN PERFORM public.resolve_shipping_product(r.id,target);RAISE EXCEPTION 'Shipping staff can approve names';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+END $$;
+SELECT 'Review creation, dispatch protection, alias matching, unchanged units, snapshot repair, historic stock consolidation and manager-only approval passed' AS result;
+ROLLBACK;

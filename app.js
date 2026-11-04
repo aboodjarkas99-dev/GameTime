@@ -222,7 +222,7 @@ function stopSecureSession(){
   localStorage.removeItem(CACHE_KEY);
   document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
   for(const id of ['inventoryBody','catalogList','managerShippingBody'])if($(id))$(id).innerHTML='';
-  managerShippingRows=[];managerShippingLines=[];
+  managerShippingRows=[];managerShippingLines=[];shippingProductReviews=[];renderProductReviewAlerts();
   refreshUserLabel();if($('managerStockAlert')){$('managerStockAlert').hidden=!isManager;if(!isManager)$('managerStockAlert').innerHTML=''}
 }
 function employeeRoles(p=profile){return [...new Set([p?.role,...(p?.page_roles||[])].filter(Boolean))]}
@@ -235,6 +235,7 @@ function shippingOnlyEmployee(){return hasEmployeeRole('shipping')&&!hasWorkPage
 function applyProfile(p){
   profile=p;
   isManager=hasEmployeeRole('manager')||hasEmployeeRole('chemist');
+  if(!isManager){shippingProductReviews=[];renderProductReviewAlerts()}
   if(!isManager&&$('managerStockAlert')){$('managerStockAlert').hidden=true;$('managerStockAlert').innerHTML=''}
   if(!isManager){logs=[];if($('drawerBackdrop')?.dataset.type==='activity'){closeDrawer();$('drawerBody').innerHTML=''}}
   view=hasEmployeeRole('prod')&&!hasEmployeeRole('batch')?'prod':hasEmployeeRole('batch')&&!hasEmployeeRole('prod')?'batch':'all';
@@ -560,7 +561,7 @@ function titleCase(s){return String(s||'').replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b
 function statusText(s){return s==='done'?t('completedStatus'):s==='progress'?t('inProgress'):t('notStarted')}
 function statusClass(s){return s==='done'?'done-status':s==='progress'?'progress':'ready'}
 function deptText(d){return d==='prod'?t('productionRole'):d==='batch'?t('batchMakerRole'):d==='all'?t('allWork'):String(d||'')}
-function eventTypeText(v){const s=String(v||'');const names=lang==='es'?{done:'Terminó el trabajo',progress:'Inició el trabajo',reopened:'Reabrió el trabajo',package:'Actualizó cantidades',precheck:'Actualizó pre-check',hold:'Puso en espera',resume:'Reanudó',edit:'Actualizó la orden',schedule:'Cambió la fecha',delete:'Eliminó la orden'}:{done:'Completed work',progress:'Started work',reopened:'Reopened work',start_cleared:'Cleared Start Work',labels:'Updated labels',package:'Updated quantities',precheck:'Updated pre-check',hold:'Put work on hold',resume:'Resumed work',edit:'Updated the order',schedule:'Changed the schedule',delete:'Deleted the order'};return names[s]||s.replace(/_/g,' ')}
+function eventTypeText(v){const s=String(v||'');const names=lang==='es'?{done:'Terminó el trabajo',progress:'Inició el trabajo',reopened:'Reabrió el trabajo',package:'Actualizó cantidades',precheck:'Actualizó pre-check',hold:'Puso en espera',resume:'Reanudó',edit:'Actualizó la orden',schedule:'Cambió la fecha',delete:'Eliminó la orden'}:{done:'Completed work',progress:'Started work',reopened:'Reopened work',start_cleared:'Cleared Start Work',labels:'Updated labels',product_alias:'Matched a product name',package:'Updated quantities',precheck:'Updated pre-check',hold:'Put work on hold',resume:'Resumed work',edit:'Updated the order',schedule:'Changed the schedule',delete:'Deleted the order'};return names[s]||s.replace(/_/g,' ')}
 function setSync(state,label){const el=$('syncStatus');el.className='sync '+state;const k={LIVE:'syncLive',SYNCING:'syncSyncing',SAVING:'syncSaving',OFFLINE:'syncOffline',RETRYING:'syncRetrying',RECONNECTING:'syncReconnecting',IMPORTING:'syncImporting'}[label||state.toUpperCase()];el.textContent=k?t(k):(label||state.toUpperCase())}
 let toastTimer=null;function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200)}
 function cache(){localStorage.setItem(CACHE_KEY,JSON.stringify(orders))}
@@ -633,7 +634,7 @@ async function initialLoad(){
     const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');if(Array.isArray(cached))orders=cached;
     render();
     const cloud=await fetchOrders();orders=cloud;cache();
-    logs=await fetchLogs();await loadFactoryProducts();if(isManager)await loadInventoryStock(true);render();subscribeLive();setSync('live','LIVE');
+    logs=await fetchLogs();await loadFactoryProducts();if(isManager){await loadInventoryStock(true);await loadProductReviews();if(new URLSearchParams(location.search).get('review-products')==='1')await openProductReviews()}render();subscribeLive();setSync('live','LIVE');
     if((shippingPortal||shippingOnlyEmployee())&&canUseShipping()&&!shippingAutoOpened){shippingAutoOpened=true;setTimeout(()=>openShippingWorkspace(),250)}
     if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
@@ -645,7 +646,7 @@ async function reconcile(){
     if(!hasWorkPages()||isInventoryWorkspace()){if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);await loadFactoryProducts();if(canViewInventory())await loadInventoryStock(true);return;}
     const cloud=await fetchOrders();
     if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();render()}
-    await refreshShippingData();await loadFactoryProducts();if(isManager&&Date.now()-managerInventoryLoaded>10000)await loadInventoryStock(true);
+    await refreshShippingData();await loadFactoryProducts();if(isManager){if(Date.now()-managerInventoryLoaded>10000)await loadInventoryStock(true);await loadProductReviews()}
     if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);
     logPollTick++;if(logPollTick%3===0){logs=await fetchLogs();renderFeedIfOpen()}
     if(!channel)setSync('syncing','SYNCING');
