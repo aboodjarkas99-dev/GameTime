@@ -798,7 +798,7 @@ async function handleAction(btn){
     const dept=btn.dataset.dept;
     if(['done','start'].includes(btn.dataset.action)){
       const key=id+':'+dept;if(workDonePending.has(key))return;workDonePending.add(key);btn.disabled=true;
-      try{const {data,error}=await db.rpc(btn.dataset.action==='start'?'toggle_work_start':'toggle_work_done',{p_order_id:id,p_department:dept,p_expected_status:dept==='batch'?o.batchStatus:o.prodStatus});if(error)throw error;if(data?.order){mergeOrder(fromRow(data.order));render()}if(data?.conflict)toast('This order changed on another screen. Latest status loaded.');else if(data?.reopened)toast(lang==='es'?'Trabajo reabierto':'Work reopened');}finally{workDonePending.delete(key);btn.disabled=false}
+      try{if(dept==='prod'&&btn.dataset.action==='done'&&o.prodStatus!=='done'){await openFillCompletion(o);updateFillCompletionPreview();return}const {data,error}=await db.rpc(btn.dataset.action==='start'?'toggle_work_start':'toggle_work_done',{p_order_id:id,p_department:dept,p_expected_status:dept==='batch'?o.batchStatus:o.prodStatus});if(error)throw error;if(data?.order){mergeOrder(fromRow(data.order));render()}if(data?.conflict)toast('This order changed on another screen. Latest status loaded.');else if(data?.reopened)toast(lang==='es'?'Trabajo reabierto':'Work reopened');}finally{workDonePending.delete(key);btn.disabled=false}
       return;
     }
     if(dept==='prod'&&o.batchStatus!=='done'){toast(t('productionLocked'));return}const checked=dept==='batch'?o.batchChecked:o.prodChecked;if(!checked){toast(t('completePrecheck'));return}
