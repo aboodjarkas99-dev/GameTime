@@ -1,7 +1,7 @@
 // Packaging supplies have their own physical counts and immutable movement history.
 let fillSupplies=[],fillSupplyMovements=[],fillSupplyLoading=false,fillSupplyRequest=null;
 function canUseFillSupplies(){return isManager||hasEmployeeRole('prod')||hasEmployeeRole('inventory')}
-async function openFillSupplies(){if(!canUseFillSupplies())return;showModal('fillSuppliesModal');await loadFillSupplies();await loadLabels()}
+async function openFillSupplies(){if(!canUseFillSupplies())return;showModal('fillSuppliesModal');await loadFillSupplies();await loadLabels();await loadProductPailSettings()}
 async function loadFillSupplies(quiet=false){
  if(!canUseFillSupplies()||fillSupplyLoading)return;fillSupplyLoading=true;
  try{
@@ -44,3 +44,11 @@ async function saveFillSupplyMovement(){
 }
 function fillGallonLabel(o){return o.fillPackaging?.gallon_style==='f_style'?'F STYLE · 1 GALLON':t('oneGallon')}
 function fillPackagingBadge(o){return o.fillPackaging?.gallon_style==='f_style'?'F STYLE · '+(o.fillPackaging.f_style_lid==='seal'?'SEAL LID':'SPONGE LID'):''}
+
+async function loadProductPailSettings(){
+ const target=$('fillPailSettings');if(!target)return;target.hidden=!isManager;if(!isManager)return;
+ const {data,error}=await db.from('factory_products').select('id,name,five_pail_type').eq('active',true).order('name');
+ if(error){target.textContent=error.message;return}
+ target.innerHTML='<summary>Products — 5 Gallon Pail Type</summary>'+data.map(p=>'<label class="fill-supply-row"><span>'+esc(p.name)+'</span><select aria-label="'+esc(p.name)+' pail type" data-pail-product="'+p.id+'"><option value="">Not set</option><option value="five_water">Water Based</option><option value="five_oil">Oil Based</option></select></label>').join('');
+ target.querySelectorAll('select').forEach((el,i)=>{el.value=data[i].five_pail_type||'';el.onchange=async()=>{el.disabled=true;try{const {error}=await db.rpc('set_product_pail_type',{p_id:data[i].id,p_type:el.value||null});if(error)throw error;data[i].five_pail_type=el.value;toast('Pail type saved.')}catch(e){el.value=data[i].five_pail_type||'';fail(e)}finally{el.disabled=false}}});
+}

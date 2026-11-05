@@ -3,13 +3,13 @@ let fillCompletionState=null,fillCompletionBusy=false;
 function fillUsageFromForm(){
  const boxes={};document.querySelectorAll('[data-fill-box]').forEach(el=>{boxes[el.dataset.fillBox]=el.value.trim()===''?null:Number(el.value)});
  const raw=$('fillUsedPallets').value.trim();
- return {boxes,pallets:raw===''?null:Number(raw),pail_type:$('fillPailType').value};
+ return {boxes,jerry_pallets:raw===''?0:Number(raw),pallets:0,pail_type:$('fillPailType').value};
 }
 function fillCompletionRequirements(spec,usage){
  const entries=Object.entries(spec.fixed).map(([id,quantity])=>({id,quantity}));
- for(const [id,quantity] of Object.entries(usage.boxes))entries.push({id,quantity});
- entries.push({id:'pallet',quantity:usage.pallets});
- if(spec.five>0&&usage.pail_type)entries.push({id:usage.pail_type,quantity:spec.five});
+ for(const [id,quantity] of Object.entries({...spec.boxes,...usage.boxes}))entries.push({id,quantity});
+ entries.push({id:'pallet',quantity:spec.autoPallets+usage.jerry_pallets});
+ if(spec.five>0)entries.push({id:spec.pail_type||'five_unclassified',quantity:spec.five});
  return entries;
 }
 async function openFillCompletion(o,refresh=false){
@@ -21,16 +21,17 @@ async function openFillCompletion(o,refresh=false){
   if(data.order.prod_status==='done'){toast('This order is already done. Latest status loaded.');hideModal('fillCompletionModal');return}
   if(data.order.batch_status!=='done'||!data.order.prod_checked)throw new Error('Finish Batch Maker and Fill Line PRE-CHECK first.');
   for(const key of ['quart','gallon','five','jerry'])if((key!=='jerry'||data.order.jerry_enabled)&&num(data.order[key])>0&&data.order['actual_'+key]==null)throw new Error('Enter actual filled quantities first.');
+  data.autoPallets=Math.ceil((data.order.actual_quart||0)/720)+Math.ceil((data.order.actual_gallon||0)/120)+Math.ceil((data.order.actual_five||0)/36);
   fillCompletionState=data;
   $('fillCompletionTitle').textContent='Work Done — '+data.order.product;
   $('fillCompletionBatch').textContent='Batch '+(data.order.batch||'—')+' · Actual filled quantities';
   const keep=previous?.version===data.order.version?previous.usage:null;
-  $('fillCompletionBoxes').innerHTML=Object.entries(data.boxes).map(([id,suggested])=>{
+  $('fillCompletionBoxes').innerHTML=Object.entries(data.boxes).filter(([,n])=>n==null).map(([id,suggested])=>{
    const s=data.stock.find(x=>x.id===id),value=keep?keep.boxes[id]:suggested;
    return '<label>'+esc(s?.name||id)+'<input data-fill-box="'+id+'" type="number" min="0" step="1" inputmode="numeric" required value="'+(value??'')+'" placeholder="Actual boxes used">'+(suggested==null?'<small>Enter the actual number of boxes.</small>':'<small>Suggested: '+suggested+'. Adjust for existing partial boxes.</small>')+'</label>';
   }).join('');
-  $('fillPailField').hidden=!(data.five>0);$('fillPailType').value=keep?.pail_type||'';
-  $('fillUsedPallets').value=keep?.pallets??'';
+  $('fillPailField').hidden=true; $('fillUsedPallets').parentElement.hidden=!(data.order.jerry_enabled&&data.order.actual_jerry>0);$('fillPailType').value=keep?.pail_type||'';
+  $('fillUsedPallets').value=keep?.jerry_pallets??'';
   $('fillCompletionError').textContent='';showModal('fillCompletionModal');updateFillCompletionPreview();
   if(previous&&!keep)toast('This order changed. Review the latest quantities.');
  }finally{fillCompletionBusy=false}
@@ -38,16 +39,16 @@ async function openFillCompletion(o,refresh=false){
 function updateFillCompletionPreview(){
  const spec=fillCompletionState;if(!spec)return;const usage=fillUsageFromForm();
  const whole=n=>Number.isSafeInteger(n)&&n>=0;
- let valid=whole(usage.pallets)&&Object.values(usage.boxes).every(whole)&&(!(spec.five>0)||['five_water','five_oil'].includes(usage.pail_type));
+ let valid=whole(usage.jerry_pallets)&&Object.values(usage.boxes).every(whole);
  let shortage=false;
  const rows=fillCompletionRequirements(spec,usage).filter(e=>e.quantity>0).map(e=>{
   const stock=spec.stock.find(x=>x.id===e.id),balance=stock?.stock_units,low=balance==null||balance<e.quantity;shortage ||=low;
-  return '<div class="fill-consumption-row'+(low?' stock-short':'')+'"><span>'+esc(stock?.name||e.id)+'</span><b>− '+e.quantity+'</b><small>'+esc(balance==null?'Set opening count first':'On hand: '+balance+' · After: '+(balance-e.quantity))+'</small></div>';
+  return '<div class="fill-consumption-row'+(low?' stock-short':'')+'"><span>'+esc(stock?.name||e.id)+'</span><b>− '+e.quantity+'</b><small>'+esc(balance==null?'Not counted · After: −'+e.quantity+'':'On hand: '+balance+' · After: '+(balance-e.quantity))+'</small></div>';
  });
  for(const label of spec.label_details){const low=label.stock_units<label.quantity;shortage ||=low;rows.push('<div class="fill-consumption-row'+(low?' stock-short':'')+'"><span>'+esc(labelPackage(label.package_type))+' labels · '+esc(label.product)+'</span><b>− '+label.quantity+'</b><small>On hand: '+label.stock_units+' · After: '+(label.stock_units-label.quantity)+'</small></div>')}
  $('fillCompletionPreview').innerHTML=rows.join('')||'<p>No containers or labels to deduct.</p>';
- $('fillCompletionStockMessage').textContent=shortage?'Some materials have not been counted or have insufficient stock. Update Fill Line Inventory, then refresh balances.':valid?'Ready. These materials will be deducted once when you confirm Work Done.':'Enter actual boxes and new pallets used. Use 0 if none were taken.';
- $('confirmFillCompletion').disabled=!valid||shortage||fillCompletionBusy;
+ $('fillCompletionStockMessage').textContent=shortage?'Some balances will go negative. You can still confirm Work Done.':valid?'Ready. These materials will be deducted once when you confirm Work Done.':'Enter actual boxes and new pallets used. Use 0 if none were taken.';
+ $('confirmFillCompletion').disabled=!valid||fillCompletionBusy;
 }
 async function saveFillCompletion(){
  if(!fillCompletionState||fillCompletionBusy)return;
