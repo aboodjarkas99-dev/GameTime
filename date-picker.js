@@ -5,7 +5,7 @@
   const target=event.target;if(!target||typeof target.closest!=='function')return;
   if(target.closest('button,a,select,textarea'))return;
   const input=target.closest('input[type="date"]')||target.closest('label')?.querySelector('input[type="date"]');
-  if(!input||input.disabled||input.readOnly||typeof input.showPicker!=='function')return;
+  if(!input||input.disabled||input.readOnly||input.dataset.scheduleCalendar||typeof input.showPicker!=='function')return;
   try{input.focus({preventScroll:true});input.showPicker();event.preventDefault()}catch{
    // Keep the browser's native action when showPicker is unavailable or blocked.
   }
