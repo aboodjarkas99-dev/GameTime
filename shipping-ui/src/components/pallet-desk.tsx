@@ -147,7 +147,7 @@ function readContacts(): Contact[] {
 function writeContacts(contacts: Contact[]) {
   localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
 }
-const SIZES: SizeKey[] = ["quart", "pint", "gal1", "gal125", "gal15", "gal5", "vinyl", "drawdown"];
+const SIZES: SizeKey[] = ["quart", "gal1", "gal125", "gal15", "gal5", "vinyl", "drawdown"];
 
 type DayOrder = {
   id: string;
