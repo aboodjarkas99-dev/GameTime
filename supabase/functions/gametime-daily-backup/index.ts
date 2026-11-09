@@ -179,7 +179,6 @@ async function ensureBucket(admin: any) {
   if (data) return;
   const { error } = await admin.storage.createBucket(BUCKET, {
     public: false,
-    fileSizeLimit: 100 * 1024 * 1024,
     allowedMimeTypes: [XLSX_MIME]
   });
   if (error && !/already exists/i.test(error.message)) {
