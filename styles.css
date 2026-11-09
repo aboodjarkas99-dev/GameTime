@@ -1145,3 +1145,36 @@ input.full-picker-click{cursor:pointer}
   #monthModal .calorder-product{font-size:7.5px!important}
   #monthModal .calorder-batch{display:none}
 }
+
+/* 2026-11-09 calendar month separation — no holiday display */
+#monthModal .calendar-holiday{display:none!important}
+#monthModal .day.holiday{background-image:none!important}
+#monthModal .day.month-tone-0:not(.weekend){background:#ffffff!important}
+#monthModal .day.month-tone-1:not(.weekend){background:#f4f7fb!important}
+#monthModal .day.month-start{
+  box-shadow:inset 3px 0 0 #64748b
+}
+#monthModal .daynum{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:3px;
+  min-width:0
+}
+#monthModal .month-chip{
+  display:inline-block;
+  border-radius:999px;
+  padding:1px 4px;
+  background:#e2e8f0;
+  color:#334155;
+  font-size:6px;
+  line-height:1.25;
+  font-weight:1000;
+  letter-spacing:.05em;
+  white-space:nowrap
+}
+#monthModal .month-tone-1 .month-chip{background:#dbeafe;color:#1e3a8a}
+@media(max-width:720px){
+  #monthModal .month-chip{font-size:5px;padding:1px 3px}
+  #monthModal .day.month-start{box-shadow:inset 2px 0 0 #64748b}
+}
