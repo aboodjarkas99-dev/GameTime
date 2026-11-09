@@ -1029,7 +1029,16 @@ function renderMonth(){
  $('monthTitle').textContent=pickerLabel?pickerLabel+' · '+rangeLabel:rangeLabel;
  let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((x,i)=>'<div class="dow '+(i===0||i===6?'dow-off':'dow-work')+'">'+x+'</div>').join('');
  const today=iso(new Date()),picked=scheduleCalendarTarget?($(scheduleCalendarTarget)?.value||''):'';
- for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6,holiday=gtHolidayName(di),arr=weekend?[]:(scheduleCalendarTarget?scheduleEntriesForDate(di):entriesForDate(di));const holidayChip=holiday?'<div class="calendar-holiday">★ '+esc(holiday)+'</div>':'';const workChips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder dept-'+e.dept+' '+(entryDone(e)?'is-done':'is-open')+'" title="'+esc((e.dept==='batch'?'Batch Maker: ':'Fill Line: ')+e.o.product)+'"><span class="calorder-product">'+esc(e.o.product)+'</span>'+(e.o.batch?' <span class="calorder-batch">'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span class="calorder-made">• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+(entryDone(e)?'<i class="calorder-done" aria-label="Done">✓</i>':'')+'</div>').join('');html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(holiday?'holiday ':'')+(di===today?'today ':'')+(picked===di?'schedule-picked ':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+holidayChip+workChips+'</div></div>'}
+ for(let i=0;i<42;i++){
+  const d=new Date(start);d.setDate(start.getDate()+i);
+  const di=iso(d),weekend=d.getDay()===0||d.getDay()===6;
+  const arr=weekend?[]:(scheduleCalendarTarget?scheduleEntriesForDate(di):entriesForDate(di));
+  const monthTone=(d.getFullYear()*12+d.getMonth())%2;
+  const showMonth=i===0||d.getDate()===1;
+  const monthChip=showMonth?'<span class="month-chip">'+esc(d.toLocaleDateString(locale(),{month:'short'}).toUpperCase())+'</span>':'';
+  const workChips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder dept-'+e.dept+' '+(entryDone(e)?'is-done':'is-open')+'" title="'+esc((e.dept==='batch'?'Batch Maker: ':'Fill Line: ')+e.o.product)+'"><span class="calorder-product">'+esc(e.o.product)+'</span>'+(e.o.batch?' <span class="calorder-batch">'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span class="calorder-made">• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+(entryDone(e)?'<i class="calorder-done" aria-label="Done">✓</i>':'')+'</div>').join('');
+  html+='<div class="day month-tone-'+monthTone+' '+(d.getDate()===1?'month-start ':'')+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(di===today?'today ':'')+(picked===di?'schedule-picked ':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum"><span>'+d.getDate()+'</span>'+monthChip+'</div><div class="calorders">'+workChips+'</div></div>'
+ }
  $('calendar').innerHTML=html;document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{const di=el.dataset.day;if(scheduleCalendarTarget){const target=scheduleCalendarTarget;$(target).value=di;scheduleCalendarTarget=null;hideModal('monthModal');$(target).focus({preventScroll:true});return}selected=new Date(di+'T12:00:00');hideModal('monthModal');render()})
 }
 function renderFeedHTML(){
