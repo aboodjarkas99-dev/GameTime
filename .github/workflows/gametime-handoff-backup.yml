@@ -42,18 +42,3 @@ jobs:
           path: GameTime-Full-Code-${{ github.sha }}.zip
           if-no-files-found: error
           retention-days: 90
-
-      - name: Fetch current Excel backup through expiring bridge
-        shell: bash
-        run: |
-          curl -fL --retry 2 "https://gt-bkp-7f4c9.vercel.app/GameTime-Latest.xlsx" -o GameTime-Latest.xlsx
-          test -s GameTime-Latest.xlsx
-          file GameTime-Latest.xlsx
-
-      - name: Upload Excel backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: GameTime-Latest-Excel
-          path: GameTime-Latest.xlsx
-          if-no-files-found: error
-          retention-days: 1
