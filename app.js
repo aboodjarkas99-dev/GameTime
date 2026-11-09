@@ -943,14 +943,14 @@ async function saveEditor(){
             o={id:nextId(),fillPackaging:plan.fill_packaging,date:batchDate,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,catalyst:plan.catalyst,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate,prodDate,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameBatchDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameProdDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
-    hideModal('editorModal');renderStable(editingId);toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
+    hideModal('editorModal');toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
   }catch(e){
     if(e&&e.code==='23505'){toast(t('batchExists'))}
     else if(e&&e.code==='23514'){toast(t('weekendOff'))}
     else fail(e)
   }finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent=t('saveWorkOrder')}
 }
-async function softDelete(id){if(!isManager||!confirm(t('confirmDelete')))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();renderStable(id);toast(t('deletedHistory'))}catch(e){fail(e)}}
+async function softDelete(id){if(!isManager||!confirm(t('confirmDelete')))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();toast(t('deletedHistory'))}catch(e){fail(e)}}
 async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast(t('movedHold'))}catch(e){fail(e)}}
 async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});closeDrawer();toast(t('scheduled'))}catch(e){fail(e)}}
 async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Fill Line cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);closeDrawer();toast(t('rescheduled'))}catch(e){fail(e)}}
