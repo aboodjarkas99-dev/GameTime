@@ -996,20 +996,36 @@ function entriesForDate(d){
     ...orders.filter(o=>!o.holdLine&&o.prodDate===d).map(o=>({o,dept:'prod'}))
   ]
 }
+let scheduleCalendarTarget=null;
+function scheduleEntriesForDate(d){
+  return [
+    ...orders.filter(o=>!o.holdLine&&!o.productionOnly&&o.batchDate===d).map(o=>({o,dept:'batch'})),
+    ...orders.filter(o=>!o.holdLine&&o.prodDate===d).map(o=>({o,dept:'prod'}))
+  ].filter(e=>!editingId||e.o.id!==editingId);
+}
+function openScheduleCalendar(targetId){
+  const input=$(targetId);if(!input||editorMode==='hold')return;
+  scheduleCalendarTarget=targetId;
+  const value=input.value||iso(selected),base=new Date(value+'T12:00:00');
+  monthCursor=new Date(base.getFullYear(),base.getMonth(),1);
+  showModal('monthModal');renderMonth();
+}
 function entryDone(e){return e.dept==='batch'?e.o.batchStatus==='done':e.o.prodStatus==='done'}
 function dayState(d){const a=entriesForDate(d);if(!a.length)return'emptyday';return a.every(entryDone)?'good':'bad'}
-function openMonth(){monthCursor=new Date(selected.getFullYear(),selected.getMonth(),1);showModal('monthModal');renderMonth()}
+function openMonth(){scheduleCalendarTarget=null;monthCursor=new Date(selected.getFullYear(),selected.getMonth(),1);showModal('monthModal');renderMonth()}
 function gtNthWeekday(year,month,weekday,n){const d=new Date(year,month,1);d.setDate(1+((7+weekday-d.getDay())%7)+(n-1)*7);return d}
 function gtLastWeekday(year,month,weekday){const d=new Date(year,month+1,0);d.setDate(d.getDate()-((7+d.getDay()-weekday)%7));return d}
 function gtObservedHoliday(date){const d=new Date(date);if(d.getDay()===6)d.setDate(d.getDate()-1);else if(d.getDay()===0)d.setDate(d.getDate()+1);return d}
 function gtHolidayMap(year){const days=[[new Date(year,0,1),"New Year's Day"],[gtNthWeekday(year,0,1,3),"Martin Luther King Jr. Day"],[gtNthWeekday(year,1,1,3),"Presidents Day"],[gtLastWeekday(year,4,1),"Memorial Day"],[new Date(year,5,19),"Juneteenth"],[new Date(year,6,4),"Independence Day"],[gtNthWeekday(year,8,1,1),"Labor Day"],[gtNthWeekday(year,9,1,2),"Columbus / Indigenous Peoples' Day"],[new Date(year,10,11),"Veterans Day"],[gtNthWeekday(year,10,4,4),"Thanksgiving Day"],[new Date(year,11,25),"Christmas Day"]];const map=new Map();for(const [date,name] of days){map.set(iso(date),name);const observed=gtObservedHoliday(date);if(iso(observed)!==iso(date))map.set(iso(observed),name+" · Observed")}return map}
 function gtHolidayName(dateStr){const y=Number(dateStr.slice(0,4));for(const map of [gtHolidayMap(y-1),gtHolidayMap(y),gtHolidayMap(y+1)])if(map.has(dateStr))return map.get(dateStr);return ""}
 function renderMonth(){
- $('monthTitle').textContent=monthCursor.toLocaleDateString(locale(),{month:'long',year:'numeric'});
+ const pickerLabel=scheduleCalendarTarget?(scheduleCalendarTarget==='workDate'?'Choose Batch Maker Date':'Choose Fill Line Date'):'';
+ const monthLabel=monthCursor.toLocaleDateString(locale(),{month:'long',year:'numeric'});
+ $('monthTitle').textContent=pickerLabel?pickerLabel+' · '+monthLabel:monthLabel;
  let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>'<div class="dow">'+x+'</div>').join(''),first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
- start.setDate(1-first.getDay());const today=iso(new Date());
- for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6,holiday=gtHolidayName(di),arr=weekend?[]:entriesForDate(di);const holidayChip=holiday?'<div class="calendar-holiday">★ '+esc(holiday)+'</div>':'';const workChips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(holiday?'holiday ':'')+(di===today?'today':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+holidayChip+workChips+'</div></div>'}
- $('calendar').innerHTML=html;document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{selected=new Date(el.dataset.day+'T12:00:00');hideModal('monthModal');render()})
+ start.setDate(1-first.getDay());const today=iso(new Date()),picked=scheduleCalendarTarget?($(scheduleCalendarTarget)?.value||''):'';
+ for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6,holiday=gtHolidayName(di),arr=weekend?[]:(scheduleCalendarTarget?scheduleEntriesForDate(di):entriesForDate(di));const holidayChip=holiday?'<div class="calendar-holiday">★ '+esc(holiday)+'</div>':'';const workChips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(holiday?'holiday ':'')+(di===today?'today ':'')+(picked===di?'schedule-picked ':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+holidayChip+workChips+'</div></div>'}
+ $('calendar').innerHTML=html;document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{const di=el.dataset.day;if(scheduleCalendarTarget){const target=scheduleCalendarTarget;$(target).value=di;scheduleCalendarTarget=null;hideModal('monthModal');$(target).focus({preventScroll:true});return}selected=new Date(di+'T12:00:00');hideModal('monthModal');render()})
 }
 function renderFeedHTML(){
  if(!isManager)return '';
@@ -1995,7 +2011,7 @@ function openFullDatePicker(input){
 }
 function enableFullDatePickerClicks(){
   document.querySelectorAll('input[type="date"],input[type="month"]').forEach(input=>{
-    if(input.dataset.fullPickerBound==='1')return;
+    if(input.dataset.fullPickerBound==='1'||input.dataset.scheduleCalendar)return;
     input.dataset.fullPickerBound='1';
     input.classList.add('full-picker-click');
     input.addEventListener('click',()=>openFullDatePicker(input));
@@ -2027,8 +2043,9 @@ document.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>setAuto(autoTa
 for(const id of ['tank','quart','gallon','five','jerry'])$(id).oninput=recalc;
 for(const id of ['carryQuart','carryGallon','carryFive','carryJerry','carryDate'])$(id).oninput=updateCarryPreview;
 $('jerryEnabled').onchange=()=>toggleJerryField(true);
-$('workDate').onchange=()=>{if(isWeekendDateStr($('workDate').value))toast(t('weekendOff'))};
-$('prodWorkDate').onchange=()=>{if(isWeekendDateStr($('prodWorkDate').value))toast(t('weekendOff'))};
+$('workDate').onclick=e=>{e.preventDefault();openScheduleCalendar('workDate')};
+$('prodWorkDate').onclick=e=>{e.preventDefault();openScheduleCalendar('prodWorkDate')};
+for(const id of ['workDate','prodWorkDate']){const input=$(id),label=input?.closest('label');if(label)label.onclick=e=>{if(e.target===input)return;e.preventDefault();openScheduleCalendar(id)}};
 $('product').onfocus=showProductOptions;
 $('product').onclick=showProductOptions;
 $('product').onkeydown=e=>{if(e.key==='Escape')hideProductOptions();if(e.key==='ArrowDown'){e.preventDefault();if($('productOptions').hidden)showProductOptions();$('productOptions').querySelector('button')?.focus()}};
