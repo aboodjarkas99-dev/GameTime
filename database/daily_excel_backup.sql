@@ -48,4 +48,29 @@ revoke all on function public.verify_gametime_backup_token(text) from anon;
 revoke all on function public.verify_gametime_backup_token(text) from authenticated;
 grant execute on function public.verify_gametime_backup_token(text) to service_role;
 
--- The production cron job is installed separately after the Edge Function deploys.
+-- Daily automatic backup. Supabase Cron is UTC; 08:30 UTC is approximately
+-- 2:30 AM Central Standard Time / 3:30 AM Central Daylight Time.
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'gametime-daily-excel-backup';
+
+select cron.schedule(
+  'gametime-daily-excel-backup',
+  '30 8 * * *',
+  $job$
+    select net.http_post(
+      url := 'https://bqnptjfdsxzbxtkzigim.supabase.co/functions/v1/gametime-daily-backup',
+      headers := jsonb_build_object(
+        'Content-Type','application/json',
+        'x-gametime-backup-token',(
+          select decrypted_secret
+          from vault.decrypted_secrets
+          where name='gametime_backup_token'
+          limit 1
+        )
+      ),
+      body := jsonb_build_object('source','daily-cron'),
+      timeout_milliseconds := 120000
+    );
+  $job$
+);
