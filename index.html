@@ -9,7 +9,7 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261105a">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261109a">
 <title>GameTime Factory Work Board</title>
 <script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261103a"><script defer src="/date-picker.js?v=20261103a"></script></head>
 <body>
@@ -513,34 +513,18 @@
 
 <div class="modal" id="managerDispatchModal"><div class="dialog"><div class="dialoghead"><h2 id="managerDispatchTitle">Complete shipment</h2><button data-close="managerDispatchModal">✕</button></div><label>Actual shipping date<input type="date" id="managerDispatchDate"></label><label>Inventory handling<select id="managerDispatchStock"><option value="history">Already shipped — record status only, do not change stock</option><option value="deduct">Ship now — deduct saved quantities once</option></select></label><p>For old orders already reflected in your physical inventory count, use the first option. The second option subtracts the saved order quantities from current stock.</p><label>Note<input id="managerDispatchNote" placeholder="Already dispatched / reconciliation note"></label><label class="dispatch-review"><input type="checkbox" id="managerDispatchReviewed"> I confirm this order shipped and have checked its products and quantities.</label><p id="managerDispatchMessage" role="status"></p><div class="dialogactions"><button data-close="managerDispatchModal">Cancel</button><button class="primary" id="saveManagerDispatchBtn">Confirm shipped</button></div></div></div>
 <div class="modal" id="inventorySetModal">
-  <div class="dialog inventorystockdialog">
-    <div class="dialoghead"><h2>Set Current Stock</h2><button data-close="inventorySetModal">✕</button></div>
-    <p class="inventoryhelp">Enter the quantity physically in storage right now. GameTime saves only the difference, so this can also be used later for inventory corrections.</p>
-    <div class="inventorysetgrid">
-      <label>Product<input id="inventorySetProduct" list="inventoryProductList" autocomplete="off"></label>
-      <datalist id="inventoryProductList"></datalist>
-      <label>Product category<select id="inventorySetCategory" required><option value="">Choose a category…</option><option value="sport">Sport Floors</option><option value="residential">Residential</option><option value="cleaner">Cleaner</option></select></label>
-      <label>Package<select id="inventorySetPackage">
-        <option value="five_gallon_pail">5 Gallon Pail</option>
-        <option value="gallon">1 Gallon</option>
-        <option value="quart_can">Quart Can</option>
-        <option value="pint_can">Pint Can</option>
-        <option value="jerry_1_25">Jerry Can 1.25G</option>
-        <option value="gallon_1_5">1.5 Gallon</option>
-        <option value="vinyl_box">Vinyl Box</option>
-        <option value="drawdown_box">Drawdown Box</option>
-        <option value="box">Box</option>
-        <option value="unit">Unit</option>
-      </select></label>
-      <label>Current Quantity (containers)<input id="inventorySetQty" inputmode="decimal" type="number" min="0" step="any"></label>
-      <label>Date<input id="inventorySetDate" type="date"></label>
-      <label class="wide">Note<input id="inventorySetNote" placeholder="Opening count / cycle count / correction"></label>
+  <div class="dialog inventorystockdialog inventory-quick-dialog">
+    <div class="dialoghead"><h2>Update Inventory</h2><button data-close="inventorySetModal">✕</button></div>
+    <p class="inventoryhelp">Enter what is physically on hand now. Use full pallets plus the partial amount.</p>
+    <div class="inventory-quick-selects">
+      <label>Product<input id="inventorySetProduct" list="inventoryProductList" autocomplete="off"></label><datalist id="inventoryProductList"></datalist>
+      <label>Package<select id="inventorySetPackage"><option value="five_gallon_pail">5 Gallon</option><option value="gallon">1 Gallon</option><option value="quart_can">Quart</option><option value="pint_can">Pint</option><option value="jerry_1_25">Jerry 1.25G</option><option value="gallon_1_5">1.5 Gallon</option><option value="vinyl_box">Vinyl Box</option><option value="drawdown_box">Drawdown Box</option><option value="box">Box</option><option value="unit">Unit</option></select></label>
     </div>
-    <div id="inventorySetMessage" class="authmessage"></div>
-    <div class="dialogactions"><button data-close="inventorySetModal">Cancel</button><button id="saveInventorySetBtn" class="primary">Save Current Stock</button></div>
+    <div class="inventory-quick-numbers"><label id="inventorySetPalletWrap">Pallets<input id="inventorySetPallets" type="number" min="0" step="1" inputmode="numeric"></label><label id="inventorySetPartialWrap"><span id="inventorySetPartialLabel">Partial</span><input id="inventorySetPartial" type="number" min="0" step="1" inputmode="numeric"></label><label id="inventorySetQtyWrap" hidden>Quantity<input id="inventorySetQty" type="number" min="0" step="1" inputmode="numeric"></label></div>
+    <div hidden><select id="inventorySetCategory"><option value=""></option><option value="sport">Sport Floors</option><option value="residential">Residential</option><option value="cleaner">Cleaner</option></select><input id="inventorySetDate" type="date"><input id="inventorySetNote"></div>
+    <div id="inventorySetMessage" class="authmessage"></div><div class="dialogactions inventory-quick-actions"><button data-close="inventorySetModal">Cancel</button><button id="saveInventorySetBtn" class="primary">Save</button></div>
   </div>
 </div>
-
 <div class="modal" id="shippingAnalyticsModal">
   <div class="dialog analyticsdialog shippingdialog">
     <div class="dialoghead"><h2>Monthly Shipping Chart</h2><button data-close="shippingAnalyticsModal">✕</button></div>
@@ -626,13 +610,13 @@
 <div class="modal" id="fillSupplyMovementModal"><div class="dialog"><div class="dialoghead"><h2 id="fillSupplyMovementTitle">Update supply</h2><button data-close="fillSupplyMovementModal">✕</button></div><p id="fillSupplyCurrent"></p><div class="inventorysetgrid"><label>Quantity (whole items)<input id="fillSupplyQuantity" type="number" min="0" step="1" inputmode="numeric"></label><label>Note / batch / reference<input id="fillSupplyNote" maxlength="500"></label></div><p id="fillSupplyMovementMessage" role="status"></p><div class="dialogactions"><button data-close="fillSupplyMovementModal">Cancel</button><button id="saveFillSupplyBtn" class="primary">Save movement</button></div></div></div>
 
 <div class="modal" id="productReviewModal"><div class="dialog analyticsdialog"><div class="dialoghead"><h2>Product names from Shipping</h2><button data-close="productReviewModal">✕</button></div><p>Choose whether each name belongs to an existing product or a new product. Only Management can approve these matches.</p><p id="productReviewMessage" role="status"></p><div id="productReviewBody"></div></div></div>
-<script src="labels.js?v=20261104b"></script>
+<script src="labels.js?v=20261109a"></script>
 <div class="modal" id="fillCompletionModal"><div class="dialog analyticsdialog fill-completion-dialog"><div class="dialoghead"><h2 id="fillCompletionTitle">Work Done — Materials</h2><button data-close="fillCompletionModal">✕</button></div><p id="fillCompletionBatch"></p><p>Containers and labels follow the actual filled quantities. Boxes and pallets are calculated automatically where capacity is known. Undo Work Done returns these exact materials once.</p><div class="fill-completion-inputs"><div id="fillCompletionBoxes"></div><label id="fillPailField" hidden>5 Gallon pail type<select id="fillPailType"><option value="">Choose pail type…</option><option value="five_water">Water Based</option><option value="five_oil">Oil Based</option></select></label><label>Jerry Can pallets used<input id="fillUsedPallets" type="number" min="0" step="1" inputmode="numeric" placeholder="Enter actual pallets used" required><small>Only enter extra pallets used for Jerry Cans.</small></label></div><h3>Materials to deduct</h3><div id="fillCompletionPreview"></div><p id="fillCompletionStockMessage" role="status"></p><p id="fillCompletionError" role="alert"></p><div class="fill-completion-actions"><button id="fillCompletionInventory" type="button">Fill Line Inventory</button><button id="fillCompletionRefresh" type="button">Refresh balances</button><button id="confirmFillCompletion" type="button" disabled>Confirm Work Done</button></div></div></div>
-<script src="fill-line.js?v=SECURE_V2_20261105a"></script>
-<script src="fill-completion.js?v=SECURE_V2_20261105a"></script>
+<script src="fill-line.js?v=SECURE_V2_20261109a"></script>
+<script src="fill-completion.js?v=SECURE_V2_20261109a"></script>
 <script>document.addEventListener("DOMContentLoaded",initializeFillCompletion);</script>
 <script src="product-reviews.js?v=20261104a"></script>
-<script src="app.js?v=SECURE_V2_20261105a"></script><script src="/push-client.js?v=20261103a"></script>
+<script src="app.js?v=SECURE_V2_20261109a"></script><script src="/push-client.js?v=20261103a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>

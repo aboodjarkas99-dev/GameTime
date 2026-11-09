@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261103a';
+const BUILD='SECURE_V2_20261109a';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const labelsPortal=new URLSearchParams(location.search).get('workspace')==='labels';
 const ownerPortal=new URLSearchParams(location.search).get('workspace')==='owner';
@@ -645,7 +645,7 @@ async function reconcile(){
     const fresh=await fetchMyProfile(authUser.id);if(JSON.stringify(employeeRoles(fresh))!==JSON.stringify(employeeRoles())){applyProfile(fresh);await initialLoad();return;}
     if(!hasWorkPages()||isInventoryWorkspace()){if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);await loadFactoryProducts();if(canViewInventory())await loadInventoryStock(true);return;}
     const cloud=await fetchOrders();
-    if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();render()}
+    if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();renderStable()}
     await refreshShippingData();await loadFactoryProducts();if(isManager){if(Date.now()-managerInventoryLoaded>10000)await loadInventoryStock(true);await loadProductReviews()}
     if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);
     logPollTick++;if(logPollTick%3===0){logs=await fetchLogs();renderFeedIfOpen()}
@@ -656,8 +656,8 @@ function subscribeLive(){
   if(channel){db.removeChannel(channel);channel=null}
   channel=db.channel('gametime-live-v3')
     .on('postgres_changes',{event:'*',schema:'public',table:'work_orders'},payload=>{
-      if(payload.eventType==='DELETE'){orders=orders.filter(o=>o.id!==Number(payload.old.id));cache();render();return}
-      const o=fromRow(payload.new);mergeOrder(o);render();setSync('live','LIVE');
+      if(payload.eventType==='DELETE'){orders=orders.filter(o=>o.id!==Number(payload.old.id));cache();renderStable(Number(payload.old.id));return}
+      const o=fromRow(payload.new);mergeOrder(o);renderStable(o.id);setSync('live','LIVE');
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'activity_logs'},payload=>{
       const r=payload.new;logs.unshift({id:r.id,ts:new Date(r.event_ts).getTime(),date:r.event_date,product:r.product,dept:r.dept,type:r.event_type,extra:r.extra||'',actor:r.actor||''});
@@ -675,13 +675,13 @@ async function patchOrder(id,patch,expectedVersion=null){
   const {data,error}=await q.select().maybeSingle();
   if(error)throw error;
   if(expectedVersion!=null&&!data)return{conflict:true};
-  if(data){mergeOrder(fromRow(data));render()}
+  if(data){mergeOrder(fromRow(data));renderStable(id)}
   setSync('live','LIVE');return{conflict:false,data}
 }
 async function insertOrder(o){
   setSync('syncing','SAVING');
   const {data,error}=await db.from('work_orders').insert(toRow(o)).select().single();
-  if(error)throw error;mergeOrder(fromRow(data));render();setSync('live','LIVE');return data
+  if(error)throw error;mergeOrder(fromRow(data));renderStable(o.id);setSync('live','LIVE');return data
 }
 
 function searchQuery(){return $('search').value.trim().toLowerCase()}
@@ -732,7 +732,7 @@ function card(o,dept,i){
         resultDate=dept==='batch'?o.batchDate:o.prodDate,
         canAct=isManager||(hasEmployeeRole('batch')&&dept==='batch')||(hasEmployeeRole('prod')&&dept==='prod'),
         drag=isManager&&!isGlobalSearch()?' data-card="'+o.id+'" data-dept="'+dept+'"':'';
-  return '<article class="card '+(prodWaiting?'prod-waiting ':'')+(hasMade?'has-batch-made':'')+'"'+drag+'>'+
+  return '<article class="card '+(prodWaiting?'prod-waiting ':'')+(hasMade?'has-batch-made':'')+'" data-order-card="'+o.id+'" data-order-dept="'+dept+'"'+drag+'>'+
     (isManager&&!isGlobalSearch()?'<div class="draghandle" draggable="true" data-drag="'+o.id+'" data-dept="'+dept+'">'+esc(t('dragReorder'))+'</div>':'')+
     '<div class="tank"><b>'+esc(o.tank||'—')+'</b><span>'+esc(t('tankGal'))+'</span></div>'+
     '<div class="order">'+esc(dept==='prod'?t('filling'):t('batchWord'))+' '+esc(t('priority'))+' #'+(i+1)+(isGlobalSearch()&&resultDate?' <button type="button" class="result-date" data-search-date="'+esc(resultDate)+'">'+esc(usDate(resultDate))+'</button>':'')+'</div>'+
@@ -750,6 +750,15 @@ function card(o,dept,i){
     (hasMade?'<div class="batchmade-corner">'+esc(t('batchMadeOn'))+' <b>'+esc(usDate(o.batchMadeDate))+'</b></div>':'')+
     '</article>';
 }
+function captureWorkViewport(preferredId=null,preferredDept=null){
+ const all=[...document.querySelectorAll('[data-order-card]')];let anchor=null;
+ if(preferredId!=null){const match=all.filter(el=>Number(el.dataset.orderCard)===Number(preferredId)&&(!preferredDept||el.dataset.orderDept===preferredDept));anchor=match.find(el=>{const r=el.getBoundingClientRect();return r.bottom>70&&r.top<innerHeight})||match[0]||null}
+ if(!anchor)anchor=all.filter(el=>{const r=el.getBoundingClientRect();return r.bottom>70&&r.top<innerHeight}).sort((a,b)=>Math.abs(a.getBoundingClientRect().top-90)-Math.abs(b.getBoundingClientRect().top-90))[0]||null;
+ const r=anchor?.getBoundingClientRect();return {scrollX:window.scrollX,scrollY:window.scrollY,id:anchor?.dataset.orderCard||null,dept:anchor?.dataset.orderDept||null,top:r?.top??null}
+}
+function restoreWorkViewport(snap){if(!snap)return;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(snap.id){const el=document.querySelector('[data-order-card="'+snap.id+'"][data-order-dept="'+snap.dept+'"]');if(el&&snap.top!=null){window.scrollBy(0,el.getBoundingClientRect().top-snap.top);return}}window.scrollTo(snap.scrollX,snap.scrollY)}))}
+function renderStable(preferredId=null,preferredDept=null){const snap=captureWorkViewport(preferredId,preferredDept);render();restoreWorkViewport(snap)}
+
 function render(){
   $('viewLabel').textContent=isInventoryWorkspace()?'INVENTORY':(shippingPortal||shippingOnlyEmployee())?'SHIPPING':isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
@@ -798,7 +807,7 @@ async function handleAction(btn){
     const dept=btn.dataset.dept;
     if(['done','start'].includes(btn.dataset.action)){
       const key=id+':'+dept;if(workDonePending.has(key))return;workDonePending.add(key);btn.disabled=true;
-      try{if(dept==='prod'&&btn.dataset.action==='done'&&o.prodStatus!=='done'){await openFillCompletion(o);updateFillCompletionPreview();return}const {data,error}=await db.rpc(btn.dataset.action==='start'?'toggle_work_start':'toggle_work_done',{p_order_id:id,p_department:dept,p_expected_status:dept==='batch'?o.batchStatus:o.prodStatus});if(error)throw error;if(data?.order){mergeOrder(fromRow(data.order));render()}if(data?.conflict)toast('This order changed on another screen. Latest status loaded.');else if(data?.reopened)toast(lang==='es'?'Trabajo reabierto':'Work reopened');}finally{workDonePending.delete(key);btn.disabled=false}
+      try{if(dept==='prod'&&btn.dataset.action==='done'&&o.prodStatus!=='done'){await openFillCompletion(o);updateFillCompletionPreview();return}const {data,error}=await db.rpc(btn.dataset.action==='start'?'toggle_work_start':'toggle_work_done',{p_order_id:id,p_department:dept,p_expected_status:dept==='batch'?o.batchStatus:o.prodStatus});if(error)throw error;if(data?.order){mergeOrder(fromRow(data.order));renderStable(id,dept)}if(data?.conflict)toast('This order changed on another screen. Latest status loaded.');else if(data?.reopened)toast(lang==='es'?'Trabajo reabierto':'Work reopened');}finally{workDonePending.delete(key);btn.disabled=false}
       return;
     }
     if(dept==='prod'&&o.batchStatus!=='done'){toast(t('productionLocked'));return}const checked=dept==='batch'?o.batchChecked:o.prodChecked;if(!checked){toast(t('completePrecheck'));return}
@@ -934,17 +943,17 @@ async function saveEditor(){
             o={id:nextId(),fillPackaging:plan.fill_packaging,date:batchDate,holdLine:editorMode==='hold',product,batch:plan.batch,tank:plan.tank,priority:plan.priority,quart:plan.quart,gallon:plan.gallon,five:plan.five,jerryEnabled:plan.jerry_enabled,jerry:plan.jerry,catalyst:plan.catalyst,batchNote:plan.batch_note,prodNote:plan.prod_note,autoTarget,batchChecked:false,prodChecked:false,batchStatus:'ready',prodStatus:'ready',held:false,actualQuart:null,actualGallon:null,actualFive:null,actualJerry:null,productionOnly:false,carryoverFrom:null,batchDate,prodDate,batchMadeDate:null,batchOrder:editorMode==='hold'?999:Math.max(0,...sameBatchDate.map(x=>x.batchOrder))+1,prodOrder:editorMode==='hold'?999:Math.max(0,...sameProdDate.map(x=>x.prodOrder))+1};
       await insertOrder(o)
     }
-    hideModal('editorModal');if(editorMode!=='hold')selected=new Date(batchDate+'T12:00:00');render();toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
+    hideModal('editorModal');renderStable(editingId);toast(t('saved')+' — '+t('batchMakerDate')+' '+usDate(batchDate)+' • '+t('productionDate')+' '+usDate(prodDate))
   }catch(e){
     if(e&&e.code==='23505'){toast(t('batchExists'))}
     else if(e&&e.code==='23514'){toast(t('weekendOff'))}
     else fail(e)
   }finally{saveBusy=false;$('saveOrderBtn').disabled=false;$('saveOrderBtn').textContent=t('saveWorkOrder')}
 }
-async function softDelete(id){if(!isManager||!confirm(t('confirmDelete')))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();render();toast(t('deletedHistory'))}catch(e){fail(e)}}
+async function softDelete(id){if(!isManager||!confirm(t('confirmDelete')))return;try{await patchOrder(id,{deleted_at:new Date().toISOString()});orders=orders.filter(o=>o.id!==id);cache();renderStable(id);toast(t('deletedHistory'))}catch(e){fail(e)}}
 async function moveToHold(id){if(!isManager)return;try{await patchOrder(id,{hold_line:true,work_date:null,batch_work_date:null,prod_work_date:null});toast(t('movedHold'))}catch(e){fail(e)}}
-async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});selected=new Date(date+'T12:00:00');closeDrawer();toast(t('scheduled'))}catch(e){fail(e)}}
-async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Fill Line cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);selected=new Date(date+'T12:00:00');closeDrawer();toast(t('rescheduled'))}catch(e){fail(e)}}
+async function scheduleHold(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const day=orders.filter(o=>!o.holdLine&&o.date===date);try{await patchOrder(id,{hold_line:false,work_date:date,batch_work_date:date,prod_work_date:date,batch_order:Math.max(0,...day.map(x=>x.batchOrder))+1,prod_order:Math.max(0,...day.map(x=>x.prodOrder))+1});closeDrawer();toast(t('scheduled'))}catch(e){fail(e)}}
+async function reschedule(id,date){if(!date)return;if(isWeekendDateStr(date)){toast(t('weekendOff'));return}const o=orders.find(x=>x.id===id);if(!o)return;if(o.batchStatus==='done'&&o.prodStatus!=='done'&&o.batchDate&&date<o.batchDate){toast('Fill Line cannot be scheduled before the Batch Maker date');return}const p={work_date:date};if(o.batchStatus!=='done')p.batch_work_date=date;if(o.prodStatus!=='done')p.prod_work_date=date;try{await patchOrder(id,p);closeDrawer();toast(t('rescheduled'))}catch(e){fail(e)}}
 
 function bindDrag(){
   document.querySelectorAll('.draghandle[draggable="true"]').forEach(handle=>{
@@ -976,7 +985,7 @@ document.addEventListener('touchmove',e=>{if(!touchDrag)return;const t=e.touches
 document.addEventListener('touchend',()=>{if(!touchDrag)return;document.querySelectorAll('.dragging,.dropzone').forEach(x=>x.classList.remove('dragging','dropzone'));if(touchDrag.target)reorder(touchDrag.id,touchDrag.target,touchDrag.dept);touchDrag=null});
 async function reorder(dragId,targetId,dept){
   if(dragId===targetId)return;const day=currentDay(dept).sort((a,b)=>(dept==='batch'?a.batchOrder-b.batchOrder:a.prodOrder-b.prodOrder)),from=day.findIndex(o=>o.id===dragId),to=day.findIndex(o=>o.id===targetId);if(from<0||to<0)return;const item=day.splice(from,1)[0];day.splice(to,0,item);
-  try{setSync('syncing','SAVING');const {error}=await db.rpc('reorder_work_orders',{p_work_date:iso(selected),p_dept:dept,p_ids:day.map(o=>o.id),p_actor:actor()});if(error)throw error;day.forEach((o,i)=>{if(dept==='batch')o.batchOrder=i+1;else o.prodOrder=i+1});cache();render();setSync('live','LIVE')}catch(e){fail(e)}
+  try{setSync('syncing','SAVING');const {error}=await db.rpc('reorder_work_orders',{p_work_date:iso(selected),p_dept:dept,p_ids:day.map(o=>o.id),p_actor:actor()});if(error)throw error;day.forEach((o,i)=>{if(dept==='batch')o.batchOrder=i+1;else o.prodOrder=i+1});cache();renderStable(dragId,dept);setSync('live','LIVE')}catch(e){fail(e)}
 }
 
 function entriesForDate(d){
@@ -990,19 +999,17 @@ function entriesForDate(d){
 function entryDone(e){return e.dept==='batch'?e.o.batchStatus==='done':e.o.prodStatus==='done'}
 function dayState(d){const a=entriesForDate(d);if(!a.length)return'emptyday';return a.every(entryDone)?'good':'bad'}
 function openMonth(){monthCursor=new Date(selected.getFullYear(),selected.getMonth(),1);showModal('monthModal');renderMonth()}
+function gtNthWeekday(year,month,weekday,n){const d=new Date(year,month,1);d.setDate(1+((7+weekday-d.getDay())%7)+(n-1)*7);return d}
+function gtLastWeekday(year,month,weekday){const d=new Date(year,month+1,0);d.setDate(d.getDate()-((7+d.getDay()-weekday)%7));return d}
+function gtObservedHoliday(date){const d=new Date(date);if(d.getDay()===6)d.setDate(d.getDate()-1);else if(d.getDay()===0)d.setDate(d.getDate()+1);return d}
+function gtHolidayMap(year){const days=[[new Date(year,0,1),"New Year's Day"],[gtNthWeekday(year,0,1,3),"Martin Luther King Jr. Day"],[gtNthWeekday(year,1,1,3),"Presidents Day"],[gtLastWeekday(year,4,1),"Memorial Day"],[new Date(year,5,19),"Juneteenth"],[new Date(year,6,4),"Independence Day"],[gtNthWeekday(year,8,1,1),"Labor Day"],[gtNthWeekday(year,9,1,2),"Columbus / Indigenous Peoples' Day"],[new Date(year,10,11),"Veterans Day"],[gtNthWeekday(year,10,4,4),"Thanksgiving Day"],[new Date(year,11,25),"Christmas Day"]];const map=new Map();for(const [date,name] of days){map.set(iso(date),name);const observed=gtObservedHoliday(date);if(iso(observed)!==iso(date))map.set(iso(observed),name+" · Observed")}return map}
+function gtHolidayName(dateStr){const y=Number(dateStr.slice(0,4));for(const map of [gtHolidayMap(y-1),gtHolidayMap(y),gtHolidayMap(y+1)])if(map.has(dateStr))return map.get(dateStr);return ""}
 function renderMonth(){
-  $('monthTitle').textContent=monthCursor.toLocaleDateString(locale(),{month:'long',year:'numeric'});
-  let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>'<div class="dow">'+x+'</div>').join(''),
-      first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
-  start.setDate(1-first.getDay());const today=iso(new Date());
-  for(let i=0;i<42;i++){
-    const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6;
-    const arr=weekend?[]:entriesForDate(di);
-    const chips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');
-    html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(di===today?'today':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+chips+'</div></div>';
-  }
-  $('calendar').innerHTML=html;
-  document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{selected=new Date(el.dataset.day+'T12:00:00');hideModal('monthModal');render()})
+ $('monthTitle').textContent=monthCursor.toLocaleDateString(locale(),{month:'long',year:'numeric'});
+ let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>'<div class="dow">'+x+'</div>').join(''),first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
+ start.setDate(1-first.getDay());const today=iso(new Date());
+ for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6,holiday=gtHolidayName(di),arr=weekend?[]:entriesForDate(di);const holidayChip=holiday?'<div class="calendar-holiday">★ '+esc(holiday)+'</div>':'';const workChips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder '+(entryDone(e)?'calgood':'calbad')+'" title="'+esc(e.o.product)+'"><b>'+(e.dept==='batch'?'B':'P')+'</b> '+esc(e.o.product)+(e.o.batch?' <span>'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span>• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+'</div>').join('');html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(holiday?'holiday ':'')+(di===today?'today':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+holidayChip+workChips+'</div></div>'}
+ $('calendar').innerHTML=html;document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{selected=new Date(el.dataset.day+'T12:00:00');hideModal('monthModal');render()})
 }
 function renderFeedHTML(){
  if(!isManager)return '';
@@ -1547,44 +1554,9 @@ function inventoryLevel(units,limits){
   return {key:'healthy',label:'Safe stock'};
 }
 function inventoryCategoryLabel(category){return {sport:'Sport Floors',residential:'Residential',cleaner:'Cleaners',unclassified:'Needs classification'}[category]||'Needs classification'}
-function inventoryProductCard(p){
-  const rows=inventoryStockRows.filter(r=>String(r.product).trim().toLowerCase()===p.name.trim().toLowerCase());
-  const standard=p.category==='sport'?['five_gallon_pail']:['quart_can','gallon','five_gallon_pail'];
-  const packages=[...new Set([...standard,...rows.map(r=>r.package_type)])].filter(type=>{const row=rows.find(r=>r.package_type===type);return row&&inventoryNum(row.stock_units)!==0});
-  return '<article class="inventory-v3-card"><div class="inventory-v3-cardhead"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager?'<button type="button" data-product-settings="'+esc(p.id||p.name)+'">Minimum / Safe</button>':'')+'</div><div class="inventory-v3-packages">'+packages.map(type=>{
-    const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units),limits=p.stock_limits?.[type];
-    const capacity=inventoryPalletCapacity(type),pallets=inventoryPalletCount(v,type);
-    const level=row?inventoryLevel(v,limits):{key:'unset',label:'No recorded balance'};
-    const scale=limits?Math.max(Number(limits.safe)*1.5,v,1):Math.max(v,1),fill=Math.max(0,Math.min(100,100*v/scale));
-    return '<div class="inventory-v3-package '+level.key+'"><div class="inventory-v3-number"><span>'+esc(inventoryPackageLabel(type))+'</span>'+(row?inventorySimpleCount(v,type):'<b>—</b>')+'</div>'+(row&&capacity?'<div class="inventory-pallet-detail"><strong>'+v.toLocaleString(locale(),{maximumFractionDigits:2})+' containers</strong></div>':'')+'<div class="inventory-v3-track" aria-hidden="true"><div style="width:'+fill+'%"></div>'+(limits?'<i style="left:'+Math.min(100,100*Number(limits.minimum)/scale)+'%" title="Minimum"></i><i style="left:'+Math.min(100,100*Number(limits.safe)/scale)+'%" title="Safe stock"></i>':'')+'</div><div class="inventory-v3-level">'+esc(level.label)+'</div><small>'+(limits?'Minimum: '+(capacity?inventoryPalletRemainder(limits.minimum,type):esc(limits.minimum))+' · Safe: '+(capacity?inventoryPalletRemainder(limits.safe,type):esc(limits.safe))+(capacity?'':' units'):'Limits not configured')+'</small>'+(row?'<small>Produced '+inventoryNum(row.produced_units).toLocaleString(locale())+' · Shipped '+inventoryNum(row.shipped_units).toLocaleString(locale())+'</small>':'')+(canEditInventoryStock()?'<button type="button" data-stock-name="'+esc(p.name)+'" data-stock-type="'+esc(type)+'">Set current stock</button>':'')+'</div>';
-  }).join('')+(!packages.length?'<p class="inventory-empty-stock">No stock currently.</p>':'')+'</div>'+(canEditInventoryStock()?'<button type="button" class="inventory-add-stock" data-stock-name="'+esc(p.name)+'" data-stock-type="five_gallon_pail">Add / update stock</button>':'')+'</article>';
-}
-function renderInventoryStock(){
-  const body=$('inventoryBody');if(!body)return;
-  const previousClassification=body.querySelector('[data-inventory-unclassified]');
-  if(previousClassification)inventoryUnclassifiedOpen=previousClassification.open;
-  const q=($('inventorySearch')?.value||'').trim().toLowerCase();
-  const products=factoryProducts.filter(p=>p.active&&(!q||p.name.toLowerCase().includes(q)));
-  // Preserve visibility of recorded balances awaiting a company classification.
-  const known=new Set(factoryProducts.map(p=>p.name.trim().toLowerCase()));
-  for(const r of inventoryStockRows){const name=String(r.product).trim();if(!known.has(name.toLowerCase())&&(!q||name.toLowerCase().includes(q))){products.push({name,id:'',category:'unclassified',stock_limits:{}});known.add(name.toLowerCase());}}
-  const summary=['five_gallon_pail','gallon','quart_can'].map(type=>{
-    const matching=inventoryStockRows.filter(r=>r.package_type===type&&products.some(p=>p.name.trim().toLowerCase()===r.product.trim().toLowerCase()));
-    const capacity=inventoryPalletCapacity(type),full=matching.reduce((sum,r)=>sum+Math.floor(Math.max(0,inventoryNum(r.stock_units))/capacity),0),loose=matching.reduce((sum,r)=>sum+Math.max(0,inventoryNum(r.stock_units))%capacity,0),shortage=matching.reduce((sum,r)=>sum+Math.max(0,-inventoryNum(r.stock_units)),0);
-    return '<div><span>'+esc(inventoryPackageLabel(type))+'</span>'+(matching.length?inventorySimpleCount(0,type,full,loose):'<b>—</b>')+'<small>Across products · '+capacity+' '+inventoryLooseLabel(type)+' per pallet</small>'+(shortage?'<small class="stock-shortage">Shortage: '+shortage+' '+inventoryLooseLabel(type)+'</small>':'')+'</div>';
-  }).join('');
-  body.innerHTML='<div class="inventory-pallet-summary">'+summary+'</div><div class="inventory-color-legend"><strong>Stock health</strong><div>'+['low','warning','healthy'].map(key=>'<button type="button" class="inventory-color-dot '+key+'" data-inventory-color="'+key+'" aria-label="'+({low:'Red stock status',warning:'Orange stock status',healthy:'Green stock status'}[key])+'" aria-pressed="'+(inventoryLegendSelection===key)+'"></button>').join('')+'</div><p id="inventoryColorExplanation">'+esc(inventoryColorExplanation(inventoryLegendSelection))+'</p></div>' +['sport','residential','cleaner','unclassified'].map(category=>{
-    const list=products.filter(p=>p.category===category).sort((a,b)=>a.name.localeCompare(b.name));
-    if(category==='unclassified'&&!list.length)return '';
-    const content='<div class="inventory-v3-grid">'+list.map(inventoryProductCard).join('')+'</div>';
-    return category==='unclassified'?'<details class="inventory-category" data-inventory-unclassified'+(inventoryUnclassifiedOpen?' open':'')+'><summary>Needs classification ('+list.length+')</summary>'+content+'</details>':'<section class="inventory-category"><div class="inventory-category-head"><h2>'+inventoryCategoryLabel(category)+'</h2><span>'+list.length+' products</span></div><p>'+(category==='sport'?'5 gallon pails':category==='residential'?'Quarts, gallons, and 5 gallon pails':'Company cleaning products')+'</p>'+(list.length?content:'<div class="inventory-empty-category">Classify products here using Company Products → Settings.</div>')+'</section>';
-  }).join('');
-  const classification=body.querySelector('[data-inventory-unclassified]');
-  if(classification)classification.ontoggle=()=>{if(classification.isConnected)inventoryUnclassifiedOpen=classification.open};
-  body.querySelectorAll('[data-inventory-color]').forEach(b=>b.onclick=()=>{inventoryLegendSelection=b.dataset.inventoryColor;$('inventoryColorExplanation').textContent=inventoryColorExplanation(inventoryLegendSelection);body.querySelectorAll('[data-inventory-color]').forEach(dot=>dot.setAttribute('aria-pressed',String(dot===b)))});
-  body.querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));
-  body.querySelectorAll('[data-stock-name]').forEach(b=>b.onclick=()=>{const row=inventoryStockRows.find(r=>r.product===b.dataset.stockName&&r.package_type===b.dataset.stockType);openInventorySet(row||null);$('inventorySetProduct').value=b.dataset.stockName;$('inventorySetPackage').value=b.dataset.stockType;syncInventorySetCategory()});
-}
+function inventoryCompactCount(units,type){const v=inventoryNum(units),capacity=inventoryPalletCapacity(type);if(v<0)return '<strong class="inventory-negative">− '+Math.abs(v).toLocaleString(locale(),{maximumFractionDigits:2})+'</strong><small>SHORT</small>';if(!capacity)return '<strong>'+v.toLocaleString(locale(),{maximumFractionDigits:2})+'</strong><small>UNITS</small>';const pallets=Math.floor(v/capacity),partial=v%capacity;return '<span class="inventory-count-pair"><b>'+pallets.toLocaleString(locale())+'</b><small>PALLET'+(pallets===1?'':'S')+'</small></span><span class="inventory-count-pair"><b>'+partial.toLocaleString(locale(),{maximumFractionDigits:2})+'</b><small>PARTIAL</small></span>'}
+function inventoryProductCard(p){const rows=inventoryStockRows.filter(r=>String(r.product).trim().toLowerCase()===p.name.trim().toLowerCase());const standard=p.category==='sport'?['five_gallon_pail']:p.category==='residential'?['five_gallon_pail','gallon','quart_can']:[];const packages=[...new Set([...standard,...rows.map(r=>r.package_type)])];return '<article class="inventory-compact-card"><div class="inventory-compact-head"><div><h3>'+esc(p.name)+'</h3><small>'+esc(inventoryCategoryLabel(p.category))+'</small></div>'+(isManager&&p.id?'<button type="button" class="inventory-settings-mini" data-product-settings="'+esc(p.id)+'" aria-label="Inventory settings">⚙</button>':'')+'</div><div class="inventory-compact-lines">'+(packages.length?packages.map(type=>{const row=rows.find(r=>r.package_type===type),v=inventoryNum(row?.stock_units);return '<div class="inventory-compact-line"><span class="inventory-package-name">'+esc(inventoryPackageLabel(type))+'</span><div class="inventory-line-count">'+inventoryCompactCount(v,type)+'</div>'+(canEditInventoryStock()?'<button type="button" class="inventory-line-add" data-stock-name="'+esc(p.name)+'" data-stock-type="'+esc(type)+'">+ Add</button>':'')+'</div>'}).join(''):'<div class="inventory-compact-empty">No package type recorded.</div>')+'</div></article>'}
+function renderInventoryStock(){const body=$('inventoryBody');if(!body)return;const q=($('inventorySearch')?.value||'').trim().toLowerCase();const products=factoryProducts.filter(p=>p.active&&(!q||p.name.toLowerCase().includes(q)));const known=new Set(factoryProducts.map(p=>p.name.trim().toLowerCase()));for(const r of inventoryStockRows){const name=String(r.product).trim(),key=name.toLowerCase();if(!known.has(key)&&(!q||key.includes(q))){products.push({name,id:'',category:'unclassified',stock_limits:{}});known.add(key)}}body.innerHTML=['sport','residential','cleaner','unclassified'].map(category=>{const list=products.filter(p=>p.category===category).sort((a,b)=>a.name.localeCompare(b.name));if(!list.length)return '';return '<section class="inventory-compact-category"><div class="inventory-compact-category-head"><h2>'+esc(inventoryCategoryLabel(category))+'</h2><span>'+list.length+'</span></div><div class="inventory-compact-list">'+list.map(inventoryProductCard).join('')+'</div></section>'}).join('')||'<div class="analytics-empty">No products match this search.</div>';body.querySelectorAll('[data-product-settings]').forEach(b=>b.onclick=()=>openProductSettings(b.dataset.productSettings));body.querySelectorAll('[data-stock-name]').forEach(b=>b.onclick=()=>{const row=inventoryStockRows.find(r=>String(r.product).toLowerCase()===String(b.dataset.stockName).toLowerCase()&&r.package_type===b.dataset.stockType);openInventorySet(row||null);$('inventorySetProduct').value=b.dataset.stockName;$('inventorySetPackage').value=b.dataset.stockType;syncInventorySetCategory();updateInventoryQuickFields(row||null)})}
 function inventoryLimitInputs(type,value,key,title){
  const capacity=inventoryPalletCapacity(type),set=value!=null;
  const pallets=set&&capacity?Math.floor(Number(value)/capacity):'',loose=set?(capacity?Number(value)%capacity:Number(value)):'';
@@ -1637,45 +1609,9 @@ function syncInventorySetCategory(){
   const product=factoryProducts.find(p=>p.name.trim().toLowerCase()===key);
   $('inventorySetCategory').value=['sport','residential','cleaner'].includes(product?.category)?product.category:'';
 }
-function openInventorySet(row=null){
-  if(!canEditInventoryStock())return;
-  populateInventoryProducts();
-  $('inventorySetProduct').value=row?.product||'';
-  syncInventorySetCategory();
-  $('inventorySetProduct').oninput=syncInventorySetCategory;
-  $('inventorySetPackage').value=row?.package_type||'five_gallon_pail';
-  $('inventorySetQty').value=row?String(inventoryNum(row.stock_units)):'';
-  $('inventorySetDate').value=iso(new Date());
-  $('inventorySetNote').value=row?'Cycle count / stock correction':'Opening stock count';
-  const m=$('inventorySetMessage');if(m){m.textContent='';m.className='authmessage'}
-  showModal('inventorySetModal');
-}
-async function saveInventorySet(){
-  if(!canEditInventoryStock())return;
-  const product=canonicalFactoryProduct($('inventorySetProduct').value.trim().replace(/\s+/g,' '));
-  const package_type=$('inventorySetPackage').value;
-  const category=$('inventorySetCategory').value;
-  const raw=$('inventorySetQty').value.trim(),target_units=Number(raw);
-  const event_date=$('inventorySetDate').value,note=$('inventorySetNote').value.trim();
-  const msg=$('inventorySetMessage');
-  const say=(x,bad=false)=>{msg.textContent=x;msg.className='authmessage'+(bad?' bad':' good')};
-  if(!product||raw===''||!Number.isFinite(target_units)||target_units<0||!event_date){say('Enter product, package, current quantity, and date.',true);return}
-  if(!['sport','residential','cleaner'].includes(category)){say('Choose Sport Floors, Residential, or Cleaner.',true);return}
-  $('saveInventorySetBtn').disabled=true;say('Saving current stock…');
-  try{
-    const {data,error}=await db.functions.invoke('inventory-set-stock',{body:{product,category,package_type,target_units,event_date,note}});
-    if(error||data?.error){
-      let detail=data?.error;
-      if(!detail&&error?.context){try{const response=await error.context.clone().json();detail=response?.error||response?.message}catch{}}
-      throw new Error(detail||error?.message||'Could not save stock');
-    }
-    say(data?.no_change?'Stock already matches this quantity.':'Current stock saved.');
-    await loadFactoryProducts();
-    await loadInventoryStock();
-    setTimeout(()=>hideModal('inventorySetModal'),300);
-  }catch(e){say(e.message||String(e),true)}
-  finally{$('saveInventorySetBtn').disabled=false}
-}
+function updateInventoryQuickFields(row=null){const type=$('inventorySetPackage').value,capacity=inventoryPalletCapacity(type);const existing=inventoryStockRows.find(r=>String(r.product).toLowerCase()===$('inventorySetProduct').value.trim().toLowerCase()&&r.package_type===type),current=row?inventoryNum(row.stock_units):inventoryNum(existing?.stock_units);$('inventorySetPalletWrap').hidden=!capacity;$('inventorySetPartialWrap').hidden=!capacity;$('inventorySetQtyWrap').hidden=!!capacity;if(capacity){$('inventorySetPallets').value=String(Math.max(0,Math.floor(current/capacity)));$('inventorySetPartial').value=String(Math.max(0,current%capacity));$('inventorySetPartialLabel').textContent='Partial ('+capacity+' max per full pallet)'}else $('inventorySetQty').value=String(Math.max(0,current))}
+function openInventorySet(row=null){if(!canEditInventoryStock())return;populateInventoryProducts();$('inventorySetProduct').value=row?.product||'';syncInventorySetCategory();$('inventorySetPackage').value=row?.package_type||'five_gallon_pail';$('inventorySetDate').value=iso(new Date());$('inventorySetNote').value='Physical inventory count';const m=$('inventorySetMessage');if(m){m.textContent='';m.className='authmessage'}$('inventorySetProduct').oninput=()=>{syncInventorySetCategory();updateInventoryQuickFields()};$('inventorySetPackage').onchange=()=>updateInventoryQuickFields();updateInventoryQuickFields(row);showModal('inventorySetModal')}
+async function saveInventorySet(){if(!canEditInventoryStock())return;const product=canonicalFactoryProduct($('inventorySetProduct').value.trim().replace(/\s+/g,' ')),package_type=$('inventorySetPackage').value,category=$('inventorySetCategory').value,capacity=inventoryPalletCapacity(package_type);let target_units;if(capacity){const pallets=Number($('inventorySetPallets').value.trim()||0),partial=Number($('inventorySetPartial').value.trim()||0);if(!Number.isSafeInteger(pallets)||pallets<0||!Number.isSafeInteger(partial)||partial<0||partial>=capacity){const m=$('inventorySetMessage');m.textContent='Enter whole pallets and a partial amount from 0 to '+(capacity-1)+'.';m.className='authmessage bad';return}target_units=pallets*capacity+partial}else{const raw=$('inventorySetQty').value.trim();target_units=Number(raw);if(raw===''||!Number.isFinite(target_units)||target_units<0){const m=$('inventorySetMessage');m.textContent='Enter a quantity of 0 or higher.';m.className='authmessage bad';return}}const event_date=$('inventorySetDate').value||iso(new Date()),note=$('inventorySetNote').value.trim()||'Physical inventory count',msg=$('inventorySetMessage'),say=(x,bad=false)=>{msg.textContent=x;msg.className='authmessage'+(bad?' bad':' good')};if(!product){say('Choose a product.',true);return}if(!['sport','residential','cleaner'].includes(category)){say('This product needs a company category before inventory can be saved.',true);return}$('saveInventorySetBtn').disabled=true;say('Saving…');try{const {data,error}=await db.functions.invoke('inventory-set-stock',{body:{product,category,package_type,target_units,event_date,note}});if(error||data?.error){let detail=data?.error;if(!detail&&error?.context){try{const response=await error.context.clone().json();detail=response?.error||response?.message}catch{}}throw new Error(detail||error?.message||'Could not save stock')}await loadFactoryProducts();await loadInventoryStock();say('Inventory updated.');setTimeout(()=>hideModal('inventorySetModal'),180)}catch(e){say(e.message||String(e),true)}finally{$('saveInventorySetBtn').disabled=false}}
 let managerShippingRows=[],managerShippingLines=[],managerShippingFilter='DRAFT',managerShippingBusy=false;
 async function loadManagerShippingDetails(){
   if(!isManager||managerShippingBusy)return;managerShippingBusy=true;

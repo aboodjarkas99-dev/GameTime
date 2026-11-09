@@ -17,7 +17,7 @@ async function openFillCompletion(o,refresh=false){
  const previous=refresh&&fillCompletionState?{version:fillCompletionState.order.version,usage:fillUsageFromForm()}:null;
  try{
   const {data,error}=await db.rpc('preview_fill_line_consumption',{p_order_id:o.id});if(error)throw error;
-  mergeOrder(fromRow(data.order));render();
+  mergeOrder(fromRow(data.order));renderStable(o.id,'prod');
   if(data.order.prod_status==='done'){toast('This order is already done. Latest status loaded.');hideModal('fillCompletionModal');return}
   if(data.order.batch_status!=='done'||!data.order.prod_checked)throw new Error('Finish Batch Maker and Fill Line PRE-CHECK first.');
   for(const key of ['quart','gallon','five','jerry'])if((key!=='jerry'||data.order.jerry_enabled)&&num(data.order[key])>0&&data.order['actual_'+key]==null)throw new Error('Enter actual filled quantities first.');
@@ -55,7 +55,7 @@ async function saveFillCompletion(){
  fillCompletionBusy=true;$('confirmFillCompletion').disabled=true;$('fillCompletionError').textContent='';
  try{
   const {data,error}=await db.rpc('complete_fill_line',{p_order_id:fillCompletionState.order.id,p_expected_version:fillCompletionState.order.version,p_usage:fillUsageFromForm()});if(error)throw error;
-  if(data?.order){mergeOrder(fromRow(data.order));render()}
+  if(data?.order){mergeOrder(fromRow(data.order));renderStable(fillCompletionState.order.id,'prod')}
   if(data?.conflict){hideModal('fillCompletionModal');fillCompletionState=null;toast('This order changed. Open Work Done again to review the latest quantities.');return}
   hideModal('fillCompletionModal');fillCompletionState=null;toast('Work Done saved. Packaging and labels deducted.');
   await loadFillSupplies();
