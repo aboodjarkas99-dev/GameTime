@@ -1111,3 +1111,37 @@ input.full-picker-click{cursor:pointer}
   #monthModal .calendar-legend small{display:none}
   #monthModal .calendar-holiday{font-size:6px;padding:2px 3px}
 }
+
+/* 2026-11-09 rolling-week calendar: prioritize workdays */
+#monthModal .calendar{
+  grid-template-columns:minmax(34px,.62fr) repeat(5,minmax(0,1.15fr)) minmax(34px,.62fr)!important
+}
+#monthModal .dow-work{font-size:9px;color:#334155}
+#monthModal .dow-off{font-size:7px;color:#94a3b8}
+#monthModal .day.weekend{
+  padding-left:2px!important;
+  padding-right:2px!important;
+  opacity:.78
+}
+#monthModal .day.weekend .daynum{font-size:8px;color:#94a3b8}
+#monthModal .weekendoff{
+  margin-top:8px;
+  font-size:7px;
+  letter-spacing:.08em
+}
+#monthModal .calorder{font-size:8px;line-height:1.25}
+#monthModal .calorder-product{font-size:8px;font-weight:1000}
+#monthModal .calorder-batch{font-size:7px}
+@media(max-width:720px){
+  #monthModal .calendar{
+    grid-template-columns:minmax(24px,.46fr) repeat(5,minmax(0,1.21fr)) minmax(24px,.46fr)!important
+  }
+  #monthModal .dow-work{font-size:8px!important}
+  #monthModal .dow-off{font-size:6px!important}
+  #monthModal .day.weekend{padding:2px!important}
+  #monthModal .day.weekend .daynum{font-size:7px!important}
+  #monthModal .weekendoff{font-size:5.5px!important;margin-top:8px}
+  #monthModal .calorder{font-size:7.5px!important;line-height:1.22;padding:3px 12px 3px 4px!important}
+  #monthModal .calorder-product{font-size:7.5px!important}
+  #monthModal .calorder-batch{display:none}
+}
