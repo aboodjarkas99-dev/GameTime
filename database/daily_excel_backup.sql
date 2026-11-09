@@ -16,6 +16,21 @@ create table if not exists public.backup_runs (
 );
 alter table public.backup_runs enable row level security;
 
+drop policy if exists "Managers can read backup runs" on public.backup_runs;
+create policy "Managers can read backup runs"
+on public.backup_runs
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.active = true
+      and p.role = 'manager'
+  )
+);
+
 do $$
 begin
   if not exists (select 1 from vault.secrets where name = 'gametime_backup_token') then
