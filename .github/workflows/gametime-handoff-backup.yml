@@ -1,0 +1,44 @@
+name: GameTime Full Code Handoff
+
+on:
+  push:
+    branches:
+      - secure-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out secure-v2 source
+        uses: actions/checkout@v4
+
+      - name: Build handoff manifest
+        shell: bash
+        run: |
+          mkdir -p HANDOFF_PACKAGE
+          cat > HANDOFF_PACKAGE/SNAPSHOT_MANIFEST.txt <<EOF
+          GameTime Full Code Handoff
+          Repository: aboodjarkas99-dev/GameTime
+          Branch: secure-v2
+          Commit: $GITHUB_SHA
+          Generated UTC: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          Production URL: https://gametime-secure-v2.vercel.app
+          Supabase project ref: bqnptjfdsxzbxtkzigim
+          EOF
+
+      - name: Create complete source archive
+        shell: bash
+        run: |
+          zip -rq "GameTime-Full-Code-$GITHUB_SHA.zip" . -x ".git/*"
+
+      - name: Upload handoff archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameTime-Full-Code
+          path: GameTime-Full-Code-${{ github.sha }}.zip
+          if-no-files-found: error
+          retention-days: 90
