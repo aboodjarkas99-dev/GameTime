@@ -1026,3 +1026,88 @@ input.full-picker-click{cursor:pointer}
 .schedule-dates label::after{content:"▦";position:absolute;right:10px;bottom:10px;font-size:15px;color:#475569;pointer-events:none}
 .day.schedule-picked{outline:3px solid #111827!important;outline-offset:-2px}
 #monthModal .day:not(.weekend):hover{border-color:#64748b;box-shadow:0 0 0 1px #64748b inset}
+
+/* 2026-11-09 schedule calendar readability + viewport fit */
+#monthModal{padding:8px!important;overflow:hidden!important}
+#monthModal .monthdialog{
+  width:min(900px,calc(100vw - 16px))!important;
+  max-width:calc(100vw - 16px)!important;
+  max-height:calc(100dvh - 16px);
+  margin-top:0!important;
+  overflow:hidden!important;
+  display:flex;
+  flex-direction:column
+}
+#monthModal .dialoghead{flex:0 0 auto}
+.calendar-legend{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  padding:6px 2px 2px;
+  font-size:8px;
+  font-weight:900;
+  color:#475569
+}
+.calendar-legend span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.calendar-legend i{width:12px;height:5px;border-radius:999px;display:inline-block}
+.calendar-legend .legend-batch i{background:#d97706}
+.calendar-legend .legend-fill i{background:#2563eb}
+.calendar-legend small{margin-left:auto;font-size:7px;color:#94a3b8;font-weight:700}
+#monthModal .calendar{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  grid-template-columns:repeat(7,minmax(0,1fr))!important;
+  gap:4px;
+  overflow:hidden!important;
+  flex:1 1 auto;
+  min-height:0
+}
+#monthModal .dow{min-width:0}
+#monthModal .day{
+  min-width:0;
+  overflow:hidden;
+  box-sizing:border-box
+}
+#monthModal .calorders{min-width:0;overflow:hidden}
+#monthModal .calorder{
+  position:relative;
+  display:block;
+  min-width:0;
+  padding:3px 16px 3px 6px;
+  border:1px solid transparent;
+  border-left-width:4px;
+  background:#fff;
+  color:#334155;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis
+}
+#monthModal .calorder.dept-batch{border-left-color:#d97706;background:#fff7ed;color:#7c2d12}
+#monthModal .calorder.dept-prod{border-left-color:#2563eb;background:#eff6ff;color:#1e3a8a}
+#monthModal .calorder-product{font-weight:900}
+#monthModal .calorder-batch,#monthModal .calorder-made{font-weight:700;opacity:.78}
+#monthModal .calorder.is-done{opacity:.72}
+#monthModal .calorder-done{
+  position:absolute;
+  right:4px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#15803d;
+  font-style:normal;
+  font-size:8px;
+  font-weight:1000
+}
+@media(max-width:720px){
+  #monthModal{padding:4px!important}
+  #monthModal .monthdialog{width:calc(100vw - 8px)!important;max-width:calc(100vw - 8px)!important;max-height:calc(100dvh - 8px)}
+  #monthModal .calendar{min-width:0!important;gap:2px!important}
+  #monthModal .day{min-height:92px!important;padding:3px!important}
+  #monthModal .daynum{font-size:9px}
+  #monthModal .calorder{font-size:6.5px!important;padding:3px 12px 3px 4px!important;border-left-width:3px}
+  #monthModal .calendar-legend{gap:8px;padding-top:4px}
+  #monthModal .calendar-legend small{display:none}
+  #monthModal .calendar-holiday{font-size:6px;padding:2px 3px}
+}
