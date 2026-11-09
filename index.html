@@ -9,7 +9,7 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261109e">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261109f">
 <title>GameTime Factory Work Board</title>
 <script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261109c"><script defer src="/date-picker.js?v=20261109c"></script></head>
 <body>
@@ -520,7 +520,7 @@
       <label>Product<input id="inventorySetProduct" list="inventoryProductList" autocomplete="off"></label><datalist id="inventoryProductList"></datalist>
       <label>Package<select id="inventorySetPackage"><option value="five_gallon_pail">5 Gallon</option><option value="gallon">1 Gallon</option><option value="quart_can">Quart</option><option value="jerry_1_25">Jerry 1.25G</option><option value="gallon_1_5">1.5 Gallon</option><option value="vinyl_box">Vinyl Box</option><option value="drawdown_box">Drawdown Box</option><option value="box">Box</option><option value="unit">Unit</option></select></label>
     </div>
-    <div class="inventory-quick-numbers"><label id="inventorySetPalletWrap">Pallets<input id="inventorySetPallets" type="number" min="0" step="1" inputmode="numeric"></label><label id="inventorySetPartialWrap"><span id="inventorySetPartialLabel">Partial</span><input id="inventorySetPartial" type="number" min="0" step="1" inputmode="numeric"></label><label id="inventorySetQtyWrap" hidden>Quantity<input id="inventorySetQty" type="number" min="0" step="1" inputmode="numeric"></label></div>
+    <div class="inventory-quick-numbers"><label id="inventorySetPalletWrap">Pallets<input id="inventorySetPallets" type="number" min="0" step="1" inputmode="numeric"></label><label id="inventorySetPartialWrap"><span id="inventorySetPartialLabel">Loose containers</span><input id="inventorySetPartial" type="number" min="0" step="1" inputmode="numeric"></label><label id="inventorySetQtyWrap" hidden>Quantity<input id="inventorySetQty" type="number" min="0" step="1" inputmode="numeric"></label></div>
     <div hidden><select id="inventorySetCategory"><option value=""></option><option value="sport">Sport Floors</option><option value="residential">Residential</option><option value="cleaner">Cleaner</option></select><input id="inventorySetDate" type="date"><input id="inventorySetNote"></div>
     <div id="inventorySetMessage" class="authmessage"></div><div class="dialogactions inventory-quick-actions"><button data-close="inventorySetModal">Cancel</button><button id="saveInventorySetBtn" class="primary">Save</button></div>
   </div>
@@ -617,7 +617,7 @@
 <script src="fill-completion.js?v=SECURE_V2_20261109a"></script>
 <script>document.addEventListener("DOMContentLoaded",initializeFillCompletion);</script>
 <script src="product-reviews.js?v=20261104a"></script>
-<script src="app.js?v=SECURE_V2_20261109e"></script><script src="/push-client.js?v=20261103a"></script>
+<script src="app.js?v=SECURE_V2_20261109f"></script><script src="/push-client.js?v=20261103a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
