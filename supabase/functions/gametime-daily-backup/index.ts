@@ -206,6 +206,17 @@ Deno.serve(async (req: Request) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
+
+  if (body?.action === "signed-url") {
+    const path = String(body?.path || "latest/GameTime-Latest.xlsx");
+    if (!/^latest\/GameTime-Latest\.xlsx$|^daily\/\d{4}\/\d{2}\/GameTime-\d{4}-\d{2}-\d{2}\.xlsx$/.test(path)) {
+      return json({ error: "Invalid backup path" }, 400);
+    }
+    const { data, error } = await admin.storage.from(BUCKET).createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) return json({ error: error?.message || "Signed URL failed" }, 500);
+    return json({ ok: true, path, signed_url: data.signedUrl });
+  }
+
   const source = String(body?.source || "cron").slice(0, 40);
   const now = new Date();
   const central = chicagoDateParts(now);
