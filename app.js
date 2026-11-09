@@ -1007,12 +1007,12 @@ function openScheduleCalendar(targetId){
   const input=$(targetId);if(!input||editorMode==='hold')return;
   scheduleCalendarTarget=targetId;
   const value=input.value||iso(selected),base=new Date(value+'T12:00:00');
-  monthCursor=new Date(base.getFullYear(),base.getMonth(),1);
+  monthCursor=new Date(base);
   showModal('monthModal');renderMonth();
 }
 function entryDone(e){return e.dept==='batch'?e.o.batchStatus==='done':e.o.prodStatus==='done'}
 function dayState(d){const a=entriesForDate(d);if(!a.length)return'emptyday';return a.every(entryDone)?'good':'bad'}
-function openMonth(){scheduleCalendarTarget=null;monthCursor=new Date(selected.getFullYear(),selected.getMonth(),1);showModal('monthModal');renderMonth()}
+function openMonth(){scheduleCalendarTarget=null;monthCursor=new Date(selected);showModal('monthModal');renderMonth()}
 function gtNthWeekday(year,month,weekday,n){const d=new Date(year,month,1);d.setDate(1+((7+weekday-d.getDay())%7)+(n-1)*7);return d}
 function gtLastWeekday(year,month,weekday){const d=new Date(year,month+1,0);d.setDate(d.getDate()-((7+d.getDay()-weekday)%7));return d}
 function gtObservedHoliday(date){const d=new Date(date);if(d.getDay()===6)d.setDate(d.getDate()-1);else if(d.getDay()===0)d.setDate(d.getDate()+1);return d}
@@ -1020,10 +1020,15 @@ function gtHolidayMap(year){const days=[[new Date(year,0,1),"New Year's Day"],[g
 function gtHolidayName(dateStr){const y=Number(dateStr.slice(0,4));for(const map of [gtHolidayMap(y-1),gtHolidayMap(y),gtHolidayMap(y+1)])if(map.has(dateStr))return map.get(dateStr);return ""}
 function renderMonth(){
  const pickerLabel=scheduleCalendarTarget?(scheduleCalendarTarget==='workDate'?'Choose Batch Maker Date':'Choose Fill Line Date'):'';
- const monthLabel=monthCursor.toLocaleDateString(locale(),{month:'long',year:'numeric'});
- $('monthTitle').textContent=pickerLabel?pickerLabel+' · '+monthLabel:monthLabel;
- let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>'<div class="dow">'+x+'</div>').join(''),first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1),start=new Date(first);
- start.setDate(1-first.getDay());const today=iso(new Date()),picked=scheduleCalendarTarget?($(scheduleCalendarTarget)?.value||''):'';
+ const start=new Date(monthCursor);start.setHours(12,0,0,0);start.setDate(start.getDate()-start.getDay());
+ const end=new Date(start);end.setDate(start.getDate()+41);
+ const sameYear=start.getFullYear()===end.getFullYear(),sameMonth=sameYear&&start.getMonth()===end.getMonth();
+ const rangeLabel=sameMonth
+   ? start.toLocaleDateString(locale(),{month:'long',year:'numeric'})
+   : start.toLocaleDateString(locale(),{month:'short',day:'numeric',year:sameYear?undefined:'numeric'})+' – '+end.toLocaleDateString(locale(),{month:'short',day:'numeric',year:'numeric'});
+ $('monthTitle').textContent=pickerLabel?pickerLabel+' · '+rangeLabel:rangeLabel;
+ let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((x,i)=>'<div class="dow '+(i===0||i===6?'dow-off':'dow-work')+'">'+x+'</div>').join('');
+ const today=iso(new Date()),picked=scheduleCalendarTarget?($(scheduleCalendarTarget)?.value||''):'';
  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const di=iso(d),weekend=d.getDay()===0||d.getDay()===6,holiday=gtHolidayName(di),arr=weekend?[]:(scheduleCalendarTarget?scheduleEntriesForDate(di):entriesForDate(di));const holidayChip=holiday?'<div class="calendar-holiday">★ '+esc(holiday)+'</div>':'';const workChips=weekend?'<div class="weekendoff">OFF</div>':arr.map(e=>'<div class="calorder dept-'+e.dept+' '+(entryDone(e)?'is-done':'is-open')+'" title="'+esc((e.dept==='batch'?'Batch Maker: ':'Fill Line: ')+e.o.product)+'"><span class="calorder-product">'+esc(e.o.product)+'</span>'+(e.o.batch?' <span class="calorder-batch">'+esc(e.o.batch)+'</span>':'')+(e.dept==='prod'&&e.o.batchMadeDate?' <span class="calorder-made">• Made '+esc(usDate(e.o.batchMadeDate))+'</span>':'')+(entryDone(e)?'<i class="calorder-done" aria-label="Done">✓</i>':'')+'</div>').join('');html+='<div class="day '+(weekend?'weekend ':(!arr.length?'emptyday ':''))+(holiday?'holiday ':'')+(di===today?'today ':'')+(picked===di?'schedule-picked ':'')+'" '+(weekend?'':'data-day="'+di+'"')+'><div class="daynum">'+d.getDate()+'</div><div class="calorders">'+holidayChip+workChips+'</div></div>'}
  $('calendar').innerHTML=html;document.querySelectorAll('[data-day]').forEach(el=>el.onclick=()=>{const di=el.dataset.day;if(scheduleCalendarTarget){const target=scheduleCalendarTarget;$(target).value=di;scheduleCalendarTarget=null;hideModal('monthModal');$(target).focus({preventScroll:true});return}selected=new Date(di+'T12:00:00');hideModal('monthModal');render()})
 }
@@ -2034,17 +2039,17 @@ $('closeDrawer').onclick=closeDrawer;
 $('drawerBackdrop').onclick=e=>{if(e.target===$('drawerBackdrop'))closeDrawer()};
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hideModal(b.dataset.close));
 document.querySelectorAll('.modal').forEach(modal=>modal.addEventListener('click',e=>{if(e.target!==modal||modal.id==='identityModal')return;hideModal(modal.id)}));
-$('monthPrev').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderMonth()};
-$('monthNext').onclick=()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderMonth()};
+$('monthPrev').onclick=()=>{monthCursor.setDate(monthCursor.getDate()-7);renderMonth()};
+$('monthNext').onclick=()=>{monthCursor.setDate(monthCursor.getDate()+7);renderMonth()};
 let calendarWheelLock=false;
 $('monthModal')?.addEventListener('wheel',e=>{
   if(!$('monthModal')?.classList.contains('show')||!e.target.closest?.('.calendar'))return;
   e.preventDefault();
-  if(calendarWheelLock||Math.abs(e.deltaY)<8)return;
+  if(calendarWheelLock||Math.abs(e.deltaY)<6)return;
   calendarWheelLock=true;
-  monthCursor.setMonth(monthCursor.getMonth()+(e.deltaY>0?1:-1));
+  monthCursor.setDate(monthCursor.getDate()+(e.deltaY>0?7:-7));
   renderMonth();
-  setTimeout(()=>{calendarWheelLock=false},180);
+  setTimeout(()=>{calendarWheelLock=false},95);
 },{passive:false});
 $('saveQtyBtn').onclick=saveQty;
 $('saveCarryBtn').onclick=saveCarry;
