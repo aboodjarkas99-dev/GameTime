@@ -207,14 +207,25 @@ Deno.serve(async (req: Request) => {
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
 
-  if (body?.action === "signed-url") {
+  if (body?.action === "signed-url" || body?.action === "download-chunk") {
     const path = String(body?.path || "latest/GameTime-Latest.xlsx");
     if (!/^latest\/GameTime-Latest\.xlsx$|^daily\/\d{4}\/\d{2}\/GameTime-\d{4}-\d{2}-\d{2}\.xlsx$/.test(path)) {
       return json({ error: "Invalid backup path" }, 400);
     }
-    const { data, error } = await admin.storage.from(BUCKET).createSignedUrl(path, 300);
-    if (error || !data?.signedUrl) return json({ error: error?.message || "Signed URL failed" }, 500);
-    return json({ ok: true, path, signed_url: data.signedUrl });
+    if (body?.action === "signed-url") {
+      const { data, error } = await admin.storage.from(BUCKET).createSignedUrl(path, 300);
+      if (error || !data?.signedUrl) return json({ error: error?.message || "Signed URL failed" }, 500);
+      return json({ ok: true, path, signed_url: data.signedUrl });
+    }
+    const offset = Math.max(0, Number(body?.offset || 0) | 0);
+    const length = Math.min(24576, Math.max(1, Number(body?.length || 24576) | 0));
+    const { data, error } = await admin.storage.from(BUCKET).download(path);
+    if (error || !data) return json({ error: error?.message || "Download failed" }, 500);
+    const all = new Uint8Array(await data.arrayBuffer());
+    const chunk = all.slice(offset, Math.min(all.length, offset + length));
+    let binary = "";
+    for (let i = 0; i < chunk.length; i++) binary += String.fromCharCode(chunk[i]);
+    return json({ ok: true, path, offset, length: chunk.length, total: all.length, base64: btoa(binary) });
   }
 
   const source = String(body?.source || "cron").slice(0, 40);
