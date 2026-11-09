@@ -9,9 +9,9 @@
 <link rel="manifest" href="/manifest.webmanifest?v=20261016b">
 <link rel="icon" href="/app-icon-180.png?v=20261016b">
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
-<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261109a">
+<link rel="stylesheet" href="styles.css?v=SECURE_V2_20261109b">
 <title>GameTime Factory Work Board</title>
-<script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261103a"><script defer src="/date-picker.js?v=20261103a"></script></head>
+<script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261109b"><script defer src="/date-picker.js?v=20261109b"></script></head>
 <body>
 <!-- SECURE_V2_20261103a employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
@@ -336,8 +336,8 @@
     <div class="grid">
       <div class="full product-picker"><label for="product">Product Name</label><input id="product" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="productOptions"><div id="productOptions" class="product-options" role="listbox" hidden></div><small>Choose a company product or type a new name.</small></div>
       <div id="dateField" class="schedule-dates">
-        <label>Batch Maker Date<input id="workDate" type="date"></label>
-        <label>Fill Line Date<input id="prodWorkDate" type="date"></label>
+        <label>Batch Maker Date<input id="workDate" class="schedule-date-input" type="text" inputmode="none" readonly data-schedule-calendar="batch" aria-label="Choose Batch Maker date from schedule"></label>
+        <label>Fill Line Date<input id="prodWorkDate" class="schedule-date-input" type="text" inputmode="none" readonly data-schedule-calendar="prod" aria-label="Choose Fill Line date from schedule"></label>
       </div>
       <label>Batch Number<input id="batchNumber"></label>
       <label>Total Batch Gallons<input id="tank" inputmode="decimal"></label>
@@ -616,7 +616,7 @@
 <script src="fill-completion.js?v=SECURE_V2_20261109a"></script>
 <script>document.addEventListener("DOMContentLoaded",initializeFillCompletion);</script>
 <script src="product-reviews.js?v=20261104a"></script>
-<script src="app.js?v=SECURE_V2_20261109a"></script><script src="/push-client.js?v=20261103a"></script>
+<script src="app.js?v=SECURE_V2_20261109b"></script><script src="/push-client.js?v=20261103a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
