@@ -42,3 +42,17 @@ jobs:
           path: GameTime-Full-Code-${{ github.sha }}.zip
           if-no-files-found: error
           retention-days: 90
+
+      - name: Fetch full-detail Excel backup
+        shell: bash
+        run: |
+          curl -fL --retry 2 "https://bqnptjfdsxzbxtkzigim.supabase.co/storage/v1/object/sign/gametime-backups/latest/GameTime-Latest.xlsx?token=eyJraWQiOiJhYTE1Y2UzMy0xY2M0LTRlMTYtOGFiOS1hZjYyZTc5NjU5YjgiLCJhbGciOiJIUzUxMiJ9.eyJ1cmwiOiJnYW1ldGltZS1iYWNrdXBzL2xhdGVzdC9HYW1lVGltZS1MYXRlc3QueGxzeCIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3OTQzMjgwNzksImV4cCI6MTc5NDMyODM3OX0.CxIdCCtLVDArq9udfAHm49FE9APOg0Io9xTRTw0ClGb8Qq2Y4qxsFwbu7gWBm0cmtdR0Fr50c5skVGCEI_CLxA" -o GameTime-Full-Detail-Backup.xlsx
+          test -s GameTime-Full-Detail-Backup.xlsx
+
+      - name: Upload full-detail Excel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameTime-Full-Detail-Excel
+          path: GameTime-Full-Detail-Backup.xlsx
+          if-no-files-found: error
+          retention-days: 1
