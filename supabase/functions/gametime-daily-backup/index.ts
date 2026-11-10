@@ -118,15 +118,30 @@ async function fetchAccounts(admin: any) {
       id: u.id,
       email: u.email || "",
       phone: u.phone || "",
+      role: u.role || "",
       created_at: u.created_at || "",
       updated_at: u.updated_at || "",
+      invited_at: u.invited_at || "",
       last_sign_in_at: u.last_sign_in_at || "",
       confirmed_at: u.confirmed_at || "",
+      email_confirmed_at: u.email_confirmed_at || "",
+      phone_confirmed_at: u.phone_confirmed_at || "",
+      recovery_sent_at: u.recovery_sent_at || "",
+      email_change_sent_at: u.email_change_sent_at || "",
+      phone_change_sent_at: u.phone_change_sent_at || "",
+      banned_until: u.banned_until || "",
+      deleted_at: u.deleted_at || "",
       is_anonymous: !!u.is_anonymous
     })));
     if (users.length < 1000) break;
   }
   return result;
+}
+
+async function fetchSystemMetadata(admin: any) {
+  const { data, error } = await admin.rpc("gametime_backup_metadata");
+  if (error) throw new Error("backup metadata: " + error.message);
+  return (data || {}) as Record<string, Record<string, unknown>[]>;
 }
 
 function addDataSheet(workbook: any, name: string, rows: Record<string, unknown>[]) {
@@ -255,18 +270,58 @@ Deno.serve(async (req: Request) => {
       ["Generated Central", central.display],
       ["Latest workbook", latestPath],
       ["Daily archive", archivePath],
-      ["Security", "Passwords, password hashes, API/integration hashes, push encryption keys, and live session tokens are intentionally excluded."],
-      ["Restore note", "Operational tables and event ledgers are included so inventory, shipping, Fill Line, labels, work orders, and audit history can be reconstructed."]
+      ["Security", "Passwords, password hashes, API/integration hashes, push encryption keys, live session tokens, OAuth secrets, and cron secret values are intentionally excluded."],
+      ["Coverage", "Every current public table and view is classified and included. The backup fails instead of silently succeeding if a new public relation is added without a backup rule."],
+      ["Restore note", "Operational data plus database schema, constraints, indexes, triggers, RLS policies, cron schedules, extensions, routines, and storage inventory are included for recovery reference."]
     ];
 
     const accounts = await fetchAccounts(admin);
     rowCounts["Accounts"] = accounts.length;
+
+    const systemMetadata = await fetchSystemMetadata(admin);
+    const metadataSheets: Array<{ sheet: string; key: string; source: string; note: string }> = [
+      { sheet: "DB Schema", key: "schema_columns", source: "information_schema.columns", note: "Every public table/view column, type, default, and nullability" },
+      { sheet: "DB Constraints", key: "constraints", source: "pg_constraint", note: "Primary keys, foreign keys, unique and check constraints" },
+      { sheet: "DB Indexes", key: "indexes", source: "pg_indexes", note: "Public schema indexes and definitions" },
+      { sheet: "DB Triggers", key: "triggers", source: "pg_trigger", note: "Non-internal triggers and definitions" },
+      { sheet: "RLS Policies", key: "rls_policies", source: "pg_policies", note: "Row Level Security policy definitions" },
+      { sheet: "Cron Jobs", key: "cron_jobs", source: "cron.job", note: "Schedules and enabled state; job commands/secrets excluded" },
+      { sheet: "Storage Buckets", key: "storage_buckets", source: "storage.buckets", note: "Storage bucket configuration" },
+      { sheet: "Storage Objects", key: "storage_objects", source: "storage.objects", note: "Stored object inventory and metadata; file contents are not embedded in Excel" },
+      { sheet: "Extensions", key: "extensions", source: "pg_extension", note: "Installed PostgreSQL extensions" },
+      { sheet: "DB Routines", key: "routines", source: "pg_proc", note: "Routine signatures and security mode; routine source code is in the code backup, not Excel" }
+    ];
+
+    const relationNames = Array.from(new Set(
+      (systemMetadata.schema_columns || []).map((row: any) => String(row.table_name || "")).filter(Boolean)
+    )).sort();
+    const knownSources = new Set(SPECS.map(spec => spec.source));
+    const missingSources = relationNames.filter(name => !knownSources.has(name));
+    if (missingSources.length) {
+      throw new Error("Backup coverage incomplete. New public tables/views require classification: " + missingSources.join(", "));
+    }
+
+    const coverageRows = relationNames.map(name => {
+      const spec = SPECS.find(item => item.source === name)!;
+      return {
+        source: name,
+        sheet: spec.sheet,
+        coverage: spec.select ? "SAFE SUBSET" : "ALL COLUMNS",
+        selected_columns: spec.select || "*",
+        note: spec.note || ""
+      };
+    });
+    rowCounts["Backup Coverage"] = coverageRows.length;
 
     const dataSets: Array<{ spec: BackupSpec; rows: Record<string, unknown>[] }> = [];
     for (const spec of SPECS) {
       const rows = await fetchAll(admin, spec);
       dataSets.push({ spec, rows });
       rowCounts[spec.sheet] = rows.length;
+    }
+
+    for (const meta of metadataSheets) {
+      rowCounts[meta.sheet] = (systemMetadata[meta.key] || []).length;
     }
 
     const index = workbook.addWorksheet("Index", { views: [{ state: "frozen", ySplit: 9 }] });
@@ -276,14 +331,20 @@ Deno.serve(async (req: Request) => {
     const head = index.addRow(["Sheet", "Source", "Rows", "Notes"]);
     head.font = { bold: true, color: { argb: "FFFFFFFF" } };
     head.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E78" } };
-    index.addRow(["Accounts", "auth.users (safe fields only)", accounts.length, "Password and authentication secrets excluded"]);
+    index.addRow(["Accounts", "auth.users (safe lifecycle fields)", accounts.length, "Passwords and authentication secrets excluded"]);
+    index.addRow(["Backup Coverage", "public tables/views", coverageRows.length, "Coverage audit for every public relation"]);
     for (const { spec, rows } of dataSets) {
       index.addRow([spec.sheet, spec.source, rows.length, spec.note || ""]);
+    }
+    for (const meta of metadataSheets) {
+      index.addRow([meta.sheet, meta.source, (systemMetadata[meta.key] || []).length, meta.note]);
     }
     index.eachRow((row: any) => { row.alignment = { vertical: "top", wrapText: true }; });
 
     addDataSheet(workbook, "Accounts", accounts);
+    addDataSheet(workbook, "Backup Coverage", coverageRows);
     for (const { spec, rows } of dataSets) addDataSheet(workbook, spec.sheet, rows);
+    for (const meta of metadataSheets) addDataSheet(workbook, meta.sheet, systemMetadata[meta.key] || []);
 
     const raw = await workbook.xlsx.writeBuffer();
     const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw as ArrayBuffer);
