@@ -10,7 +10,7 @@ const headers = {
   "Vary": "Origin"
 };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers });
-const day = () => new Intl.DateTimeFormat("en-CA", {timeZone:"America/Chicago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const day = () => { const p = new Intl.DateTimeFormat("en-US",{timeZone:"America/Chicago",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()); return ["year","month","day"].map(k=>p.find(x=>x.type===k)?.value).join("-"); };
 async function all(query: any) {
   const rows: any[] = [];
   for (let offset = 0; ; offset += 500) {
