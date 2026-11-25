@@ -6,7 +6,8 @@
  async function existing(){const reg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;return{reg,sub:await reg.pushManager.getSubscription()}}
  async function save(sub){const json=sub.toJSON(),r=await client.rpc('register_push',{p_endpoint:json.endpoint,p_keys:json.keys});if(r.error)throw r.error;status.textContent='Notifications on · New work immediately; unfinished work at 10 AM, noon and 2 PM (Arkansas time).';enable.hidden=true;disable.hidden=false}
  async function refresh(){
-  const session=await client.auth.getSession();user=session.data.session?.user||null;panel.hidden=!user;if(!user)return;
+  const session=await client.auth.getSession();user=session.data.session?.user||null;panel.hidden=true;if(!user)return;
+  const {data:account,error:accountError}=await client.from('profiles').select('role,active').eq('id',user.id).maybeSingle();if(accountError||!account?.active||account.role==='factory_board')return;panel.hidden=false;
   if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){status.textContent='On iPhone: add GameTime to your Home Screen, then open it there to enable notifications.';enable.hidden=true;return}
   try{if(Notification.permission==='granted'){const {sub}=await existing();if(sub)await save(sub)}}catch{status.textContent='Reconnect, then enable notifications again.'}
  }
