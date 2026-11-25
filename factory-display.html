@@ -40,9 +40,25 @@ header{display:flex;align-items:center;justify-content:space-between;gap:18px;bo
 #login{min-height:100vh;display:grid;place-items:center;padding:24px}.login-card{width:min(440px,100%);padding:32px;background:#fff;border:1px solid #c9c9c5;box-shadow:0 5px 24px #0000000a}.login-card h1{font-size:28px;margin:0 0 10px}.login-card p{color:var(--muted);line-height:1.5}.login-card label{display:block;margin:16px 0 7px;font-weight:700}.login-card input{width:100%;padding:13px 12px;background:#fff;border:1px solid #aaa;border-radius:3px;color:#222;font-size:17px}.login-card button{margin-top:20px;width:100%;padding:13px;background:#222;color:#fff;border:0;border-radius:3px;font-weight:800;font-size:17px}.login-card button:disabled{opacity:.6}.login-card #message{min-height:24px;color:#333}.login-card a{color:#444}
 @media(max-width:850px){#display{height:auto;min-height:100vh;grid-template-rows:auto auto auto;padding:12px}.board{grid-template-columns:1fr}.lane+.lane{border-left:0;border-top:1px solid var(--rule)}.lane-body{min-height:180px;max-height:400px}.shipping{height:380px}.ship-body{grid-template-columns:1fr}.ship-head{flex-wrap:wrap}header{flex-wrap:wrap}.paper{min-height:95px}.brandline small{font-size:12px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+/* 03 — Executive: tailored navy and ivory, print-like */
+body[data-theme="03"]{--bg:#fbfaf7;--ink:#1d2937;--muted:#65717d;--rule:#9ba7b1;font-family:Arial,Helvetica,sans-serif}
+[data-theme="03"] header{border-bottom:3px solid #20374b}
+[data-theme="03"] .logo{color:#20374b;letter-spacing:2px;font-size:clamp(21px,2vw,35px)}
+[data-theme="03"] .brandline{font-size:clamp(15px,1.3vw,23px);text-transform:uppercase;letter-spacing:1px}
+[data-theme="03"] .lane-head{border-bottom:1px solid #b9c1c7;margin:0 18px;padding:12px 0}
+[data-theme="03"] .lane-head h2{font-family:Georgia,serif;font-size:clamp(20px,2vw,36px);font-weight:400;color:#20374b}
+[data-theme="03"] .count{font-family:Georgia,serif;font-size:30px;color:#20374b}
+[data-theme="03"] .paper{border:1px solid #d8dce0;border-top:3px solid #20374b;box-shadow:0 2px 5px #20374b0b;padding:15px}
+[data-theme="03"] .paper h3{font-weight:700}
+[data-theme="03"] .tag{letter-spacing:.9px;background:#f1f5f9;color:#475569;border-radius:5px;padding:5px 7px}
+[data-theme="03"] .tag.working{background:#fef3c7;color:#92400e}
+[data-theme="03"] .tag.done{background:#dcfce7;color:#166534}
+[data-theme="03"] .tag.rush{background:#fee2e2;color:#991b1b;text-decoration:none}
+[data-theme="03"] .shipping{border-top:3px solid #20374b}
+[data-theme="03"] .ship-head h2{font-family:Georgia,serif;font-weight:400;color:#20374b}
 </style>
 </head>
-<body>
+<body data-theme="03">
 <section id="login" hidden>
 <form id="loginForm" class="login-card">
 <div class="logo">GAMETIME</div><h1>Factory Board</h1>
