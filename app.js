@@ -1,10 +1,12 @@
 const SUPABASE_URL='https://bqnptjfdsxzbxtkzigim.supabase.co';
 const SUPABASE_KEY='sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1';
-const BUILD='SECURE_V2_20261109a';
+const BUILD='SECURE_V2_20261125a';
 const inventoryPortal=new URLSearchParams(location.search).get('workspace')==='inventory';
 const labelsPortal=new URLSearchParams(location.search).get('workspace')==='labels';
 const ownerPortal=new URLSearchParams(location.search).get('workspace')==='owner';
 const shippingPortal=new URLSearchParams(location.search).get('workspace')==='shipping';
+let factoryBoardActive=false;
+let factoryBoardController=null;
 let shippingRefreshTimer=null;
 let shippingRefreshBusy=false;
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
@@ -185,10 +187,10 @@ let deviceId=localStorage.getItem(DEVICE_KEY);
 if(!deviceId){deviceId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random());localStorage.setItem(DEVICE_KEY,deviceId)}
 let deviceName='';
 function roleLabel(){
-  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Company Overview / Read Only',manager:'Management'}[r]||r)).join(' + ');
+  if((profile?.page_roles||[]).length)return employeeRoles().map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Company Overview / Read Only',factory_board:'Factory Board / View Only',manager:'Management'}[r]||r)).join(' + ');
   if(profile?.job_title)return profile.job_title.replace(/production/gi,'Fill Line');
   const r=profile?.role;
-  return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='chemist'?'Chemist':r==='shipping'?'Shipping':r==='inventory'?'Inventory':r==='viewer'?t('readOnly'):'';
+  return r==='manager'?t('manager'):r==='prod'?t('productionRole'):r==='batch'?t('batchMakerRole'):r==='chemist'?'Chemist':r==='shipping'?'Shipping':r==='inventory'?'Inventory':r==='viewer'?t('readOnly'):r==='factory_board'?'Factory Board / View Only':'';
 }
 function actor(){return profile?.display_name||'Authenticated User'}
 function refreshUserLabel(){
@@ -216,6 +218,7 @@ function switchAuthPane(which){
 function showAuthScreen(){if($('authScreen'))$('authScreen').classList.remove('hidden')}
 function hideAuthScreen(){if($('authScreen'))$('authScreen').classList.add('hidden')}
 function stopSecureSession(){
+  stopFactoryBoard();
   if(reconcileTimer){clearInterval(reconcileTimer);reconcileTimer=null}
   if(channel){db.removeChannel(channel);channel=null}
   orders=[];logs=[];factoryProducts=[];inventoryStockRows=[];profile=null;authUser=null;isManager=false;view='all';
@@ -227,6 +230,56 @@ function stopSecureSession(){
 }
 function employeeRoles(p=profile){return [...new Set([p?.role,...(p?.page_roles||[])].filter(Boolean))]}
 function hasEmployeeRole(role){return employeeRoles().includes(role)}
+function isFactoryBoardRoute(){return new URLSearchParams(location.search).get('workspace')==='factory-board'}
+function isFactoryBoardOnly(){return profile?.role==='factory_board'&&employeeRoles().every(r=>r==='factory_board')}
+function canViewFactoryBoard(){return !!profile?.active&&(isManager||isFactoryBoardOnly())}
+function factoryBoardUrl(){return new URL('/?workspace=factory-board',location.origin).href}
+function stopFactoryBoard(){
+  factoryBoardController?.stop();factoryBoardController=null;factoryBoardActive=false;
+  if($('factoryBoardWorkspace'))$('factoryBoardWorkspace').hidden=true;
+  if($('factoryBoardHost')?.shadowRoot)$('factoryBoardHost').shadowRoot.replaceChildren();
+  if($('overviewSection'))$('overviewSection').hidden=false;
+  document.body.classList.remove('factory-board-open','factory-board-only');
+}
+function openFactoryBoard(){
+  if(!canViewFactoryBoard()||!authUser)return false;
+  if(factoryBoardActive)return true;
+  const workspace=$('factoryBoardWorkspace'),host=$('factoryBoardHost');if(!workspace||!host)return false;
+  factoryBoardActive=true;
+  document.body.classList.add('factory-board-open');
+  document.body.classList.toggle('factory-board-only',isFactoryBoardOnly());
+  $('overviewSection').hidden=true;workspace.hidden=false;
+  $('factoryBoardLogout').hidden=!isFactoryBoardOnly();
+  $('viewLabel').textContent='FACTORY BOARD';setShellNavActive('factoryBoardBtn');
+  history.replaceState(null,'',factoryBoardUrl());document.title='GameTime — Factory Board';
+  closeMobileSidebar();
+  if(typeof window.mountGameTimeFactoryBoard==='function'){
+    factoryBoardController=window.mountGameTimeFactoryBoard(host,db,SUPABASE_URL,SUPABASE_KEY);
+  }else{host.textContent='Factory Board could not load. Refresh GameTime.'}
+  return true;
+}
+function closeFactoryBoard(){
+  if(isFactoryBoardOnly())return false;
+  if(!factoryBoardActive)return true;
+  stopFactoryBoard();
+  const url=new URL(location.href);if(url.searchParams.get('workspace')==='factory-board')url.searchParams.delete('workspace');history.replaceState(null,'',url);
+  document.title='GameTime Factory Work Board';render();
+  return true;
+}
+async function shareFactoryBoard(){
+  if(!isManager)return;const url=factoryBoardUrl();
+  try{if(navigator.share){await navigator.share({title:'GameTime Factory Board — View Only',url});return}}catch(e){if(e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(url);toast('Factory Board link copied. Assign Factory Board / View Only in Staff.')}catch{prompt('Factory Board link:',url)}
+}
+function bindFactoryBoardRoleChecks(id){
+  const field=$(id);if(!field)return;
+  field.addEventListener('change',e=>{
+    const input=e.target;if(input?.type!=='checkbox'||!input.checked)return;
+    if(input.value==='factory_board')field.querySelectorAll('input[type=checkbox]').forEach(x=>{if(x!==input)x.checked=false});
+    else{const board=field.querySelector('input[value=factory_board]');if(board)board.checked=false}
+  });
+}
+
 function selectedPageRoles(id){return [...$(id).querySelectorAll('input:checked')].map(i=>i.value)}
 function setPageRoleChecks(id,roles){$(id).querySelectorAll('input').forEach(i=>i.checked=roles.includes(i.value))}
 function hasWorkPages(){return employeeRoles().some(r=>['manager','chemist','prod','batch','viewer'].includes(r))}
@@ -305,12 +358,17 @@ async function activateSession(user){
   authUser=user;
   const p=await fetchMyProfile(user.id);
   applyProfile(p);
+  if(isFactoryBoardOnly()){
+    orders=[];logs=[];localStorage.removeItem(CACHE_KEY);hideAuthScreen();openFactoryBoard();return;
+  }
+  if(isFactoryBoardRoute()&&!canViewFactoryBoard())throw new Error('Factory Board access required. Ask Management for Factory Board / View Only access.');
   if((labelsPortal||employeeRoles().every(r=>r==='labels'))&&employeeRoles().some(r=>['manager','chemist','labels','prod'].includes(r))){location.replace('/labels.html');return}
   if((ownerPortal||employeeRoles().every(r=>r==='viewer'))&&employeeRoles().some(r=>['manager','chemist','viewer'].includes(r))){location.replace('/owner.html');return}
   if(inventoryPortal&&!canViewInventory())throw new Error('Inventory access required. Ask Management for an Inventory account.');
   hideAuthScreen();
+  if(isFactoryBoardRoute())openFactoryBoard();
   await initialLoad();
-  maybeShowEmployeeInstallHelp();
+  if(!factoryBoardActive)maybeShowEmployeeInstallHelp();
 }
 async function managerLogin(){
   const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
@@ -424,7 +482,7 @@ async function signOutSecure(){
   await db.auth.signOut();
   stopSecureSession();
   showAuthScreen();
-  switchAuthPane('manager');
+  switchAuthPane(isFactoryBoardRoute()?'employee':'manager');
   authMessage('Signed out.');
 }
 async function loadStaff(){
@@ -434,7 +492,7 @@ async function loadStaff(){
   staffRows=data||[];
   $('staffList').innerHTML=staffRows.map(p=>{
     const employee=p.role!=='manager';
-    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Company Overview / Read Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
+    return '<div class="staffrow"><div class="staffrowinfo"><b>'+esc(p.display_name)+'</b><small>'+esc(p.employee_code||'Management')+' • '+esc(employeeRoles(p).map(r=>({prod:'Fill Line',batch:'Batch Maker',shipping:'Shipping',inventory:'Inventory',labels:'Labels',chemist:'Chemist',viewer:'Company Overview / Read Only',factory_board:'Factory Board / View Only',manager:'Management'}[r]||r)).join(' + '))+(p.active?'':' • INACTIVE')+'</small></div>'+
       (employee?'<div class="staffactions"><button type="button" data-staff-edit="'+p.id+'">Edit</button><button type="button" class="danger" data-staff-delete="'+p.id+'">Delete</button></div>':'')+
       '</div>';
   }).join('')||'<div class="analytics-empty">No staff accounts yet.</div>';
@@ -538,7 +596,7 @@ async function secureStart(){
   applyLanguage();tick();
   const {data:{session}}=await db.auth.getSession();
   if(recoveryMode&&session){authUser=session.user;showAuthScreen();switchAuthPane('recovery');authStarting=false;return}
-  if(!session){showAuthScreen();switchAuthPane('manager');authStarting=false;return}
+  if(!session){showAuthScreen();switchAuthPane(isFactoryBoardRoute()?'employee':'manager');authStarting=false;return}
   try{await activateSession(session.user)}
   catch(e){await db.auth.signOut();stopSecureSession();showAuthScreen();switchAuthPane('manager');authMessage(e.message||String(e),true)}
   finally{authStarting=false}
@@ -628,6 +686,7 @@ async function importLegacyIfNeeded(cloud){
   return await fetchOrders();
 }
 async function initialLoad(){
+  if(isFactoryBoardOnly()){if(!factoryBoardActive)openFactoryBoard();return}
   try{
     setSync('syncing','SYNCING');
     if(!hasWorkPages()||isInventoryWorkspace()){orders=[];logs=[];render();await loadFactoryProducts();if(canViewInventory())await loadInventoryStock();if(isInventoryWorkspace()||(!shippingPortal&&hasEmployeeRole('inventory')))openInventory();else if(canUseShipping())openShippingWorkspace();subscribeLive();setSync('live','LIVE');if(reconcileTimer)clearInterval(reconcileTimer);reconcileTimer=setInterval(reconcile,4000);return;}
@@ -640,9 +699,10 @@ async function initialLoad(){
   }catch(e){console.error(e);setSync('offline','OFFLINE');if(authUser){toast('Cloud connection problem — retrying');setTimeout(()=>{if(authUser)initialLoad()},3500)}}
 }
 async function reconcile(){
+  if(!authUser||isFactoryBoardOnly())return;
   if(!navigator.onLine){setSync('offline','OFFLINE');return}
   try{
-    const fresh=await fetchMyProfile(authUser.id);if(JSON.stringify(employeeRoles(fresh))!==JSON.stringify(employeeRoles())){applyProfile(fresh);await initialLoad();return;}
+    const fresh=await fetchMyProfile(authUser.id);if(JSON.stringify(employeeRoles(fresh))!==JSON.stringify(employeeRoles())){if(factoryBoardActive||employeeRoles(fresh).includes('factory_board')){location.reload();return}applyProfile(fresh);await initialLoad();return;}
     if(!hasWorkPages()||isInventoryWorkspace()){if($('fillSuppliesModal')?.classList.contains('show'))await loadFillSupplies(true);await loadFactoryProducts();if(canViewInventory())await loadInventoryStock(true);return;}
     const cloud=await fetchOrders();
     if(orderSig(cloud)!==orderSig(orders)){orders=cloud;cache();renderStable()}
@@ -653,6 +713,7 @@ async function reconcile(){
   }catch(e){console.error(e);setSync('offline','OFFLINE')}
 }
 function subscribeLive(){
+  if(isFactoryBoardOnly())return;
   if(channel){db.removeChannel(channel);channel=null}
   channel=db.channel('gametime-live-v3')
     .on('postgres_changes',{event:'*',schema:'public',table:'work_orders'},payload=>{
@@ -760,7 +821,8 @@ function restoreWorkViewport(snap){if(!snap)return;requestAnimationFrame(()=>req
 function renderStable(preferredId=null,preferredDept=null){const snap=captureWorkViewport(preferredId,preferredDept);render();restoreWorkViewport(snap)}
 
 function render(){
-  $('viewLabel').textContent=isInventoryWorkspace()?'INVENTORY':(shippingPortal||shippingOnlyEmployee())?'SHIPPING':isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
+  if(isFactoryBoardOnly())return;
+  $('viewLabel').textContent=factoryBoardActive?'FACTORY BOARD':isInventoryWorkspace()?'INVENTORY':(shippingPortal||shippingOnlyEmployee())?'SHIPPING':isManager?t('allWork'):view==='prod'?t('productionFilling'):view==='batch'?t('batchMaker'):(roleLabel()||t('readOnly')).toUpperCase();
   $('dateLabel').textContent=isGlobalSearch()?t('searchResults')+' — '+t('allDates'):pretty();
   $('managerTools').style.display=isManager?'flex':'none';$('addBtn').style.display=isManager?'':'none';
   if($('staffBtn'))$('staffBtn').style.display=canManageStaff()?'':'none';
@@ -1911,8 +1973,8 @@ function closeMobileSidebar(){
 if($('mobileMenuBtn'))$('mobileMenuBtn').onclick=openMobileSidebar;
 if($('sidebarCloseBtn'))$('sidebarCloseBtn').onclick=closeMobileSidebar;
 if($('mobileSidebarBackdrop'))$('mobileSidebarBackdrop').onclick=closeMobileSidebar;
-if($('overviewNav'))$('overviewNav').onclick=()=>{setShellNavActive('overviewNav');$('overviewSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
-if($('scheduleNav'))$('scheduleNav').onclick=()=>{setShellNavActive('scheduleNav');$('scheduleSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
+if($('overviewNav'))$('overviewNav').onclick=()=>{if(!closeFactoryBoard())return;setShellNavActive('overviewNav');$('overviewSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
+if($('scheduleNav'))$('scheduleNav').onclick=()=>{if(!closeFactoryBoard())return;setShellNavActive('scheduleNav');$('scheduleSection')?.scrollIntoView({behavior:'smooth',block:'start'})};
 $('prevBtn').onclick=()=>{selected=shiftWorkdayDate(selected,-1);render()};
 $('nextBtn').onclick=()=>{selected=shiftWorkdayDate(selected,1);render()};
 $('dateLabel').onclick=openMonth;
@@ -1934,6 +1996,11 @@ if($('shareInventory'))$('shareInventory').onclick=shareInventory;
 if($('shareManagement'))$('shareManagement').onclick=shareManagement;
 if($('shareOwner'))$('shareOwner').onclick=async()=>{const url=new URL('/owner.html',location.origin).href;try{await navigator.clipboard.writeText(url);toast('Company Overview link copied — assign Company Overview / Read Only access.')}catch{prompt('Company Overview link:',url)}};
 if($('ownerViewBtn'))$('ownerViewBtn').onclick=()=>location.href='/owner.html';
+if($('factoryBoardBtn'))$('factoryBoardBtn').onclick=()=>{if(!canViewFactoryBoard())return;if(inventoryPortal||shippingPortal||labelsPortal||ownerPortal){location.href=factoryBoardUrl();return}openFactoryBoard()};
+if($('shareFactoryBoard'))$('shareFactoryBoard').onclick=shareFactoryBoard;
+if($('factoryBoardLogout'))$('factoryBoardLogout').onclick=signOutSecure;
+if($('factoryBoardFullScreen'))$('factoryBoardFullScreen').onclick=async()=>{try{const panel=$('factoryBoardWorkspace');if(document.fullscreenElement)await document.exitFullscreen();else if(panel.requestFullscreen)await panel.requestFullscreen();else toast('Use your browser full-screen mode.')}catch{toast('Use your browser full-screen mode.')}};
+bindFactoryBoardRoleChecks('staffPageRoles');bindFactoryBoardRoleChecks('editStaffPageRoles');
 if($('shippingPdfBtn'))$('shippingPdfBtn').onclick=shippingDownloadPdf;
 if($('shippingCameraBtn'))$('shippingCameraBtn').onclick=()=>$('shippingCameraInput').click();
 if($('shippingUploadBtn'))$('shippingUploadBtn').onclick=()=>$('shippingFileInput').click();
@@ -2084,9 +2151,9 @@ if($('catalogBtn'))$('catalogBtn').onclick=()=>{showModal('catalogModal');render
 $('product').oninput=e=>{const p=e.target.selectionStart;e.target.value=titleCase(e.target.value);try{e.target.setSelectionRange(p,p)}catch{}showProductOptions()};
 
 window.addEventListener('afterprint',()=>document.body.classList.remove('printing'));
-window.addEventListener('online',()=>{if(!authUser)return;setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});
+window.addEventListener('online',()=>{if(!authUser)return;if(factoryBoardActive)void factoryBoardController?.refresh();if(isFactoryBoardOnly())return;setSync('syncing','RECONNECTING');reconcile();if(!channel)subscribeLive()});
 window.addEventListener('offline',()=>{if(authUser)setSync('offline','OFFLINE')});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authUser)reconcile()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authUser){if(factoryBoardActive)void factoryBoardController?.refresh();if(!isFactoryBoardOnly())reconcile()}});
 document.addEventListener('click',e=>{
   const inAccordion=e.target.closest?.('.sideaccordion');
   if(!inAccordion)closeSidebarSubmenus('');
@@ -2100,6 +2167,7 @@ window.addEventListener('resize',()=>{if(!window.matchMedia('(max-width:700px)')
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileSidebar()});
 
 db.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_OUT'&&factoryBoardActive){stopSecureSession();showAuthScreen();switchAuthPane(isFactoryBoardRoute()?'employee':'manager');return}
   if(event==='PASSWORD_RECOVERY'){
     recoveryMode=true;authUser=session?.user||authUser;showAuthScreen();switchAuthPane('recovery');
   }
