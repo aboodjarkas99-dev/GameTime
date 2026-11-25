@@ -11,7 +11,22 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/app-icon-180.png?v=20261016b">
 <link rel="stylesheet" href="styles.css?v=SECURE_V2_20261109f">
 <title>GameTime Factory Work Board</title>
-<script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261109c"><script defer src="/date-picker.js?v=20261109c"></script></head>
+<script defer src="/app-update.js?v=20261016b"></script><link rel="stylesheet" href="/date-picker.css?v=20261109c"><script defer src="/date-picker.js?v=20261109c"></script><style>
+#factoryBoardWorkspace[hidden]{display:none!important}
+#factoryBoardWorkspace{box-sizing:border-box;display:flex;flex-direction:column;min-height:500px;height:calc(100dvh - 57px);background:#fbfaf7;overflow:hidden}
+#factoryBoardHost{flex:1;min-width:0;min-height:0}
+.factory-board-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 18px;border-bottom:1px solid #dce3eb;min-height:39px;color:#536274;background:#fff}
+.factory-board-toolbar small{font-size:11px;letter-spacing:.6px;font-weight:700}
+.factory-board-toolbar button{font-size:12px;font-weight:700;padding:5px 10px;border:1px solid #cbd5e1;background:#fff;color:#20374b;border-radius:4px}
+.factory-board-toolbar .factory-board-actions{display:flex;gap:6px}
+body.factory-board-open .push-settings{display:none!important}
+body.factory-board-only .app-shell{display:block!important}
+body.factory-board-only #mainSidebar,body.factory-board-only .topbar,body.factory-board-only #mobileSidebarBackdrop,body.factory-board-only #overviewSection{display:none!important}
+body.factory-board-only .app-main{display:block!important;width:100%;min-height:100dvh}
+body.factory-board-only #factoryBoardWorkspace,#factoryBoardWorkspace:fullscreen{height:100dvh;min-height:0;width:100%}
+#factoryBoardWorkspace:fullscreen .factory-board-toolbar{display:none}
+@media(max-width:850px){#factoryBoardWorkspace,body.factory-board-only #factoryBoardWorkspace{height:auto;min-height:100dvh;overflow:visible}#factoryBoardHost{flex:auto}}
+</style></head>
 <body>
 <!-- SECURE_V2_20261103a employee-name-login company-logo -->
 <div id="authScreen" class="authscreen">
@@ -113,7 +128,7 @@
       <div class="sidelabel">Full Access</div>
       <nav class="sidenav">
         <button id="ownerViewBtn" type="button"><span>◉</span><b>Company Overview</b></button>
-        <button id="factoryBoardBtn" type="button" title="Factory Board — TV display" onclick="window.open('/factory-display.html','_blank','noopener,noreferrer')"><span>▣</span><b>Factory Board</b></button>
+        <button id="factoryBoardBtn" type="button" title="Factory Board — View Only"><span>▣</span><b>Factory Board</b></button>
         <button id="monthlyChartBtn" type="button"><span>▥</span><b>Monthly Chart</b></button>
         <button data-drawer="activity" type="button"><span>◉</span><b>Live Activity</b></button>
         <button data-drawer="queue" type="button"><span>☰</span><b>Unfinished Queue</b></button>
@@ -127,6 +142,7 @@
           <button id="shareShipping" type="button">↗ Shipping</button>
           <button id="shareInventory" type="button">↗ Inventory</button>
           <button id="shareLabels" type="button">↗ Labels</button><button id="shareOwner" type="button">↗ Company Overview</button>
+          <button id="shareFactoryBoard" type="button">↗ Factory Board</button>
           <button id="shareManagement" type="button">↗ Management</button>
         </div>
       </div>
@@ -199,6 +215,10 @@
         </section>
       </section>
     </main>
+    <section id="factoryBoardWorkspace" aria-label="Factory Board — View Only" hidden>
+      <div class="factory-board-toolbar"><small>FACTORY BOARD · VIEW ONLY</small><div class="factory-board-actions"><button id="factoryBoardFullScreen" type="button">Full screen</button><button id="factoryBoardLogout" type="button" hidden>Sign out</button></div></div>
+      <div id="factoryBoardHost"></div>
+    </section>
   </div>
 </div>
 
@@ -371,7 +391,7 @@
     <div class="staffcreate">
       <label>Name<input id="staffName" autocomplete="off"></label>
       <label>Employee Code<input id="staffCode" value="Assigned automatically" readonly aria-describedby="staffCodeHelp"><small id="staffCodeHelp">Two digits · assigned automatically when saved</small></label>
-      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Company Overview / Read Only</label></fieldset>
+      <fieldset id="staffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Company Overview / Read Only</label><label><input type="checkbox" value="factory_board">Factory Board / View Only</label></fieldset>
       <label>PIN (4–12 digits)<input id="staffPin" inputmode="numeric" type="password" autocomplete="new-password"></label>
       <button id="createStaffBtn" class="primary">Create Employee</button>
     </div>
@@ -399,7 +419,7 @@
     <div class="staffeditgrid">
       <label>Name<input id="editStaffName" autocomplete="off"></label>
       <label>Employee Code<input id="editStaffCode" readonly></label>
-      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Company Overview / Read Only</label></fieldset>
+      <fieldset id="editStaffPageRoles" class="employee-page-roles"><legend>Allowed pages — select one or more</legend><label><input type="checkbox" value="batch">Batch Maker</label><label><input type="checkbox" value="prod">Fill Line</label><label><input type="checkbox" value="chemist">Chemist — full work access</label><label><input type="checkbox" value="shipping">Shipping</label><label><input type="checkbox" value="inventory">Inventory</label><label><input type="checkbox" value="labels">Labels</label><label><input type="checkbox" value="viewer">Company Overview / Read Only</label><label><input type="checkbox" value="factory_board">Factory Board / View Only</label></fieldset>
       <label>New PIN — Optional<input id="editStaffPin" inputmode="numeric" type="password" autocomplete="new-password" placeholder="Leave blank to keep current PIN"><small class="fieldhelp">You do not need the employee's PIN to edit their name, code, or role. Leave this blank to keep the current PIN.</small></label>
     </div>
     <div id="editStaffMessage" class="authmessage"></div>
@@ -618,7 +638,8 @@
 <script src="fill-completion.js?v=SECURE_V2_20261109a"></script>
 <script>document.addEventListener("DOMContentLoaded",initializeFillCompletion);</script>
 <script src="product-reviews.js?v=20261104a"></script>
-<script src="app.js?v=SECURE_V2_20261109f"></script><script src="/push-client.js?v=20261103a"></script>
+<script src="/factory-board.js?v=20261125a"></script>
+<script src="app.js?v=SECURE_V2_20261125a"></script><script src="/push-client.js?v=20261125a"></script>
 <script>
 // Service worker updates are registered by app-update.js.
 </script>
