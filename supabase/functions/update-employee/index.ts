@@ -29,11 +29,12 @@ Deno.serve(async (req) => {
   const role = String(body.role || "").trim();
   const pin = String(body.pin || "").trim();
   const pageRoles = [...new Set(Array.isArray(body.page_roles) ? body.page_roles.map(String) : [role])];
-  if(!pageRoles.length || pageRoles.length>7 || !pageRoles.includes(role) || pageRoles.some(r=>!["batch","prod","viewer","chemist","shipping","inventory","labels"].includes(r)))return json({error:"Choose valid employee pages"},400);
+  if(!pageRoles.length || pageRoles.length>8 || !pageRoles.includes(role) || pageRoles.some(r=>!["batch","prod","viewer","chemist","shipping","inventory","labels","factory_board"].includes(r)))return json({error:"Choose valid employee pages"},400);
+  if (pageRoles.includes("factory_board") && (role !== "factory_board" || pageRoles.length !== 1)) return json({error:"Factory Board is a dedicated View Only role. Select it alone."},400);
 
   if (!id) return json({ error: "Employee is required" }, 400);
   if (displayName.length < 2 || displayName.length > 70) return json({ error: "Enter a valid employee name" }, 400);
-  if (!["batch","prod","viewer","chemist","shipping","inventory","labels"].includes(role)) return json({ error: "Invalid employee role" }, 400);
+  if (!["batch","prod","viewer","chemist","shipping","inventory","labels","factory_board"].includes(role)) return json({ error: "Invalid employee role" }, 400);
   if (pin && !/^\d{4,12}$/.test(pin)) return json({ error: "New PIN must be 4-12 digits" }, 400);
 
   const admin = createClient(supabaseUrl, serviceRole);
@@ -44,7 +45,7 @@ Deno.serve(async (req) => {
 
   const employeeCode = target.employee_code;
 
-  const jobTitle = role === "batch" ? "Batch Maker" : role === "prod" ? "Fill Line" : role === "chemist" ? "Chemist" : role === "shipping" ? "Shipping" : role === "inventory" ? "Inventory" : role === "labels" ? "Labels" : "View Only";
+  const jobTitle = role === "batch" ? "Batch Maker" : role === "prod" ? "Fill Line" : role === "chemist" ? "Chemist" : role === "shipping" ? "Shipping" : role === "inventory" ? "Inventory" : role === "labels" ? "Labels" : role === "factory_board" ? "Factory Board / View Only" : "View Only";
   const authAttrs: Record<string, unknown> = {
     user_metadata: { display_name: displayName, employee_code: employeeCode, role, page_roles:pageRoles, job_title: jobTitle },
   };
