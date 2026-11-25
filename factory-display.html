@@ -59,7 +59,7 @@ const demo=new URLSearchParams(location.search).get("demo")==="1";
 const URL_BASE="https://bqnptjfdsxzbxtkzigim.supabase.co";
 const KEY="sb_publishable_PW16QU5CtZBRe42mGPBrHg_g8McvcP1";
 const zone="America/Chicago";
-const dateKey=()=>new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const dateKey=()=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());return ["year","month","day"].map(k=>p.find(v=>v.type===k)?.value).join("-");};
 const fmtDate=d=>d?new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}):"";
 const num=v=>Number(v)||0;
 const qty=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("en-US"):String(v??"");
@@ -110,7 +110,7 @@ function fillPage(host,items,build,pageKey){
  if(!nodes.length){host.append(make("div","empty",pageKey==="ship"?"No open shipments or shipments completed today":"No orders in this stage"));return {page:0,total:1};}
  // Measure in the actual lane, then group by available screen height.
  const groups=[];let group=[],used=0;
- const available=host.clientHeight||300,gap=parseFloat(getComputedStyle(host).rowGap)||0;
+ const styles=getComputedStyle(host);const available=Math.max(100,(host.clientHeight||300)-parseFloat(styles.paddingTop||0)-parseFloat(styles.paddingBottom||0)),gap=parseFloat(styles.rowGap)||0;
  const cols=pageKey==="ship"&&getComputedStyle(host).gridTemplateColumns.split(" ").length>1?2:1;
  if(cols===1){
   for(const node of nodes){host.append(node);const h=node.getBoundingClientRect().height;host.removeChild(node);if(group.length&&used+h+gap>available){groups.push(group);group=[];used=0;}used+=(group.length?gap:0)+h;group.push(node);}
@@ -148,7 +148,7 @@ function render(animate=false){
  const count=$("shipCounts");count.replaceChildren();
  for(const [status,label] of [["READY","Ready"],["DRAFT","Preparing"],["SHIPPED","Shipped today"]]){const s=make("span","",label+" ");s.append(make("b","",(snapshot.shipments||[]).filter(x=>x.status===status).length));count.append(s);}
  const sr=fillPage($("shipBody"),shippingItems(snapshot),shipRow,"ship");$("shipPage").textContent=sr.total>1?"Page "+(sr.page+1)+" / "+sr.total+" · auto-rotates":"";
- if(animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches){for(const e of document.querySelectorAll("[data-order]")){const old=prev.get(e.dataset.order);if(!old||old.lane===e.parentElement.id)continue;const next=e.getBoundingClientRect();e.animate([{transform:"translate("+(old.rect.left-next.left)+"px,"+(old.rect.top-next.top)+"px)",opacity:.7},{transform:"translate(0,0)",opacity:1}],{duration:650,easing:"ease-out"});}}
+ if(animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches){for(const e of document.querySelectorAll("[data-order]")){const old=prev.get(e.dataset.order);if(!old||old.lane===e.parentElement.id)continue;const next=e.getBoundingClientRect();const ghost=e.cloneNode(true);const style=getComputedStyle(e);Object.assign(ghost.style,{position:"fixed",zIndex:"99",pointerEvents:"none",margin:"0",left:old.rect.left+"px",top:old.rect.top+"px",width:next.width+"px",height:next.height+"px",background:style.backgroundColor,borderLeftColor:style.borderLeftColor});ghost.removeAttribute("data-order");document.body.append(ghost);e.style.visibility="hidden";const anim=ghost.animate([{transform:"translate(0,0)",opacity:.95},{transform:"translate("+(next.left-old.rect.left)+"px,"+(next.top-old.rect.top)+"px)",opacity:1}],{duration:650,easing:"ease-out"});const finish=()=>{ghost.remove();e.style.visibility="";};anim.onfinish=finish;anim.oncancel=finish;}}
 }
 function setSnapshot(data){const s=JSON.stringify([data.date,data.orders,data.shipments]);snapshot=data;const changed=s!==signature;if(changed){signature=s;render(true);}}
 function status(text,cls=""){$("connection").textContent=text;$("connection").className=cls;}
