@@ -31,7 +31,9 @@ Deno.serve(async req => {
     if(authError||!user) return json({error:"Sign in required"},401);
     const {data:p,error:profileError}=await admin.from("profiles").select("role,page_roles,active").eq("id",user.id).maybeSingle();
     if(profileError) throw profileError;
-    if(!p?.active||p.role!=="viewer"||(p.page_roles||[]).some((r:string)=>r!=="viewer")) return json({error:"Use a dedicated Read Only account"},403);
+    const roles = new Set([p?.role,...(p?.page_roles||[])]);
+    const boardOnly = p?.role === "factory_board" && [...roles].every(r=>r==="factory_board");
+    if(!p?.active||!(roles.has("manager")||roles.has("chemist")||boardOnly)) return json({error:"Factory Board access required"},403);
     const today=day();
     const [orders, shipments] = await Promise.all([
       all(()=>admin.from("work_orders").select("id,product,batch,tank,quart,gallon,five,jerry,jerry_enabled,actual_quart,actual_gallon,actual_five,actual_jerry,priority,batch_status,prod_status,batch_work_date,prod_work_date,work_date,batch_made_date,batch_order,prod_order,production_only,batch_active,prod_active,held,catalyst").is("deleted_at",null).eq("hold_line",false).or("batch_work_date.eq."+today+",prod_work_date.eq."+today+",work_date.eq."+today).order("id")),
